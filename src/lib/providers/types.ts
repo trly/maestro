@@ -9,6 +9,7 @@ export interface Repository {
 
 export interface RepositoryProvider {
 	name: string;
+	initialize(): Promise<void>;
 	isConfigured(): boolean;
 	searchRepositories(query: string): Promise<Repository[]>;
 	getUserRepositories(): Promise<Repository[]>;

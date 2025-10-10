@@ -4,18 +4,22 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"bun run --watch server.ts\" \"vite\"",
-    "build": "vite build",
-    "preview": "bun run server.ts"
+    "dev": "cargo tauri dev",
+    "build": "cargo tauri build",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "tauri": "tauri",
+    "tauri:icon": "cargo tauri icon"
   },
   "devDependencies": {
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.46.4",
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@tailwindcss/container-queries": "^0.1.1",
     "@tailwindcss/postcss": "^4.1.14",
-    "@types/bun": "latest",
     "@types/diff": "^8.0.0",
     "autoprefixer": "^10.4.21",
-    "concurrently": "^9.2.1",
     "svelte": "^5.39.11",
+    "svelte-check": "^4.3.3",
     "tailwindcss": "^4.1.14",
     "vite": "^7.1.9",
     "vite-plugin-svelte-inspector": "^0.2.1"
@@ -26,6 +30,11 @@
   "dependencies": {
     "@octokit/rest": "^22.0.0",
     "@sourcegraph/amp-sdk": "^0.1.0-3e67faf1b0e66cf0d3bf2985979efbcac0554a79",
-    "diff": "^8.0.2"
+    "@tauri-apps/api": "^2.8.0",
+    "@tauri-apps/plugin-notification": "^2.3.1",
+    "@tauri-apps/plugin-shell": "^2.3.1",
+    "bits-ui": "^2.11.4",
+    "diff": "^8.0.2",
+    "lucide-svelte": "^0.545.0"
   }
 }

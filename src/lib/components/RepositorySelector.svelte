@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { Combobox } from 'bits-ui';
 	import { getConfiguredProviders, type Repository } from '../providers';
 	import { onMount } from 'svelte';
+	import { Search, Check } from 'lucide-svelte';
 
 	let {
 		selectedRepos = $bindable([])
@@ -11,57 +13,59 @@
 	let searchQuery = $state('');
 	let searchResults = $state<Repository[]>([]);
 	let isSearching = $state(false);
-	let showDropdown = $state(false);
-	let inputElement = $state<HTMLInputElement>();
+	let open = $state(false);
 	let debounceTimer: number;
 
-	const providers = getConfiguredProviders();
+	let providers = $state<Awaited<ReturnType<typeof getConfiguredProviders>>>([]);
 
+	onMount(async () => {
+		providers = await getConfiguredProviders();
+	});
 
+	// Clear search when dropdown closes
+	$effect(() => {
+		if (!open && searchQuery) {
+			searchQuery = '';
+		}
+	});
 
-	async function handleSearch() {
-		if (providers.length === 0 || !searchQuery.trim()) {
+	async function handleSearch(query: string) {
+		if (providers.length === 0 || !query.trim()) {
 			searchResults = [];
+			open = false;
 			return;
 		}
 
 		isSearching = true;
-		showDropdown = true;
+		open = true;
 		try {
 			const allResults = await Promise.all(
-				providers.map(p => p.searchRepositories(searchQuery))
+				providers.map(p => p.searchRepositories(query))
 			);
 			searchResults = allResults.flat();
 		} catch (error) {
-			console.error('Error searching repos:', error);
 			searchResults = [];
 		} finally {
 			isSearching = false;
 		}
 	}
 
-	function onInput() {
+	function onInput(value: string) {
+		searchQuery = value;
 		clearTimeout(debounceTimer);
-		debounceTimer = setTimeout(handleSearch, 300) as unknown as number;
+		debounceTimer = setTimeout(() => handleSearch(value), 300) as unknown as number;
 	}
 
 	function selectRepo(repo: Repository) {
 		if (!selectedRepos.find(r => r.fullName === repo.fullName)) {
 			selectedRepos = [...selectedRepos, repo];
 		}
-		searchQuery = '';
 		searchResults = [];
-		showDropdown = false;
+		open = false;
 	}
 
 	function removeRepo(repo: Repository) {
 		selectedRepos = selectedRepos.filter(r => r.fullName !== repo.fullName);
-	}
-
-	function handleBlur() {
-		setTimeout(() => {
-			showDropdown = false;
-		}, 200);
 	}
 
 	let filteredResults = $derived(
@@ -69,20 +73,20 @@
 	);
 </script>
 
-<div class="relative">
+<div>
 	{#if providers.length === 0}
-		<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">
-			<p class="font-semibold">No repository providers configured</p>
-			<p class="text-sm mt-1">Set <code class="bg-yellow-100 px-2 py-0.5 rounded">VITE_MAESTRO_GITHUB_TOKEN</code> environment variable to enable GitHub integration</p>
+		<div class="bg-card border border-border rounded-lg p-4">
+			<p class="font-semibold text-foreground">No repository providers configured</p>
+			<p class="text-sm mt-1 text-muted-foreground">Configure GitHub token in Settings to enable GitHub integration</p>
 		</div>
 	{:else}
 		<div class="flex flex-wrap gap-2 mb-4">
 			{#each selectedRepos as repo}
-				<div class="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all">
+				<div class="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg transition-all">
 					<span class="text-sm font-semibold">{repo.fullName}</span>
 					<button
 						onclick={() => removeRepo(repo)}
-						class="hover:bg-white/20 rounded-full p-1 transition-all"
+						class="hover:bg-primary-foreground/20 rounded-full p-1 transition-all"
 						aria-label="Remove {repo.fullName}"
 					>
 						✕
@@ -91,38 +95,55 @@
 			{/each}
 		</div>
 
-		<input
-			bind:this={inputElement}
-			bind:value={searchQuery}
-			oninput={onInput}
-			onblur={handleBlur}
-			type="text"
-			placeholder="Search repositories..."
-			class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-		/>
-
-		{#if showDropdown && filteredResults.length > 0}
-			<div class="absolute z-10 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
-				{#if isSearching}
-					<div class="px-5 py-4 text-gray-500 text-sm">
-						Searching...
-					</div>
-				{:else}
-					{#each filteredResults as repo}
-						<button
-							onclick={() => selectRepo(repo)}
-							class="w-full px-5 py-3.5 text-left hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 border-b border-gray-100 last:border-b-0 transition-all"
-						>
-							<div class="font-semibold text-gray-900">
-								{repo.fullName}
-							</div>
-							{#if repo.description}
-								<div class="text-sm text-gray-600 mt-1 truncate">{repo.description}</div>
-							{/if}
-						</button>
-					{/each}
-				{/if}
+		<Combobox.Root 
+			type="single" 
+			bind:open 
+			inputValue={searchQuery}
+			onValueChange={(val) => {
+				if (!val) return;
+				const repo = searchResults.find(r => r.fullName === val);
+				if (repo) selectRepo(repo);
+			}}
+		>
+			<div class="relative">
+				<Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+				<Combobox.Input
+					placeholder="Search repositories..."
+					class="w-full h-10 pl-10 pr-4 border border-border rounded-lg bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-border transition-all"
+					oninput={(e) => onInput((e.currentTarget as HTMLInputElement).value)}
+				/>
 			</div>
-		{/if}
+			<Combobox.Content
+				class="z-50 bg-background border border-border rounded-xl shadow-lg max-h-96 overflow-hidden p-1"
+				style="width: var(--bits-combobox-anchor-width);"
+				sideOffset={8}
+			>
+				<div class="max-h-80 overflow-y-auto p-1">
+					{#if isSearching}
+						<div class="px-5 py-8 text-center text-muted-foreground text-sm">
+							Searching...
+						</div>
+					{:else if filteredResults.length === 0 && searchQuery.trim()}
+						<div class="px-5 py-8 text-center text-muted-foreground text-sm">
+							No repositories found
+						</div>
+					{:else}
+						{#each filteredResults as repo}
+							<Combobox.Item
+								value={repo.fullName}
+								class="flex h-10 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 data-[highlighted]:bg-muted transition-colors"
+							>
+								<div class="flex-1 min-w-0 font-medium text-sm text-foreground truncate">
+									{repo.fullName}
+								</div>
+								{#if selectedRepos.find(r => r.fullName === repo.fullName)}
+									<Check class="size-4 shrink-0 text-primary" />
+								{/if}
+							</Combobox.Item>
+						{/each}
+					{/if}
+				</div>
+			</Combobox.Content>
+		</Combobox.Root>
 	{/if}
 </div>

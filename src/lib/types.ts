@@ -1,8 +1,10 @@
 export type RepositoryProvider = 'github' | 'gitlab';
 
-export type ExecutionStatus = 'pending' | 'running' | 'completed' | 'failed';
+export type ExecutionStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
-export type ValidationStatus = 'pending' | 'running' | 'passed' | 'failed' | null;
+export type ValidationStatus = 'pending' | 'running' | 'passed' | 'failed' | 'cancelled';
+
+export type FileStatus = 'added' | 'modified' | 'deleted' | 'renamed';
 
 export interface Repository {
 	id: string;
@@ -18,7 +20,14 @@ export interface PromptSet {
 	name: string;
 	repositoryIds: string[];
 	validationPrompt: string | null;
+	autoValidate: boolean;
 	createdAt: number;
+	stats?: {
+		totalExecutions: number;
+		totalCompletions: number;
+		totalValidations: number;
+		totalRevisions: number;
+	};
 }
 
 export interface PromptRevision {
@@ -27,9 +36,16 @@ export interface PromptRevision {
 	promptText: string;
 	parentRevisionId: string | null;
 	createdAt: number;
+	executionStats?: {
+		total: number;
+		completed: number;
+		validationPassed: number;
+	};
 }
 
 export type PromptStatus = 'passed' | 'failed' | null;
+
+export type CommitStatus = 'none' | 'uncommitted' | 'committed';
 
 export interface Execution {
 	id: string;
@@ -39,9 +55,9 @@ export interface Execution {
 	sessionId: string | null;
 	threadUrl: string | null;
 	status: ExecutionStatus;
-	promptStatus: PromptStatus;
+	promptStatus: PromptStatus | null;
 	promptResult: string | null;
-	validationStatus: ValidationStatus;
+	validationStatus: ValidationStatus | null;
 	validationThreadUrl: string | null;
 	validationResult: string | null;
 	filesAdded: number;
@@ -49,6 +65,12 @@ export interface Execution {
 	filesModified: number;
 	linesAdded: number;
 	linesRemoved: number;
+	commitStatus: CommitStatus;
+	commitSha: string | null;
+	committedAt: number | null;
+	parentSha: string | null;
+	branch: string | null;
 	createdAt: number;
 	completedAt: number | null;
+	progressMessage?: string;
 }

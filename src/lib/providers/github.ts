@@ -1,14 +1,38 @@
 import { Octokit } from "@octokit/rest";
 import type { Repository, RepositoryProvider } from "./types";
+import { tokenStore } from "$lib/tokenStore";
 
 export class GitHubProvider implements RepositoryProvider {
   name = "GitHub";
   private octokit: Octokit | null = null;
+  private initialized = false;
+  private initPromise: Promise<void> | null = null;
 
   constructor() {
-    const token = import.meta.env.VITE_MAESTRO_GITHUB_TOKEN;
-    if (token) {
-      this.octokit = new Octokit({ auth: token });
+    // Don't auto-initialize in constructor
+  }
+
+  async initialize(): Promise<void> {
+    if (this.initialized) {
+      return;
+    }
+    
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+
+    this.initPromise = this.initializeToken();
+    await this.initPromise;
+  }
+
+  private async initializeToken(): Promise<void> {
+    try {
+      const token = await tokenStore.getToken('github_token');
+      if (token) {
+        this.octokit = new Octokit({ auth: token });
+      }
+    } finally {
+      this.initialized = true;
     }
   }
 
@@ -17,6 +41,8 @@ export class GitHubProvider implements RepositoryProvider {
   }
 
   async searchRepositories(query: string): Promise<Repository[]> {
+    await this.initialize();
+    
     if (!this.octokit) {
       throw new Error("GitHub token not configured");
     }
@@ -32,21 +58,24 @@ export class GitHubProvider implements RepositoryProvider {
         sort: "updated",
       });
 
-      return data.items.map((repo) => ({
-        provider: "github" as const,
-        fullName: repo.full_name,
-        name: repo.name,
-        owner: repo.owner.login,
-        url: repo.html_url,
-        description: repo.description || undefined,
-      }));
+      return data.items
+        .filter((repo) => repo.owner)
+        .map((repo) => ({
+          provider: "github" as const,
+          fullName: repo.full_name,
+          name: repo.name,
+          owner: repo.owner!.login,
+          url: repo.html_url,
+          description: repo.description || undefined,
+        }));
     } catch (error) {
-      console.error("GitHub search error:", error);
       return [];
     }
   }
 
   async getUserRepositories(): Promise<Repository[]> {
+    await this.initialize();
+    
     if (!this.octokit) {
       throw new Error("GitHub token not configured");
     }
@@ -67,7 +96,6 @@ export class GitHubProvider implements RepositoryProvider {
         description: repo.description || undefined,
       }));
     } catch (error) {
-      console.error("GitHub repos error:", error);
       return [];
     }
   }

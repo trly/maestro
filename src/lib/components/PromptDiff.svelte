@@ -1,59 +1,73 @@
 <script lang="ts">
-	import { diffLines, type Change } from 'diff';
+	import { processTextDiff } from '$lib/diff'
+	import DiffUnified from './diff/DiffUnified.svelte'
 
 	interface Props {
-		oldText: string;
-		newText: string;
-		onupdate: (text: string) => void;
+		oldText: string
+		newText: string
+		onupdate: (text: string) => void
 	}
 
-	let { oldText, newText, onupdate }: Props = $props();
+	let { oldText, newText, onupdate }: Props = $props()
 
-	let diff = $derived(diffLines(oldText, newText));
+	let editedText = $state(newText)
+	let diffScrollElement: HTMLDivElement | null = null
+	let editorScrollElement: HTMLTextAreaElement | null = null
 
+	$effect(() => {
+		editedText = newText
+	})
+
+	let diffItems = $derived(processTextDiff(oldText, editedText))
+
+	let debounceTimer: ReturnType<typeof setTimeout> | null = null
 	function handleInput(e: Event) {
-		const target = e.target as HTMLTextAreaElement;
-		onupdate(target.value);
+		const target = e.target as HTMLTextAreaElement
+		editedText = target.value
+		if (debounceTimer) clearTimeout(debounceTimer)
+		debounceTimer = setTimeout(() => {
+			onupdate(target.value)
+		}, 200)
+	}
+
+	function handleDiffScroll(e: Event) {
+		const target = e.target as HTMLDivElement
+		if (editorScrollElement) {
+			const scrollPercentage = target.scrollTop / (target.scrollHeight - target.clientHeight)
+			editorScrollElement.scrollTop = scrollPercentage * (editorScrollElement.scrollHeight - editorScrollElement.clientHeight)
+		}
+	}
+
+	function handleEditorScroll(e: Event) {
+		const target = e.target as HTMLTextAreaElement
+		if (diffScrollElement) {
+			const scrollPercentage = target.scrollTop / (target.scrollHeight - target.clientHeight)
+			diffScrollElement.scrollTop = scrollPercentage * (diffScrollElement.scrollHeight - diffScrollElement.clientHeight)
+		}
 	}
 </script>
 
-<div class="grid grid-cols-2 gap-4">
-	<div class="space-y-2">
-		<h3 class="text-sm font-semibold text-gray-600">Previous Revision</h3>
-		<div class="bg-gray-50 border-2 border-gray-200 rounded-xl p-4 font-mono text-sm overflow-auto max-h-96">
-			{#each diff as change}
-				{#if change.removed}
-					<div class="bg-red-100 text-red-800 -mx-4 px-4">{change.value}</div>
-				{:else if !change.added}
-					<div class="text-gray-700">{change.value}</div>
-				{/if}
-			{/each}
+<div class="grid grid-cols-2 gap-3">
+	<div class="rounded-md border-2 border-primary/40 overflow-hidden shadow-sm">
+		<div class="bg-primary/10 px-4 py-2 border-b border-primary/20">
+			<h4 class="text-xs font-semibold text-foreground">Edit Prompt</h4>
 		</div>
-	</div>
-
-	<div class="space-y-2">
-		<h3 class="text-sm font-semibold text-gray-600">New Revision</h3>
 		<textarea
-			value={newText}
+			bind:this={editorScrollElement}
+			value={editedText}
 			oninput={handleInput}
+			onscroll={handleEditorScroll}
 			placeholder="Edit your prompt..."
-			rows="12"
-			class="w-full px-4 py-3 border-2 border-indigo-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all resize-y font-mono text-sm"
+			class="w-full h-96 px-4 py-3 font-mono text-sm border-0 focus:ring-0 resize-none bg-background text-foreground"
 		></textarea>
 	</div>
-</div>
 
-<div class="mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
-	<h3 class="text-sm font-semibold text-gray-700 mb-2">Unified Diff</h3>
-	<div class="font-mono text-xs overflow-auto max-h-48">
-		{#each diff as change}
-			{#if change.added}
-				<div class="bg-green-100 text-green-800">+ {change.value}</div>
-			{:else if change.removed}
-				<div class="bg-red-100 text-red-800">- {change.value}</div>
-			{:else}
-				<div class="text-gray-600">  {change.value}</div>
-			{/if}
-		{/each}
+	<div class="rounded-md border border-border overflow-hidden">
+		<div class="bg-muted/50 px-4 py-2 border-b border-border">
+			<h4 class="text-xs font-medium text-muted-foreground">Previous Version (Read-only)</h4>
+		</div>
+		<div bind:this={diffScrollElement} onscroll={handleDiffScroll} class="h-96 bg-muted/30 overflow-auto opacity-75">
+			<DiffUnified items={diffItems} />
+		</div>
 	</div>
 </div>

@@ -1,99 +1,174 @@
-# Maestro - Agent Guide
+# AGENTS.md - Maestro Codebase Guide
 
-## Commands
+**Hybrid SvelteKit + Tauri 2.0 desktop app** for orchestrating AI prompts across multiple repositories using Amp AI.
 
-- **Dev**: `bun run dev` - Start both API server (port 3000) and Vite dev server (port 5173)
-- **Build**: `bun run build` - Build frontend with Vite
-- **Preview**: `bun run preview` - Run production server (serves API + static files)
-- **Test**: `bun test` - Run tests (use `bun test <file>` for single file)
-- **Install**: `bun install` - Install dependencies
+## Quick Reference
 
-## Environment Variables
+### Commands
+- `bun run dev` - Start Tauri desktop app in development mode
+- `bun run build` - Build production installer  
+- `bun run check` - TypeScript type checking (run before commits)
+- `cargo test` - Run Rust tests in `src-tauri/` directory
+- `cargo test <test_name>` - Run specific Rust test
 
-- **VITE_MAESTRO_GITHUB_TOKEN**: GitHub Personal Access Token (required)
-  - Generate at: https://github.com/settings/tokens
-  - Required scopes: `repo`
-  - Copy `.env.example` to `.env` and add your token
-- **VITE_MAESTRO_CLONE_DIR**: Directory for cloning repositories (optional)
-  - Default: `$HOME/maestro/repos`
-  - Used by execution engine to clone repos
+### Architecture Overview
+- **Frontend**: SvelteKit (Svelte 5) + adapter-static at `src/`
+- **Backend**: Tauri 2.0 (Rust) at `src-tauri/src/`
+- **Database**: SQLite via rusqlite at `src-tauri/src/db/`
+- **Git**: git2-rs for native operations at `src-tauri/src/git/`
+- **AI**: @sourcegraph/amp-sdk for execution agent
+- **UI**: bits-ui primitives + lucide-svelte icons + Tailwind 4
+- **Types**: TypeScript enums mirror Rust enums via serde
 
-## Architecture
+### Core Domain Models
+1. **Prompt Sets** - Collections of prompt revisions with repository associations
+2. **Prompt Revisions** - Versioned prompts executed against repositories
+3. **Executions** - Individual runs of a revision with worktree isolation
+4. **Validations** - Automated validation of execution results
 
-- **Tech stack**: Svelte 5 SPA + Bun backend, Tailwind 4, TypeScript, Vite
-- **Backend**: server.ts - Bun HTTP server with `/api/*` routes, uses `bun:sqlite`
-- **Frontend**: src/App.svelte - Svelte SPA built with Vite
-- **Database**: SQLite via `bun:sqlite` with migration system
-- **Purpose**: Orchestrator UI for running AI prompts across multiple repositories
+## Key Architectural Patterns
 
-### Current Features
+### IPC Layer
+All frontend-backend communication uses typed wrappers in `src/lib/ipc.ts`:
+```typescript
+// Never use invoke() directly - use typed wrappers
+import { getExecution, executePrompt } from '$lib/ipc'
+const execution = await getExecution(id)
+```
+See @docs/ipc-guide.md for complete API reference.
 
-- **Repository Selection**: GitHub integration for selecting repositories
-- **Prompt Sets**: Create named sets of repositories to execute prompts against
-- **Prompt Revisions**: Version control for prompts with parent-child relationships
-- **Execution Engine**: Uses @sourcegraph/amp-sdk to execute prompts in cloned repos
-- **Execution Tracking**: Monitor execution status (pending/running/completed/failed)
-- **Branch Management**: Auto-creates branches per execution (`maestro/{promptsetId:8}/{revisionId:8}/{executionId:8}`) using 8-char short hashes
-- **Prompt Diffing**: Visual diff between prompt revisions
-- **Branch Viewer**: View all cloned repos and maestro branches with associated prompt set/revision/execution metadata
-- **Repository Sync**: Clean up repos on disk not in DB and unused repos from DB (not in prompt sets)
+### Event Bus
+Centralized execution events via `src/lib/stores/executionBus.ts`:
+```typescript
+// Subscribe once at app init in +layout.svelte
+import { subscribeToExecutions } from '$lib/stores/executionBus'
+subscribeToExecutions()
+```
+See @docs/execution-event-bus.md for event patterns.
 
-### Project Structure
+### Diff Architecture
+Unified diff access through backend module and frontend store:
+- Backend: `src-tauri/src/git/diff.rs` for all diff operations
+- Frontend: `src/lib/stores/diffStore.ts` for caching
+See @docs/diff-architecture.md for details.
+
+### Status Types
+Use type-safe enums (not strings) for all statuses:
+```rust
+// Rust
+use crate::types::{ExecutionStatus, ValidationStatus, CommitStatus};
+```
+```typescript
+// TypeScript
+import type { ExecutionStatus, ValidationStatus } from '$lib/types'
+```
+
+### UUID Strategy
+- **Storage**: Full UUIDs in database and file paths
+- **Display**: 8-char short hashes via `toShortHash()` utility
+- **Git branches**: `maestro/{promptsetId:8}/{revisionId:8}/{executionId:8}`
+
+### File System Layout
+Maestro uses Tauri's app data directory for storage:
+- **macOS**: `~/Library/Application Support/dev.trly.maestro/`
+- **Linux**: `~/.local/share/maestro/`
+- **Windows**: `%APPDATA%\dev.trly.maestro\`
+- **Override**: Set `MAESTRO_CONFIG` env var for custom location
 
 ```
-src/
-├── lib/
-│   ├── components/
-│   │   ├── RepositorySelector.svelte  # GitHub repo selection UI
-│   │   ├── PromptDiff.svelte          # Prompt revision diff viewer
-│   │   └── BranchesView.svelte        # View all repos and branches
-│   ├── db/
-│   │   ├── store.ts                   # SQLite data access layer
-│   │   └── migrations.ts              # DB schema migrations
-│   ├── providers/
-│   │   ├── github.ts                  # GitHub API integration
-│   │   ├── types.ts                   # Provider types
-│   │   └── index.ts                   # Provider exports
-│   ├── api.ts                         # Frontend API client
-│   ├── executor.ts                    # Amp SDK execution logic
-│   ├── maestroScanner.ts              # Scan clone dir for branches
-│   └── types.ts                       # Core type definitions
-├── App.svelte                         # Main UI component
-└── main.ts                            # App entry point
-server.ts                              # API server
+{app_data_dir}/
+├── repos/                    # Admin clones (permanent)
+│   └── owner/repo/.git/
+├── executions/              # Worktrees (ephemeral)
+│   └── {promptsetId}/
+│       └── {executionId}/
+└── maestro.db               # SQLite database
 ```
 
-### API Endpoints
+## Code Conventions
 
-- `POST /api/repositories` - Create/find repository
-- `GET /api/repositories?id=...` - Get repository by ID
-- `GET /api/repositories?provider=...&providerId=...` - Find repository
-- `POST /api/promptsets` - Create prompt set
-- `GET /api/promptsets/:id` - Get prompt set
-- `GET /api/promptsets/:id/revisions` - List revisions
-- `GET /api/promptsets/:id/executions` - List executions
-- `POST /api/revisions` - Create revision
-- `GET /api/revisions/:id` - Get revision
-- `GET /api/revisions/:id/executions` - List executions for revision
-- `POST /api/revisions/:id/execute` - Execute revision across all repos
-- `POST /api/executions` - Create execution
-- `GET /api/executions/:id` - Get execution
-- `PATCH /api/executions/:id` - Update execution status
-- `GET /api/maestro/branches?refresh=1` - Scan and list all repos/branches with metadata
-- `POST /api/maestro/sync` - Sync repositories (delete from disk if not in DB, delete from DB if not in prompt sets)
+### TypeScript/Svelte
+- Strict mode, tabs, no semicolons
+- Use `$lib/` alias for imports
+- camelCase for variables/functions
+- PascalCase for components
+- All types in `src/lib/types.ts`
+- Never use native HTML dialogs/checkboxes - use bits-ui primitives
 
-### Data Model
+#### Svelte 5 Runes Mode (Critical)
+- **ALWAYS** reference https://svelte.dev/llms-full.txt when working with Svelte components
+- **ALWAYS** reference https://bits-ui.com/docs/llms.txt when working with bits-ui components
+- See @docs/reactivity.md for detailed patterns and examples
+- Use `$state` for reactive component state (NOT traditional stores)
+- Use `$derived` for computed values
+- Use `$props()` for component inputs
+- **NEVER** create stores inside `{#each}` loops - use `$derived` instead
+- **NEVER** subscribe to stores in scoped blocks - make data reactive at component top level
 
-- **Repository**: Stores repo metadata (provider, providerId, name)
-- **PromptSet**: Named collection of repositories
-- **PromptRevision**: Versioned prompt text with parent pointer
-- **Execution**: Individual prompt run against a repository (tracks status, thread URL)
+### Rust
+- Standard rustfmt
+- Use `anyhow::Result` for error handling
+- snake_case for functions/variables
+- Derive `Serialize, Deserialize` with `#[serde(rename_all = "camelCase")]` for IPC types
+- Use utility helpers from `src-tauri/src/util/` (never duplicate parsing/path logic)
 
-## Code Style
+### Git Operations
+- **Always** use `git2` library (never shell out to `git` command)
+- **Always** use git worktrees for isolation (via `git worktree add/remove`)
+- **Never** use `rm -rf` on worktree directories
+- Use `REPO_LOCKS` mutex for concurrent safety
+- See @docs/ssh-authentication.md for SSH key setup
 
-- **Runtime**: Always use Bun, not Node.js (see .cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc)
-- **Components**: Svelte 5 syntax with `<script lang="ts">`, use runes for reactivity
-- **Styling**: Tailwind utility classes directly in components
-- **TypeScript**: Strict typing, explicit types in function signatures
-- **Formatting**: Tabs for indentation, descriptive variable names
-- **Events**: Use `onclick` not `on:click` (Svelte 5 convention)
+## State Management Patterns
+
+### Prevent Race Conditions
+- Check `ACTIVE_EXECUTIONS`/`ACTIVE_VALIDATIONS` before starting work
+- Use repo-level locking via `REPO_LOCKS` mutex
+- Namespace child processes: `exec:{id}` for executions, `val:{id}` for validations
+- App startup calls `reconcile_on_startup()` to reset stuck states
+
+### Diff & Commit Tracking
+- Store commit metadata (SHA, parent SHA, branch) immediately after worktree creation
+- Regenerate diffs on-demand from admin repo (ephemeral approach)
+- Worktrees can be safely cleaned up via `cleanup_execution()` command
+
+### Diff Stats Calculation
+- **Always calculated on-demand** - never stored in database
+- **Committed executions**: Stats calculated from `get_committed_diff(parent_sha, commit_sha)`
+- **Uncommitted executions**: Stats calculated from `get_worktree_diff(worktree_path)`
+- **Frontend caching**: Stats cached per execution in `executionStats.ts` to avoid redundant IPC calls
+- See @docs/diff-stats.md for complete architecture
+
+### Reactivity with Event Bus
+- Use `$derived` to merge event bus updates with local state arrays
+- Never subscribe to stores per-item in loops - compute derived state at top level
+- See @docs/reactivity.md for complete patterns and anti-patterns
+
+## Documentation Index
+
+For detailed guidance on specific topics, see:
+- @docs/README.md - Documentation index
+- @docs/reactivity.md - Svelte 5 runes mode and reactive patterns
+- @docs/ipc-guide.md - IPC command reference and patterns
+- @docs/execution-event-bus.md - Event handling architecture
+- @docs/diff-architecture.md - Diff access patterns
+- @docs/ssh-authentication.md - SSH setup for private repos
+
+## Common Tasks
+
+### Adding a new Tauri command
+1. Add command handler in `src-tauri/src/commands/`
+2. Register in `src-tauri/src/lib.rs` invoke_handler
+3. Add typed wrapper in `src/lib/ipc.ts`
+4. Use wrapper in components (never direct `invoke()`)
+
+### Adding a new execution event
+1. Emit event in `src-tauri/src/commands/executor_events.rs`
+2. Add event type in `src/lib/stores/executionBus.ts`
+3. Subscribe in `executionBus.ts` and update store
+
+### Creating a new UI component
+1. Use bits-ui primitives (Dialog, Checkbox, etc.) - never manual implementations
+2. Place in `src/lib/components/ui/` or `src/lib/components/`
+3. Import icons from `lucide-svelte`
+4. Use Tailwind classes for styling

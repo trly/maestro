@@ -1,2 +1,4 @@
 [tools]
 bun = "latest"
+cargo = "latest"
+rust = "latest"
