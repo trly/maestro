@@ -36,5 +36,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # database
 maestro.db
 
-# svelte-kit (legacy)
+# svelte-kit
 .svelte-kit
+
+# tauri
+src-tauri/target
+src-tauri/gen/schemas
