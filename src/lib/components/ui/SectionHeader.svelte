@@ -4,6 +4,6 @@
 	const textClass = variant === 'accent' ? 'text-accent-foreground' : 'text-muted-foreground'
 </script>
 
-<div class="{bgClass} px-4 py-2 border-b border-border">
+<div class="{bgClass} px-4 py-2 border-b border-border/10">
 	<h4 class="text-xs font-semibold uppercase tracking-wide {textClass}">{title}</h4>
 </div>

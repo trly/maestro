@@ -139,6 +139,44 @@ impl ToSql for CommitStatus {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CiStatus {
+	Pending,
+	Passed,
+	Failed,
+	Skipped,
+	NotConfigured,
+}
+
+impl FromSql for CiStatus {
+	fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+		match value.as_str()? {
+			"pending" => Ok(CiStatus::Pending),
+			"passed" => Ok(CiStatus::Passed),
+			"failed" => Ok(CiStatus::Failed),
+			"skipped" => Ok(CiStatus::Skipped),
+			"not_configured" => Ok(CiStatus::NotConfigured),
+			other => Err(FromSqlError::Other(
+				format!("Invalid CiStatus: {}", other).into(),
+			)),
+		}
+	}
+}
+
+impl ToSql for CiStatus {
+	fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+		let s = match self {
+			CiStatus::Pending => "pending",
+			CiStatus::Passed => "passed",
+			CiStatus::Failed => "failed",
+			CiStatus::Skipped => "skipped",
+			CiStatus::NotConfigured => "not_configured",
+		};
+		Ok(ToSqlOutput::from(s))
+	}
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FileStatus {
 	Added,

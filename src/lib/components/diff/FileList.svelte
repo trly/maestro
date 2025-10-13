@@ -32,8 +32,8 @@
 	}
 </script>
 
-<div class="basis-72 shrink-0 max-w-[40vw] border-r border-border flex flex-col h-full bg-card">
-	<div class="flex items-center justify-between px-4 py-3 border-b border-border">
+<div class="basis-72 shrink-0 max-w-[40vw] border-r border-border/20 flex flex-col h-full bg-card">
+	<div class="flex items-center justify-between px-4 py-3 border-b border-border/10">
 		<h3 class="font-semibold text-sm">
 			{#if readonly}
 				Modified Files ({files.length})

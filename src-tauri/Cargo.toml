@@ -26,6 +26,7 @@ tauri-plugin-log = "2"
 keyring = { version = "3.6", features = ["apple-native", "windows-native", "linux-native"] }
 tokio = { version = "1", features = ["full"] }
 octocrab = "0.41"
+async-trait = "0.1"
 rusqlite = { version = "0.32", features = ["bundled"] }
 git2 = "0.19"
 anyhow = "1.0"

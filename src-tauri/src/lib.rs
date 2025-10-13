@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use tauri::Manager;
 
 mod commands;
+pub mod ci;
 mod db;
 mod git;
 mod util;
@@ -111,6 +112,7 @@ pub fn run() {
       commands::executor::validate_execution,
       commands::executor::resume_execution,
       commands::executor::commit_changes,
+      commands::executor::push_commit,
       commands::executor::stop_execution,
       commands::executor::stop_validation,
       commands::executor::stop_all_executions,
@@ -118,6 +120,9 @@ pub fn run() {
       commands::executor::cleanup_execution,
       commands::executor::get_execution_modified_files,
       commands::executor::get_execution_file_diff,
+      commands::executor::reconcile_stuck_ci,
+      commands::ci::start_ci_check,
+			commands::ci::refresh_ci_status,
       commands::github::get_github_token,
       commands::github::get_config_paths,
       commands::tokens::set_token,
@@ -125,6 +130,10 @@ pub fn run() {
       commands::tokens::get_token_masked,
       commands::tokens::delete_token,
       commands::tokens::has_token,
+      commands::settings::get_setting,
+      commands::settings::set_setting,
+      commands::settings::get_ci_stuck_threshold_minutes,
+      commands::worktree::open_worktree_in_editor,
     ])
     .plugin(tauri_plugin_notification::init())
     .plugin(tauri_plugin_shell::init())

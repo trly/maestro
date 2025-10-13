@@ -75,7 +75,7 @@
 
 <div>
 	{#if providers.length === 0}
-		<div class="bg-card border border-border rounded-lg p-4">
+		<div class="bg-card border border-border/30 rounded-lg p-4">
 			<p class="font-semibold text-foreground">No repository providers configured</p>
 			<p class="text-sm mt-1 text-muted-foreground">Configure GitHub token in Settings to enable GitHub integration</p>
 		</div>
@@ -109,12 +109,12 @@
 				<Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
 				<Combobox.Input
 					placeholder="Search repositories..."
-					class="w-full h-10 pl-10 pr-4 border border-border rounded-lg bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-border transition-all"
+					class="w-full h-10 pl-10 pr-4 border border-border/30 rounded-lg bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-border transition-all"
 					oninput={(e) => onInput((e.currentTarget as HTMLInputElement).value)}
 				/>
 			</div>
 			<Combobox.Content
-				class="z-50 bg-background border border-border rounded-xl shadow-lg max-h-96 overflow-hidden p-1"
+				class="z-50 bg-background border border-border/30 rounded-xl shadow-lg max-h-96 overflow-hidden p-1"
 				style="width: var(--bits-combobox-anchor-width);"
 				sideOffset={8}
 			>

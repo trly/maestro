@@ -1,9 +1,8 @@
 <script lang="ts">
-	import { X, Trash2, CheckSquare, Square as SquareIcon, ChevronDown, ChevronUp, Play } from 'lucide-svelte';
-	import UiTooltip from './UiTooltip.svelte';
+	import { X, Trash2, CheckSquare, Square as SquareIcon, ChevronDown, ChevronUp, Edit, Save, Play } from 'lucide-svelte';
+	import { Switch } from 'bits-ui';
 	import UiScrollArea from './UiScrollArea.svelte';
 	import ExecutionRow from './ExecutionRow.svelte';
-	import { toShortHash } from '$lib/utils';
 	import type { PromptRevision, Execution, Repository } from '$lib/types';
 
 	let {
@@ -11,37 +10,41 @@
 		executions,
 		repositories,
 		hasValidationPrompt = false,
-		onExecuteAll,
-		onStopAll,
-		onStopAllValidations,
-		onDelete,
+		validationPrompt = null,
+		autoValidate = false,
 		onDeleteExecution,
 		onValidateExecution,
 		onStopExecution,
 		onStopValidation,
 		onResumeExecution,
 		onReviewChanges,
+		onPushExecution,
+		onRefreshCi,
 		onBulkDelete,
 		onBulkRestart,
-		onBulkRevalidate
+		onBulkRevalidate,
+		onSaveValidation,
+		onExecuteAll
 	}: {
 		revision: PromptRevision;
 		executions: Execution[];
 		repositories: Map<string, Repository>;
 		hasValidationPrompt?: boolean;
-		onExecuteAll: () => void;
-		onStopAll: () => void;
-		onStopAllValidations: () => void;
-		onDelete: () => void;
+		validationPrompt?: string | null;
+		autoValidate?: boolean;
 		onDeleteExecution: (execution: Execution, repoName: string) => void;
 		onValidateExecution: (execution: Execution) => void;
 		onStopExecution: (execution: Execution) => void;
 		onStopValidation: (execution: Execution) => void;
 		onResumeExecution: (execution: Execution) => void;
 		onReviewChanges: (executionId: string) => void;
+		onPushExecution: (execution: Execution) => void;
+		onRefreshCi: (execution: Execution) => void;
 		onBulkDelete: (executions: Execution[]) => void;
 		onBulkRestart: (executions: Execution[]) => void;
 		onBulkRevalidate: (executions: Execution[]) => void;
+		onSaveValidation: (prompt: string, autoValidate: boolean) => Promise<void>;
+		onExecuteAll: () => void;
 	} = $props();
 
 	let selectedIds = $state<Set<string>>(new Set());
@@ -49,9 +52,16 @@
 	let sortDirection = $state<'asc' | 'desc'>('asc');
 	let promptHeight = $state(256); // Default height in pixels
 	let isResizing = $state(false);
+	let isEditingValidation = $state(false);
+	let editedValidationPrompt = $state(validationPrompt || '');
+	let editedAutoValidate = $state(autoValidate);
+	let isSaving = $state(false);
+	let manuallyResized = $state(false);
+	let containerRef = $state<HTMLDivElement | null>(null);
 
 	function handleResizeStart(e: MouseEvent) {
 		isResizing = true;
+		manuallyResized = true;
 		e.preventDefault();
 	}
 
@@ -64,6 +74,17 @@
 		isResizing = false;
 	}
 
+	function calculateAutoHeight(): number {
+		if (manuallyResized || !containerRef) return promptHeight;
+		
+		const containerHeight = containerRef.clientHeight;
+		const maxHeight = Math.floor(containerHeight * 0.5);
+		
+		return Math.min(maxHeight, 600);
+	}
+
+	let computedHeight = $derived(calculateAutoHeight());
+
 	$effect(() => {
 		if (isResizing) {
 			document.addEventListener('mousemove', handleResizeMove);
@@ -75,8 +96,6 @@
 		}
 	});
 
-	let hasRunning = $derived(executions.some(e => e.status === 'running'));
-	let hasRunningValidations = $derived(executions.some(e => e.validationStatus === 'running'));
 	let allSelected = $derived(executions.length > 0 && selectedIds.size === executions.length);
 	let someSelected = $derived(selectedIds.size > 0 && !allSelected);
 	let selectedExecutions = $derived(executions.filter(e => selectedIds.has(e.id)));
@@ -160,86 +179,114 @@
 		onBulkRevalidate(selectedExecutions);
 		selectedIds = new Set();
 	}
+
+	function startEditingValidation() {
+		editedValidationPrompt = validationPrompt || '';
+		editedAutoValidate = autoValidate;
+		isEditingValidation = true;
+	}
+
+	function cancelEditingValidation() {
+		isEditingValidation = false;
+		editedValidationPrompt = validationPrompt || '';
+		editedAutoValidate = autoValidate;
+	}
+
+	async function saveValidation() {
+		isSaving = true;
+		try {
+			await onSaveValidation(editedValidationPrompt, editedAutoValidate);
+			isEditingValidation = false;
+		} finally {
+			isSaving = false;
+		}
+	}
+
+	$effect(() => {
+		editedValidationPrompt = validationPrompt || '';
+		editedAutoValidate = autoValidate;
+	});
 </script>
 
-<div class="flex-1 flex flex-col overflow-hidden bg-background">
+<div bind:this={containerRef} class="flex-1 flex flex-col overflow-hidden bg-background">
 	<!-- Prompt Console -->
-	<div class="flex-shrink-0 border-b border-border/40 overflow-hidden bg-card">
-		<!-- Console Header -->
-		<div class="bg-muted/20 px-4 py-3 border-b border-border/40 flex items-center justify-between">
-			<div class="flex items-center gap-3">
-				<h2 class="text-sm font-bold text-foreground">
-					Revision {toShortHash(revision.id)}
-				</h2>
-				<span class="text-xs text-muted-foreground">
-					{new Date(revision.createdAt).toLocaleString()}
-				</span>
+	<div class="flex-shrink-0 border-b border-border/20 overflow-hidden bg-card">
+		<!-- Prompt Content - Two Column Layout -->
+		<div class="flex divide-x divide-border/20" style="max-height: {manuallyResized ? promptHeight : computedHeight}px;">
+			<!-- Revision Prompt (Left) -->
+			<div class="flex-1 flex flex-col min-w-0">
+				<div class="px-4 py-2 bg-muted/10 border-b border-border/10">
+					<h3 class="text-xs font-semibold text-muted-foreground">Revision Prompt</h3>
+				</div>
+				<UiScrollArea viewportClass="overflow-auto" class="flex-1">
+					<pre class="px-6 py-6 text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground">{revision.promptText}</pre>
+				</UiScrollArea>
 			</div>
-
-			<!-- Actions -->
-			<div class="flex items-center gap-1">
-				<UiTooltip content="Execute on all repos">
-					{#snippet children({ props })}
-						<button
-							{...props}
-							onclick={onExecuteAll}
-							class="w-7 h-7 flex items-center justify-center rounded-md bg-green-100 text-green-600 hover:bg-green-200 transition-all"
-							aria-label="Execute on all repos"
-						>
-							<Play class="w-3.5 h-3.5" />
-						</button>
-					{/snippet}
-				</UiTooltip>
-
-				{#if hasRunning}
-					<UiTooltip content="Stop all running executions">
-						{#snippet children({ props })}
-							<button
-								{...props}
-								onclick={onStopAll}
-								class="w-7 h-7 flex items-center justify-center rounded-md bg-orange-100 text-orange-600 hover:bg-orange-200 transition-all"
-								aria-label="Stop all executions"
-							>
-								<X class="w-3.5 h-3.5" />
-							</button>
-						{/snippet}
-					</UiTooltip>
-				{/if}
-
-				{#if hasRunningValidations}
-					<UiTooltip content="Stop all running validations">
-						{#snippet children({ props })}
-							<button
-								{...props}
-								onclick={onStopAllValidations}
-								class="w-7 h-7 flex items-center justify-center rounded-md bg-orange-100 text-orange-600 hover:bg-orange-200 transition-all"
-								aria-label="Stop all validations"
-							>
-								<X class="w-3.5 h-3.5" />
-							</button>
-						{/snippet}
-					</UiTooltip>
-				{/if}
-
-				<UiTooltip content="Delete revision">
-					{#snippet children({ props })}
-						<button
-							{...props}
-							onclick={onDelete}
-							class="w-7 h-7 flex items-center justify-center rounded-md text-red-600 hover:bg-red-50 transition-all"
-							aria-label="Delete revision"
-						>
-							<Trash2 class="w-3.5 h-3.5" />
-						</button>
-					{/snippet}
-				</UiTooltip>
-			</div>
+			
+			<!-- Validation Prompt (Right) -->
+			{#if validationPrompt || isEditingValidation}
+				<div class="flex-1 flex flex-col min-w-0">
+					<div class="px-4 py-2 bg-muted/10 border-b border-border/10 flex items-center justify-between gap-3">
+						<h3 class="text-xs font-semibold text-muted-foreground">Validation Prompt</h3>
+						<div class="flex items-center gap-3">
+							<!-- Auto-validate Toggle -->
+							<div class="flex items-center gap-2">
+								<span class="text-xs text-muted-foreground">Auto-validate</span>
+								<Switch.Root
+									bind:checked={editedAutoValidate}
+									disabled={!isEditingValidation || isSaving}
+									class="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-muted inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full px-[2px] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									<Switch.Thumb
+										class="pointer-events-none block h-3 w-3 rounded-full bg-white transition-transform data-[state=checked]:translate-x-[14px] data-[state=unchecked]:translate-x-0"
+									/>
+								</Switch.Root>
+							</div>
+							
+							<!-- Edit/Save/Cancel Buttons -->
+							{#if isEditingValidation}
+								<button
+									onclick={cancelEditingValidation}
+									disabled={isSaving}
+									class="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+									aria-label="Cancel"
+								>
+									<X class="w-4 h-4" />
+								</button>
+								<button
+									onclick={saveValidation}
+									disabled={isSaving}
+									class="text-green-600 hover:text-green-700 transition-colors disabled:opacity-50"
+									aria-label="Save validation prompt"
+								>
+									<Save class="w-4 h-4" />
+								</button>
+							{:else}
+								<button
+									onclick={startEditingValidation}
+									class="text-blue-600 hover:text-blue-700 transition-colors"
+									aria-label="Edit validation prompt"
+								>
+									<Edit class="w-4 h-4" />
+								</button>
+							{/if}
+						</div>
+					</div>
+					<UiScrollArea viewportClass="overflow-auto" class="flex-1">
+						{#if isEditingValidation}
+							<textarea
+								bind:value={editedValidationPrompt}
+								disabled={isSaving}
+								placeholder="Enter a prompt to validate each execution after it completes..."
+								class="w-full h-full px-6 py-6 text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground bg-transparent border-none outline-none resize-none disabled:opacity-50"
+							></textarea>
+						{:else}
+							<pre class="px-6 py-6 text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground">{validationPrompt}</pre>
+						{/if}
+					</UiScrollArea>
+				</div>
+			{/if}
 		</div>
-
-		<!-- Prompt Content -->
-		<UiScrollArea viewportClass="overflow-auto" style="max-height: {promptHeight}px;">
-			<pre class="px-6 py-6 text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground">{revision.promptText}</pre>
-		</UiScrollArea>
 	</div>
 
 	<!-- Resize Handle -->
@@ -255,27 +302,33 @@
 	{#if executions.length === 0}
 		<div class="flex-1 flex items-center justify-center text-muted-foreground">
 			<div class="text-center">
-				<p class="text-sm mb-2">No executions yet for this revision</p>
-				<p class="text-xs">Click "Execute on all repos" in the sidebar to run this prompt</p>
+				<p class="text-sm mb-4">No executions yet for this revision</p>
+				<button
+					onclick={onExecuteAll}
+					class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors font-medium text-sm"
+				>
+					<Play class="w-4 h-4" />
+					Execute on all repos
+				</button>
 			</div>
 		</div>
 	{:else}
 		<div class="flex-1 flex flex-col overflow-hidden @container/table">
 			<!-- Bulk Actions Toolbar -->
 			{#if selectedIds.size > 0}
-				<div class="flex-shrink-0 flex items-center gap-3 px-4 py-3 bg-primary/5 border-b border-border/40">
+			<div class="flex-shrink-0 flex items-center gap-3 px-4 py-3 bg-primary/5 border-b border-border/10">
 					<span class="text-sm font-medium text-foreground">{selectedIds.size} selected</span>
 					<div class="flex items-center gap-2">
 						<button
 							onclick={handleBulkRestart}
-							class="px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+							class="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
 						>
 							Restart
 						</button>
 						{#if hasValidationPrompt}
 							<button
 								onclick={handleBulkRevalidate}
-								class="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
+								class="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
 							>
 								Revalidate
 							</button>
@@ -302,9 +355,9 @@
 				<div>
 					<!-- Table Header -->
 					<div
-						class="sticky top-0 z-10 grid gap-3 px-4 py-2.5 bg-card border-b border-border/40 text-xs font-medium text-muted-foreground items-center
-							[grid-template-columns:auto_minmax(0,_2fr)_minmax(0,_1fr)_minmax(0,_1fr)_minmax(0,_1fr)_minmax(0,_1fr)_minmax(0,_1fr)]
-							@max-lg/table:[grid-template-columns:auto_minmax(0,_2fr)_minmax(0,_1fr)_minmax(0,_1fr)_minmax(0,_0.8fr)_minmax(0,_1fr)_minmax(0,_0.8fr)]
+						class="sticky top-0 z-10 grid gap-3 px-4 py-2.5 bg-card border-b border-border/10 text-xs font-medium text-muted-foreground items-center
+							[grid-template-columns:auto_minmax(0,_2fr)_minmax(0,_1fr)_minmax(0,_1fr)_minmax(0,_1.5fr)_minmax(0,_1fr)_minmax(0,_1fr)]
+							@max-lg/table:[grid-template-columns:auto_minmax(0,_2fr)_minmax(0,_1fr)_minmax(0,_1fr)_minmax(0,_1.2fr)_minmax(0,_0.8fr)_minmax(0,_0.8fr)]
 							@max-md/table:[grid-template-columns:auto_minmax(200px,_6fr)_40px_40px_0_0_40px]"
 					>
 						<button
@@ -364,7 +417,7 @@
 							onclick={() => handleSort('commitStatus')}
 							class="text-left hover:text-foreground transition-colors truncate @max-md/table:hidden"
 						>
-							Commit
+							Changes
 							{#if sortColumn === 'commitStatus'}
 								{#if sortDirection === 'asc'}
 									<ChevronUp class="w-3 h-3 inline ml-1" />
@@ -373,7 +426,7 @@
 								{/if}
 							{/if}
 						</button>
-						<div class="text-left truncate @max-md/table:hidden">Changes</div>
+						<div class="text-left truncate @max-md/table:hidden">CI</div>
 						<div class="text-right truncate">Actions</div>
 					</div>
 
@@ -392,6 +445,8 @@
 								onStopValidation={() => onStopValidation(execution)}
 								onResume={() => onResumeExecution(execution)}
 								onReviewChanges={() => onReviewChanges(execution.id)}
+								onPush={() => onPushExecution(execution)}
+								onRefreshCi={() => onRefreshCi(execution)}
 								fileCount={(execution.filesAdded || 0) + (execution.filesRemoved || 0) + (execution.filesModified || 0)}
 								additions={execution.linesAdded || 0}
 								deletions={execution.linesRemoved || 0}

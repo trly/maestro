@@ -1,0 +1,50 @@
+<script lang="ts">
+	import type { CiStatus } from '../../types';
+	import UiTooltip from './UiTooltip.svelte';
+	import { CheckCircle2, XCircle, Loader2, MinusCircle } from 'lucide-svelte';
+	import { openInBrowser } from '$lib/utils/browser';
+
+	let props: {
+		ciStatus: CiStatus | null;
+		ciUrl?: string | null;
+		onRefresh?: () => void;
+	} = $props();
+
+	let icon = $derived.by(() => {
+		if (!props.ciStatus) return null;
+		switch (props.ciStatus) {
+			case 'pending': return { Icon: Loader2, class: 'text-blue-600 animate-spin', label: 'CI running' };
+			case 'passed': return { Icon: CheckCircle2, class: 'text-green-600', label: 'CI passed' };
+			case 'failed': return { Icon: XCircle, class: 'text-red-600', label: 'CI failed' };
+			case 'skipped': return { Icon: MinusCircle, class: 'text-gray-400', label: 'No CI configured for this branch' };
+			case 'not_configured': return { Icon: MinusCircle, class: 'text-gray-400', label: 'No CI configured' };
+			default: return null;
+		}
+	});
+
+	function handleClick() {
+		if (props.ciUrl) {
+			openInBrowser(props.ciUrl);
+		} else if (props.onRefresh) {
+			props.onRefresh();
+		}
+	}
+</script>
+
+{#if icon}
+	<UiTooltip content={props.ciUrl ? `${icon.label} - Click to view` : (props.onRefresh && props.ciStatus !== 'skipped' && props.ciStatus !== 'not_configured') ? `${icon.label} - Click to refresh` : icon.label}>
+		{#snippet children({ tooltipProps })}
+			{@const Icon = icon.Icon}
+			<div {...tooltipProps}>
+				<button
+					onclick={handleClick}
+					class="flex items-center gap-1.5 hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+					disabled={!props.ciUrl && !props.onRefresh}
+				>
+					<Icon class={`w-4 h-4 ${icon.class}`} />
+					<span class="text-xs {props.ciStatus === 'skipped' || props.ciStatus === 'not_configured' ? 'text-muted-foreground/60' : 'text-muted-foreground'}">{props.ciStatus === 'skipped' || props.ciStatus === 'not_configured' ? 'No CI' : 'CI'}</span>
+				</button>
+			</div>
+		{/snippet}
+	</UiTooltip>
+{/if}

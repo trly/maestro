@@ -1,5 +1,5 @@
 use git2::{
-	Error as Git2Error, FetchOptions,
+	Error as Git2Error, FetchOptions, PushOptions,
 	RemoteCallbacks, Repository,
 };
 use std::path::Path;
@@ -112,6 +112,44 @@ impl GitService {
 			branch.delete()?;
 		}
 
+		Ok(())
+	}
+
+	/// Push a branch to remote using SSH authentication via ssh-agent.
+	/// 
+	/// Prerequisites:
+	/// - SSH agent must be running
+	/// - SSH key must be added to agent
+	/// - Public key must be added to GitHub account
+	/// 
+	/// # Arguments
+	/// * `repo` - Repository to push from
+	/// * `remote_name` - Name of remote (usually "origin")
+	/// * `branch_name` - Name of local branch to push
+	/// * `force` - Whether to force push (use with caution)
+	pub(crate) fn push_branch(
+		repo: &Repository,
+		remote_name: &str,
+		branch_name: &str,
+		force: bool,
+	) -> Result<(), Git2Error> {
+		let mut remote = repo.find_remote(remote_name)?;
+		let mut callbacks = RemoteCallbacks::new();
+		
+		callbacks.credentials(|_url, username_from_url, _allowed_types| {
+			git2::Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
+		});
+
+		let mut push_options = PushOptions::new();
+		push_options.remote_callbacks(callbacks);
+
+		let refspec = if force {
+			format!("+refs/heads/{}:refs/heads/{}", branch_name, branch_name)
+		} else {
+			format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name)
+		};
+
+		remote.push(&[&refspec], Some(&mut push_options))?;
 		Ok(())
 	}
 }

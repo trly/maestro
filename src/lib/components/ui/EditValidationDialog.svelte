@@ -39,8 +39,8 @@
 <Dialog.Root bind:open={open}>
 	<Dialog.Portal>
 		<Dialog.Overlay class="fixed inset-0 bg-black/50 z-40" />
-		<Dialog.Content class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background border border-border rounded-lg shadow-xl z-50 w-full max-w-2xl max-h-[80vh] flex flex-col">
-			<div class="flex items-center justify-between p-6 border-b border-border">
+		<Dialog.Content class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background border border-border/30 rounded-lg shadow-xl z-50 w-full max-w-2xl max-h-[80vh] flex flex-col">
+		<div class="flex items-center justify-between p-6 border-b border-border/10">
 				<Dialog.Title class="text-lg font-semibold">Edit Validation Prompt</Dialog.Title>
 				<Dialog.Close class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-muted transition-colors">
 					<X class="w-4 h-4" />
@@ -56,7 +56,7 @@
 							bind:value={editedPrompt}
 							placeholder="Enter a prompt to validate each execution after it completes..."
 							rows="12"
-							class="w-full px-4 py-3 border-2 border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all resize-y font-mono text-sm"
+							class="w-full px-4 py-3 border border-border/30 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all resize-y font-mono text-sm"
 						></textarea>
 					</div>
 					<p class="text-xs text-muted-foreground">
@@ -65,7 +65,7 @@
 					</p>
 
 					<!-- Auto-validate Toggle -->
-					<div class="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border">
+					<div class="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border/20">
 						<div class="flex-1">
 							<label for="auto-validate" class="block text-sm font-medium mb-1">Automatic Validation</label>
 							<p class="text-xs text-muted-foreground">
@@ -85,8 +85,8 @@
 				</div>
 			</div>
 
-			<div class="flex justify-end gap-3 p-6 border-t border-border">
-				<Dialog.Close class="px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors">
+			<div class="flex justify-end gap-3 p-6 border-t border-border/10">
+			<Dialog.Close class="px-4 py-2 border border-border/30 rounded-md hover:bg-muted transition-colors">
 					Cancel
 				</Dialog.Close>
 				<button

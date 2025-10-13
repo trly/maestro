@@ -15,7 +15,7 @@
 	} = $props();
 </script>
 
-<ScrollArea.Root class="relative overflow-hidden rounded-md border border-border {className}" {...restProps}>
+<ScrollArea.Root class="relative overflow-hidden rounded-md border border-border/20 {className}" {...restProps}>
 	<ScrollArea.Viewport class="h-full w-full rounded-[inherit] {viewportClass}">
 		{@render children()}
 	</ScrollArea.Viewport>

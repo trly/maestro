@@ -65,7 +65,7 @@
 		{#each repositoryIds as repoId}
 			{@const repo = repositories.get(repoId)}
 			{#if repo}
-				<label for="repo-{repoId}" class="flex items-center gap-3 p-3 border border-border rounded-lg hover:bg-accent/50 cursor-pointer transition-all">
+				<label for="repo-{repoId}" class="flex items-center gap-3 p-3 border border-border/20 rounded-lg hover:bg-accent/50 cursor-pointer transition-all">
 					<Checkbox.Root
 						id="repo-{repoId}"
 						checked={selected.has(repoId)}
@@ -84,7 +84,7 @@
 		{/each}
 	</div>
 	
-	<div class="pt-3 border-t border-border text-sm text-muted-foreground">
+	<div class="pt-3 border-t border-border/10 text-sm text-muted-foreground">
 		{selected.size} of {repositoryIds.length} repositories selected
 	</div>
 </div>

@@ -170,8 +170,7 @@
 		<div class="flex justify-end gap-2">
 			<button
 				class="px-4 py-2 border rounded hover:bg-gray-50"
-				onclick={() => (open = false)}
-				disabled={committing}>Close</button
+				onclick={() => (open = false)}>Close</button
 			>
 			{#if hasSessionId}
 				<button

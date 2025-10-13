@@ -47,6 +47,14 @@ pub const MIGRATIONS: &[Migration] = &[
 		version: 10,
 		up: migration_10,
 	},
+	Migration {
+		version: 11,
+		up: migration_11,
+	},
+	Migration {
+		version: 12,
+		up: migration_12,
+	},
 ];
 
 fn migration_1(conn: &Connection) -> Result<()> {
@@ -181,6 +189,33 @@ fn migration_9(conn: &Connection) -> Result<()> {
 
 fn migration_10(conn: &Connection) -> Result<()> {
 	conn.execute_batch("ALTER TABLE promptsets ADD COLUMN auto_validate INTEGER NOT NULL DEFAULT 0;")?;
+	Ok(())
+}
+
+fn migration_11(conn: &Connection) -> Result<()> {
+conn.execute_batch(
+"
+ALTER TABLE executions ADD COLUMN ci_status TEXT;
+ALTER TABLE executions ADD COLUMN ci_checked_at INTEGER;
+ALTER TABLE executions ADD COLUMN ci_url TEXT;
+",
+)?;
+Ok(())
+}
+
+fn migration_12(conn: &Connection) -> Result<()> {
+	conn.execute_batch(
+		"
+		CREATE TABLE settings (
+			key TEXT PRIMARY KEY,
+			value TEXT NOT NULL,
+			updated_at INTEGER NOT NULL
+		);
+		
+		-- Set default CI stuck threshold to 10 minutes
+		INSERT INTO settings (key, value, updated_at) VALUES ('ci_stuck_threshold_minutes', '10', 0);
+		",
+	)?;
 	Ok(())
 }
 

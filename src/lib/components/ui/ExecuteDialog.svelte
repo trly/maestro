@@ -58,7 +58,7 @@
 			<button
 				onclick={handleCancel}
 				disabled={isExecuting}
-				class="px-6 py-3 border border-border text-foreground rounded-md hover:bg-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+				class="px-6 py-3 border border-border/30 text-foreground rounded-md hover:bg-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
 			>
 				Cancel
 			</button>

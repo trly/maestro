@@ -5,7 +5,7 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use super::migrations::run_migrations;
-use crate::types::{ExecutionStatus, ValidationStatus, PromptStatus, CommitStatus};
+use crate::types::{ExecutionStatus, ValidationStatus, PromptStatus, CommitStatus, CiStatus};
 
 fn now_ms() -> i64 {
 	chrono::Utc::now().timestamp_millis()
@@ -90,6 +90,9 @@ pub struct Execution {
 	pub committed_at: Option<i64>,
 	pub parent_sha: Option<String>,
 	pub branch: Option<String>,
+	pub ci_status: Option<CiStatus>,
+	pub ci_checked_at: Option<i64>,
+	pub ci_url: Option<String>,
 	pub created_at: i64,
 	pub completed_at: Option<i64>,
 }
@@ -106,7 +109,9 @@ SELECT
 	COALESCE(lines_added, 0) AS lines_added,
 	COALESCE(lines_removed, 0) AS lines_removed,
 	COALESCE(commit_status, 'none') AS commit_status,
-	commit_sha, committed_at, parent_sha, branch, created_at, completed_at
+	commit_sha, committed_at, parent_sha, branch,
+	ci_status, ci_checked_at, ci_url,
+	created_at, completed_at
 FROM executions";
 
 fn map_repository(row: &Row) -> rusqlite::Result<Repository> {
@@ -145,6 +150,9 @@ fn map_execution(row: &Row) -> rusqlite::Result<Execution> {
 		committed_at: row.get("committed_at")?,
 		parent_sha: row.get("parent_sha")?,
 		branch: row.get("branch")?,
+		ci_status: row.get("ci_status")?,
+		ci_checked_at: row.get("ci_checked_at")?,
+		ci_url: row.get("ci_url")?,
 		created_at: row.get("created_at")?,
 		completed_at: row.get("completed_at")?,
 	})
@@ -538,8 +546,8 @@ impl Store {
 		let now = now_ms();
 
 		self.conn.execute(
-			"INSERT INTO executions (id, promptset_id, revision_id, repository_id, session_id, thread_url, status, prompt_status, prompt_result, validation_status, validation_thread_url, validation_result, files_added, files_removed, files_modified, lines_added, lines_removed, commit_status, commit_sha, committed_at, parent_sha, branch, created_at, completed_at)
-			 VALUES (?1, ?2, ?3, ?4, NULL, NULL, 'pending', NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 0, 'none', NULL, NULL, NULL, NULL, ?5, NULL)",
+			"INSERT INTO executions (id, promptset_id, revision_id, repository_id, session_id, thread_url, status, prompt_status, prompt_result, validation_status, validation_thread_url, validation_result, files_added, files_removed, files_modified, lines_added, lines_removed, commit_status, commit_sha, committed_at, parent_sha, branch, ci_status, ci_checked_at, ci_url, created_at, completed_at)
+			 VALUES (?1, ?2, ?3, ?4, NULL, NULL, 'pending', NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 0, 'none', NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?5, NULL)",
 			params![id, promptset_id, revision_id, repository_id, now],
 		)?;
 
@@ -566,6 +574,9 @@ impl Store {
 			committed_at: None,
 			parent_sha: None,
 			branch: None,
+			ci_status: None,
+			ci_checked_at: None,
+			ci_url: None,
 			created_at: now,
 			completed_at: None,
 		})
@@ -592,8 +603,11 @@ impl Store {
 				committed_at = COALESCE(?16, committed_at),
 				parent_sha = COALESCE(?17, parent_sha),
 				branch = COALESCE(?18, branch),
-				completed_at = COALESCE(?19, completed_at)
-			WHERE id = ?20",
+				ci_status = COALESCE(?19, ci_status),
+				ci_checked_at = COALESCE(?20, ci_checked_at),
+				ci_url = COALESCE(?21, ci_url),
+				completed_at = COALESCE(?22, completed_at)
+			WHERE id = ?23",
 			params![
 				u.status,
 				u.session_id,
@@ -613,6 +627,9 @@ impl Store {
 				u.committed_at,
 				u.parent_sha,
 				u.branch,
+				u.ci_status,
+				u.ci_checked_at,
+				u.ci_url,
 				u.completed_at,
 				id,
 			],
@@ -690,6 +707,31 @@ impl Store {
 		tx.commit()?;
 		Ok(result > 0)
 	}
+
+	// Settings operations
+	pub fn get_setting(&self, key: &str) -> Result<Option<String>> {
+		self.conn
+			.query_row("SELECT value FROM settings WHERE key = ?1", [key], |row| {
+				row.get(0)
+			})
+			.optional()
+			.map_err(Into::into)
+	}
+
+	pub fn set_setting(&self, key: &str, value: &str) -> Result<()> {
+		let now = chrono::Utc::now().timestamp_millis();
+		self.conn.execute(
+			"INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?1, ?2, ?3)",
+			rusqlite::params![key, value, now],
+		)?;
+		Ok(())
+	}
+
+	pub fn get_ci_stuck_threshold_minutes(&self) -> Result<i64> {
+		let value = self.get_setting("ci_stuck_threshold_minutes")?
+			.unwrap_or_else(|| "10".to_string());
+		value.parse::<i64>().map_err(|e| anyhow::anyhow!("Invalid CI threshold: {}", e))
+	}
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -731,6 +773,12 @@ pub struct ExecutionUpdates {
 	pub parent_sha: Option<String>,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub branch: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub ci_status: Option<CiStatus>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub ci_checked_at: Option<i64>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub ci_url: Option<String>,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub completed_at: Option<i64>,
 }

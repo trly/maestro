@@ -33,9 +33,9 @@
 	)
 </script>
 
-<div class="grid grid-cols-2 gap-2 rounded-md border border-border overflow-hidden">
+<div class="grid grid-cols-2 gap-2 rounded-md border border-border/30 overflow-hidden">
 	<div class="flex flex-col">
-		<div class="bg-muted px-4 py-2 border-b border-border">
+		<div class="bg-muted px-4 py-2 border-b border-border/10">
 			<h4 class="text-xs font-semibold text-muted-foreground">{leftHeader}</h4>
 		</div>
 		<div bind:this={leftPane} onscroll={() => syncScroll(leftPane, rightPane)} class="h-96 bg-background overflow-auto">
@@ -70,8 +70,8 @@
 		</div>
 	</div>
 
-	<div class="flex flex-col border-l border-border">
-		<div class="bg-accent px-4 py-2 border-b border-border">
+	<div class="flex flex-col border-l border-border/20">
+		<div class="bg-accent px-4 py-2 border-b border-border/10">
 			<h4 class="text-xs font-semibold text-accent-foreground">{rightHeader}</h4>
 		</div>
 		<div bind:this={rightPane} onscroll={() => syncScroll(rightPane, leftPane)} class="h-96 bg-background overflow-auto">

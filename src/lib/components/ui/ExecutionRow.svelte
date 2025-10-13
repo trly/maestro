@@ -19,8 +19,15 @@
 		Loader2,
 		Clock,
 		RotateCw,
-		MoreVertical
+		MoreVertical,
+		Upload,
+		Code,
+		Copy
 	} from 'lucide-svelte';
+	import CiStatusBadge from './CiStatusBadge.svelte';
+	import { openInEditor, copyWorktreePath } from '$lib/utils/worktree';
+	import { settingsStore } from '$lib/stores/settingsStore';
+	import { executionStore } from '$lib/stores/executionBus';
 
 	let {
 		execution,
@@ -34,6 +41,8 @@
 		onStopValidation,
 		onResume,
 		onReviewChanges,
+		onPush,
+		onRefreshCi,
 		fileCount = 0,
 		additions = 0,
 		deletions = 0,
@@ -50,17 +59,36 @@
 		onStopValidation?: () => void;
 		onResume?: () => void;
 		onReviewChanges?: () => void;
+		onPush?: () => void;
+		onRefreshCi?: () => void;
 		fileCount?: number;
 		additions?: number;
 		deletions?: number;
 		progressMessage?: string;
 	} = $props();
 
-
+	// Merge prop with live updates from event bus
+	let liveExecution = $derived.by(() => {
+		const updates = $executionStore.get(execution.id);
+		if (!updates) return execution;
+		return {
+			...execution,
+			...(updates.sessionId && { sessionId: updates.sessionId }),
+			...(updates.threadUrl && { threadUrl: updates.threadUrl }),
+			...(updates.status && { status: updates.status }),
+			...(updates.validationStatus && { validationStatus: updates.validationStatus }),
+			...(updates.validationThreadUrl && { validationThreadUrl: updates.validationThreadUrl }),
+			...(updates.commitStatus && { commitStatus: updates.commitStatus }),
+			...(updates.commitSha && { commitSha: updates.commitSha }),
+			...(updates.committedAt && { committedAt: updates.committedAt }),
+			...(updates.ciStatus && { ciStatus: updates.ciStatus }),
+			...(updates.ciUrl && { ciUrl: updates.ciUrl })
+		};
+	});
 
 	// Reactive icon/color for execution status
 	let executionIcon = $derived.by(() => {
-		switch (execution.status) {
+		switch (liveExecution.status) {
 			case 'running': return { Icon: Loader2, class: 'text-blue-600 animate-spin' };
 			case 'completed': return { Icon: CheckCircle2, class: 'text-green-600' };
 			case 'failed': return { Icon: XCircle, class: 'text-red-600' };
@@ -72,8 +100,8 @@
 
 	// Reactive icon/color for validation status
 	let validationIcon = $derived.by(() => {
-		if (!execution.validationStatus) return null;
-		switch (execution.validationStatus) {
+		if (!liveExecution.validationStatus) return null;
+		switch (liveExecution.validationStatus) {
 			case 'running': return { Icon: Loader2, class: 'text-blue-600 animate-spin' };
 			case 'passed': return { Icon: CheckCircle2, class: 'text-green-600' };
 			case 'failed': return { Icon: XCircle, class: 'text-red-600' };
@@ -83,7 +111,7 @@
 
 	// Reactive icon/color for commit status
 	let commitIcon = $derived.by(() => {
-		switch (execution.commitStatus) {
+		switch (liveExecution.commitStatus) {
 			case 'committed': return { Icon: GitCommit, class: 'text-green-600' };
 			case 'uncommitted': return { Icon: GitBranch, class: 'text-orange-600' };
 			default: return null;
@@ -93,24 +121,47 @@
 	let canValidate = $derived(
 		hasValidationPrompt && 
 		onValidate && 
-		(execution.status === 'completed' || execution.status === 'cancelled') && 
-		execution.validationStatus !== 'running'
+		(liveExecution.status === 'completed' || liveExecution.status === 'cancelled') && 
+		liveExecution.validationStatus !== 'running'
+	);
+
+	let canPush = $derived(
+		onPush && 
+		liveExecution.commitStatus === 'committed' &&
+		liveExecution.commitSha
 	);
 
 	let isRunning = $derived(
-		execution.status === 'running' || execution.validationStatus === 'running'
+		liveExecution.status === 'running' || liveExecution.validationStatus === 'running'
 	);
 
 	let rowClass = $derived.by(() => {
 		if (selected) return 'bg-primary/10 border-l-4 border-l-primary';
 		return '';
 	});
+
+	async function handleOpenInEditor() {
+		try {
+			const editorCmd = $settingsStore.editorCommand || 'code';
+			await openInEditor(liveExecution, editorCmd);
+		} catch (error) {
+			console.error('Failed to open in editor:', error);
+		}
+	}
+
+	async function handleCopyPath() {
+		try {
+			await copyWorktreePath(liveExecution);
+		} catch (error) {
+			console.error('Failed to copy worktree path:', error);
+		}
+	}
 </script>
 
 <div
-	class="grid gap-3 px-4 py-2.5 border-b border-border/40 hover:bg-muted/30 transition-all group items-center {rowClass}
-	       [grid-template-columns:auto_minmax(0,_2fr)_minmax(0,_1fr)_minmax(0,_1fr)_minmax(0,_1fr)_minmax(0,_1fr)_minmax(0,_1fr)]
-	       @max-lg/table:[grid-template-columns:auto_minmax(0,_2fr)_minmax(0,_1fr)_minmax(0,_1fr)_minmax(0,_0.8fr)_minmax(0,_1fr)_minmax(0,_0.8fr)]
+	class="grid gap-3 px-4 py-2.5 border-b border-border/10 bg-card hover:bg-muted/30 transition-all group items-center {rowClass}
+	       [grid-template-columns:auto_minmax(0,_2fr)_minmax(0,_1fr)_minmax(0,_1fr)_minmax(0,_1.5fr)_minmax(0,_1fr)_minmax(0,_1fr)]
+	       @max-lg/table:[grid-template-columns:auto_minmax(0,_2fr)_minmax(0,_1fr)_minmax(0,_1fr)_minmax(0,_1.2fr)_minmax(0,_0.8fr)_minmax(0,_0.8fr)]
 	       @max-md/table:[grid-template-columns:auto_minmax(200px,_6fr)_40px_40px_0_0_40px]"
 >
 	<!-- Checkbox -->
@@ -132,91 +183,197 @@
 	</div>
 
 	<!-- Execution Status -->
+	<div class="flex flex-col gap-1">
 	<div class="flex items-center gap-2">
-		<UiTooltip content={progressMessage || `Execution: ${execution.status}`}>
-			{#snippet children({ props })}
-				{@const Icon = executionIcon.Icon}
-				{#if execution.threadUrl}
-					<button
-						{...props}
-						onclick={() => openInBrowser(execution.threadUrl!)}
-						class="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
-					>
-						<Icon class={`w-4 h-4 ${executionIcon.class}`} />
-						<span class="hidden @lg/table:inline text-xs {execution.status === 'running' ? 'text-blue-600 font-medium' : 'text-muted-foreground'} hover:text-foreground flex items-center gap-1">
-							{#if progressMessage}
-								{progressMessage}
-							{:else if execution.status === 'running'}
-								Running
-							{:else}
-								Thread
-							{/if}
-							<ExternalLink class="w-3 h-3" />
-						</span>
-					</button>
-				{:else}
-					<div {...props} class="flex items-center gap-1.5">
-						<Icon class={`w-4 h-4 ${executionIcon.class}`} />
-						<span class="hidden @lg/table:inline text-xs {execution.status === 'running' ? 'text-blue-600 font-medium' : 'text-muted-foreground'}">{progressMessage || execution.status}</span>
-					</div>
-				{/if}
-			{/snippet}
-		</UiTooltip>
+	<UiTooltip content={progressMessage || `Execution: ${liveExecution.status}`}>
+	{#snippet children({ props })}
+	{@const Icon = executionIcon.Icon}
+	<div {...props}>
+	<Icon class={`w-4 h-4 ${executionIcon.class}`} />
+	</div>
+	{/snippet}
+	</UiTooltip>
+	
+	<!-- Stop/Restart execution actions -->
+	{#if liveExecution.status === 'running'}
+	<UiTooltip content="Stop execution">
+	{#snippet children({ props })}
+	<button
+	{...props}
+	onclick={() => onStop?.()}
+	class="text-orange-600 hover:text-orange-700 transition-colors"
+	aria-label="Stop execution"
+	>
+	<Square class="w-4 h-4 fill-current" />
+	</button>
+	{/snippet}
+	</UiTooltip>
+	{:else if liveExecution.status === 'completed' || liveExecution.status === 'failed' || liveExecution.status === 'cancelled'}
+	<UiTooltip content="Restart execution">
+	{#snippet children({ props })}
+	<button
+	{...props}
+	onclick={() => onResume?.()}
+	class="text-blue-600 hover:text-blue-700 transition-colors"
+	aria-label="Restart execution"
+	>
+	<RotateCw class="w-4 h-4" />
+	</button>
+	{/snippet}
+	</UiTooltip>
+	{/if}
+	</div>
+	
+	<!-- Execution Thread Link -->
+	{#if liveExecution.threadUrl}
+	<button
+	onclick={() => openInBrowser(liveExecution.threadUrl!)}
+	class="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+	>
+	<span>Thread</span>
+	<ExternalLink class="w-3 h-3" />
+	</button>
+	{/if}
 	</div>
 
 	<!-- Validation Status -->
+	<div class="flex flex-col gap-1">
+	{#if validationIcon}
 	<div class="flex items-center gap-2">
-		{#if validationIcon}
-			<UiTooltip content={`Validation: ${execution.validationStatus}`}>
-				{#snippet children({ props })}
-					{@const Icon = validationIcon.Icon}
-					{#if execution.validationThreadUrl}
+	<UiTooltip content={`Validation: ${liveExecution.validationStatus}`}>
+	{#snippet children({ props })}
+	{@const Icon = validationIcon.Icon}
+	<div {...props}>
+	<Icon class={`w-4 h-4 ${validationIcon.class}`} />
+	</div>
+	{/snippet}
+	</UiTooltip>
+	
+	<!-- Validation actions -->
+	{#if liveExecution.validationStatus === 'running'}
+	<UiTooltip content="Stop validation">
+	{#snippet children({ props })}
+	<button
+	{...props}
+	onclick={() => onStopValidation?.()}
+	class="text-orange-600 hover:text-orange-700 transition-colors"
+	aria-label="Stop validation"
+	>
+	<X class="w-4 h-4" />
+	</button>
+	{/snippet}
+	</UiTooltip>
+	{:else if canValidate}
+	<UiTooltip content={liveExecution.validationStatus ? 'Revalidate' : 'Validate'}>
+	{#snippet children({ props })}
+	<button
+	{...props}
+	onclick={() => onValidate?.()}
+	class="{liveExecution.validationStatus ? 'text-blue-600 hover:text-blue-700' : 'text-green-600 hover:text-green-700'} transition-colors"
+	aria-label={liveExecution.validationStatus ? 'Revalidate' : 'Validate'}
+	>
+	{#if liveExecution.validationStatus}
+	<RotateCw class="w-4 h-4" />
+	{:else}
+	<CheckCircle2 class="w-4 h-4" />
+	{/if}
+	</button>
+	{/snippet}
+	</UiTooltip>
+	{/if}
+	</div>
+	
+	<!-- Validation Thread Link -->
+	{#if liveExecution.validationThreadUrl}
+	<button
+	onclick={() => openInBrowser(liveExecution.validationThreadUrl!)}
+	class="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+	>
+	<span>Thread</span>
+	<ExternalLink class="w-3 h-3" />
+	</button>
+	{/if}
+	{:else}
+	<span class="text-xs text-muted-foreground">—</span>
+	{/if}
+	</div>
+
+	<!-- Combined: Changes & Commit -->
+	<div class="flex flex-col gap-1 @max-md/table:hidden">
+		<!-- Changes Stats -->
+		<div class="flex items-center gap-2 text-xs">
+			<button
+				onclick={() => onReviewChanges?.()}
+				disabled={!onReviewChanges}
+				class="flex items-center gap-2 hover:text-blue-600 transition-colors cursor-pointer disabled:cursor-default disabled:hover:text-current"
+			>
+				{#if fileCount > 0}
+					<UiTooltip content={`Click to view ${fileCount} file${fileCount !== 1 ? 's' : ''} changed`}>
+						{#snippet children({ props })}
+							<div {...props} class="flex items-center gap-1">
+								<FileText class="w-3.5 h-3.5 text-muted-foreground" />
+								<span class="text-yellow-600">{fileCount}</span>
+							</div>
+						{/snippet}
+					</UiTooltip>
+					<span class="text-green-600">+{additions}</span>
+					<span class="text-red-600">-{deletions}</span>
+				{:else}
+					<span class="text-muted-foreground">No changes</span>
+				{/if}
+			</button>
+			
+			<!-- Push action -->
+			{#if canPush}
+				<UiTooltip content="Push to remote">
+					{#snippet children({ props })}
 						<button
 							{...props}
-							onclick={() => openInBrowser(execution.validationThreadUrl!)}
-							class="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+							onclick={() => onPush?.()}
+							class="text-purple-600 hover:text-purple-700 transition-colors"
+							aria-label="Push to remote"
 						>
-							<Icon class={`w-4 h-4 ${validationIcon.class}`} />
-							<span class="hidden @lg/table:inline text-xs {execution.validationStatus === 'running' ? 'text-green-600 font-medium' : 'text-muted-foreground'} hover:text-foreground flex items-center gap-1">
-								{#if execution.validationStatus === 'running'}
-									Running
-								{:else}
-									Thread
-								{/if}
-								<ExternalLink class="w-3 h-3" />
-							</span>
+							<Upload class="w-4 h-4" />
 						</button>
-					{:else}
-						<div {...props} class="flex items-center gap-1.5">
-							<Icon class={`w-4 h-4 ${validationIcon.class}`} />
-							<span class="hidden @lg/table:inline text-xs {execution.validationStatus === 'running' ? 'text-green-600 font-medium' : 'text-muted-foreground'}">{execution.validationStatus}</span>
+					{/snippet}
+				</UiTooltip>
+			{/if}
+		</div>
+		
+		<!-- Commit SHA (if exists) -->
+		{#if liveExecution.commitSha && commitIcon}
+			<div class="flex items-center gap-1">
+				<UiTooltip content={`Commit: ${liveExecution.commitSha.slice(0, 7)}`}>
+					{#snippet children({ props })}
+						{@const Icon = commitIcon.Icon}
+						<div {...props}>
+							<Icon class={`w-4 h-4 ${commitIcon.class}`} />
 						</div>
-					{/if}
-				{/snippet}
-			</UiTooltip>
-		{:else}
-			<span class="text-xs text-muted-foreground">—</span>
+					{/snippet}
+				</UiTooltip>
+				<span class="text-xs font-mono text-muted-foreground">{liveExecution.commitSha.slice(0, 7)}</span>
+			</div>
 		{/if}
 	</div>
 
-	<!-- Commit Status -->
+	<!-- CI Status -->
 	<div class="flex items-center gap-2 @max-md/table:hidden">
-		{#if commitIcon}
-			<UiTooltip content={execution.commitSha ? `Click to view diff: ${execution.commitSha.slice(0, 7)}` : execution.commitStatus || ''}>
+		{#if liveExecution.ciStatus}
+			<CiStatusBadge 
+				ciStatus={liveExecution.ciStatus} 
+				ciUrl={liveExecution.ciUrl}
+				onRefresh={onRefreshCi}
+			/>
+		{:else if liveExecution.commitStatus === 'committed' && onRefreshCi}
+			<UiTooltip content="Check CI status">
 				{#snippet children({ props })}
-					{@const Icon = commitIcon.Icon}
 					<button
 						{...props}
-						onclick={() => onReviewChanges?.()}
-						class="flex items-center gap-1.5 hover:text-blue-600 transition-colors cursor-pointer"
-						disabled={!onReviewChanges}
+						onclick={onRefreshCi}
+						class="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
 					>
-						<Icon class={`w-4 h-4 ${commitIcon.class}`} />
-						{#if execution.commitSha}
-							<span class="text-xs font-mono text-muted-foreground hover:text-blue-600">{execution.commitSha.slice(0, 7)}</span>
-						{:else}
-							<span class="text-xs text-muted-foreground">{execution.commitStatus}</span>
-						{/if}
+						<RefreshCw class="w-3.5 h-3.5" />
+						<span class="text-xs">Check CI</span>
 					</button>
 				{/snippet}
 			</UiTooltip>
@@ -224,117 +381,42 @@
 			<span class="text-xs text-muted-foreground">—</span>
 		{/if}
 	</div>
-
-	<!-- Changes Stats -->
-	<button
-		onclick={() => onReviewChanges?.()}
-		disabled={!onReviewChanges}
-		class="flex items-center gap-3 text-xs hover:text-blue-600 transition-colors cursor-pointer disabled:cursor-default disabled:hover:text-current @max-md/table:hidden"
-	>
-		{#if fileCount > 0}
-			<UiTooltip content={`Click to view ${fileCount} file${fileCount !== 1 ? 's' : ''} changed`}>
-				{#snippet children({ props })}
-					<div {...props} class="flex items-center gap-1">
-						<FileText class="w-3.5 h-3.5 text-muted-foreground" />
-						<span class="text-muted-foreground">{fileCount}</span>
-					</div>
-				{/snippet}
-			</UiTooltip>
-			<span class="text-green-600">+{additions}</span>
-			<span class="text-red-600">-{deletions}</span>
-		{:else}
-			<span class="text-muted-foreground">No changes</span>
-		{/if}
-	</button>
 
 	<!-- Actions -->
 	<div class="flex items-center gap-1 justify-end">
 		<div class="hidden @md/table:flex items-center gap-1">
-			{#if onReviewChanges && fileCount > 0}
-				<UiTooltip content="Review changes">
-					{#snippet children({ props })}
-						<button
-							{...props}
-							onclick={onReviewChanges}
-							class="w-7 h-7 flex items-center justify-center rounded-md text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-all"
-							aria-label="Review changes"
-						>
-							<FileText class="w-4 h-4" />
-						</button>
-					{/snippet}
-				</UiTooltip>
-			{/if}
-
-			{#if execution.status === 'completed' || execution.status === 'failed' || execution.status === 'cancelled'}
-				<UiTooltip content="Restart execution">
-					{#snippet children({ props })}
-						<button
-							{...props}
-							onclick={() => onResume?.()}
-							class="w-7 h-7 flex items-center justify-center rounded-md text-blue-600 hover:bg-blue-50 transition-all"
-							aria-label="Restart execution"
-						>
-							<RotateCw class="w-4 h-4" />
-						</button>
-					{/snippet}
-				</UiTooltip>
-			{/if}
-
-			{#if execution.status === 'running'}
-				<UiTooltip content="Stop execution">
-					{#snippet children({ props })}
-						<button
-							{...props}
-							onclick={() => onStop?.()}
-							class="w-7 h-7 flex items-center justify-center rounded-md bg-orange-100 text-orange-700 hover:bg-orange-200 transition-all shadow-sm ring-1 ring-orange-300"
-							aria-label="Stop execution"
-						>
-							<Square class="w-4 h-4 fill-current" />
-						</button>
-					{/snippet}
-				</UiTooltip>
-			{/if}
-
-			{#if execution.validationStatus === 'running'}
-				<UiTooltip content="Stop validation">
-					{#snippet children({ props })}
-						<button
-							{...props}
-							onclick={() => onStopValidation?.()}
-							class="w-7 h-7 flex items-center justify-center rounded-md bg-orange-100 text-orange-700 hover:bg-orange-200 transition-all shadow-sm ring-1 ring-orange-300"
-							aria-label="Stop validation"
-						>
-							<X class="w-4 h-4" />
-						</button>
-					{/snippet}
-				</UiTooltip>
-			{/if}
-
-			{#if canValidate}
-				<UiTooltip content={execution.validationStatus ? 'Revalidate' : 'Validate'}>
-					{#snippet children({ props })}
-						<button
-							{...props}
-							onclick={() => onValidate?.()}
-							class="w-7 h-7 flex items-center justify-center rounded-md text-green-600 hover:bg-green-50 transition-all"
-							aria-label={execution.validationStatus ? 'Revalidate' : 'Validate'}
-						>
-							{#if execution.validationStatus}
-								<RefreshCw class="w-4 h-4" />
-							{:else}
-								<CheckCircle2 class="w-4 h-4" />
-							{/if}
-						</button>
-					{/snippet}
-				</UiTooltip>
-			{/if}
-
+			<UiTooltip content="Open in editor">
+				{#snippet children({ props })}
+					<button
+						{...props}
+						onclick={handleOpenInEditor}
+						class="text-blue-600 hover:text-blue-700 transition-colors"
+						aria-label="Open in editor"
+					>
+						<Code class="w-4 h-4" />
+					</button>
+				{/snippet}
+			</UiTooltip>
+			
+			<UiTooltip content="Copy worktree path">
+				{#snippet children({ props })}
+					<button
+						{...props}
+						onclick={handleCopyPath}
+						class="text-gray-600 hover:text-gray-700 transition-colors"
+						aria-label="Copy worktree path"
+					>
+						<Copy class="w-4 h-4" />
+					</button>
+				{/snippet}
+			</UiTooltip>
+			
 			<UiTooltip content="Delete execution">
 				{#snippet children({ props })}
 					<button
 						{...props}
 						onclick={onDelete}
-						class="w-7 h-7 flex items-center justify-center rounded-md text-red-600 hover:bg-red-50 transition-all"
+						class="text-red-600 hover:text-red-700 transition-colors"
 						aria-label="Delete execution"
 					>
 						<Trash2 class="w-4 h-4" />
@@ -353,22 +435,12 @@
 					<MoreVertical class="w-4 h-4" />
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content 
-					class="min-w-[180px] max-w-[250px] bg-card text-card-foreground rounded-lg shadow-xl border border-border/40 p-1"
+					class="min-w-[180px] max-w-[250px] bg-card text-card-foreground rounded-lg shadow-xl border border-border/20 p-1"
 					align="end"
 					sideOffset={4}
 					strategy="fixed"
 				>
-					{#if onReviewChanges && fileCount > 0}
-						<DropdownMenu.Item
-							onSelect={onReviewChanges}
-							class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
-						>
-							<FileText class="w-4 h-4" />
-							Review changes
-						</DropdownMenu.Item>
-					{/if}
-					
-					{#if execution.status === 'completed' || execution.status === 'failed' || execution.status === 'cancelled'}
+					{#if liveExecution.status === 'completed' || liveExecution.status === 'failed' || liveExecution.status === 'cancelled'}
 						<DropdownMenu.Item
 							onSelect={() => onResume?.()}
 							class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
@@ -378,7 +450,7 @@
 						</DropdownMenu.Item>
 					{/if}
 					
-					{#if execution.status === 'running'}
+					{#if liveExecution.status === 'running'}
 						<DropdownMenu.Item
 							onSelect={() => onStop?.()}
 							class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
@@ -388,7 +460,7 @@
 						</DropdownMenu.Item>
 					{/if}
 					
-					{#if execution.validationStatus === 'running'}
+					{#if liveExecution.validationStatus === 'running'}
 						<DropdownMenu.Item
 							onSelect={() => onStopValidation?.()}
 							class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
@@ -403,8 +475,8 @@
 							onSelect={() => onValidate?.()}
 							class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
 						>
-							{#if execution.validationStatus}
-								<RefreshCw class="w-4 h-4" />
+							{#if liveExecution.validationStatus}
+								<RotateCw class="w-4 h-4" />
 								Revalidate
 							{:else}
 								<CheckCircle2 class="w-4 h-4" />
@@ -412,6 +484,24 @@
 							{/if}
 						</DropdownMenu.Item>
 					{/if}
+					
+					<DropdownMenu.Separator class="h-px bg-border/40 my-1" />
+					
+					<DropdownMenu.Item
+						onSelect={handleOpenInEditor}
+						class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
+					>
+						<Code class="w-4 h-4" />
+						Open in editor
+					</DropdownMenu.Item>
+					
+					<DropdownMenu.Item
+						onSelect={handleCopyPath}
+						class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
+					>
+						<Copy class="w-4 h-4" />
+						Copy worktree path
+					</DropdownMenu.Item>
 					
 					<DropdownMenu.Separator class="h-px bg-border/40 my-1" />
 					

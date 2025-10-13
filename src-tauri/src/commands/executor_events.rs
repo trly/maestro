@@ -55,3 +55,19 @@ pub(crate) fn emit_execution_progress(app: &tauri::AppHandle, execution_id: &str
 		"message": message
 	}));
 }
+
+pub(crate) fn emit_execution_ci(app: &tauri::AppHandle, execution_id: &str, ci_status: &str, ci_url: Option<&str>) {
+	let payload = if let Some(url) = ci_url {
+		json!({
+			"executionId": execution_id,
+			"ciStatus": ci_status,
+			"ciUrl": url
+		})
+	} else {
+		json!({
+			"executionId": execution_id,
+			"ciStatus": ci_status
+		})
+	};
+	let _ = app.emit("execution:ci", payload);
+}

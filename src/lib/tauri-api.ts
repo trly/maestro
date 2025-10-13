@@ -147,6 +147,20 @@ export const tauriApi = {
 
 		commit: async (id: string, files?: string[]) => {
 			await ipc.commitChanges(id, files)
+		},
+
+		push: async (id: string, force: boolean = false) => {
+			await ipc.pushCommit(id, force)
+		}
+	},
+
+	ci: {
+		start: async (id: string) => {
+			await ipc.startCiCheck(id)
+		},
+
+		refreshStatus: async (id: string) => {
+			await ipc.refreshCiStatus(id)
 		}
 	}
 }

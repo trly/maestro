@@ -62,9 +62,9 @@
 	const isActive = (id: string) => $page.url.pathname.startsWith(`/promptsets/${id}`);
 </script>
 
-<div class="h-full flex flex-col">
+<div class="h-full flex flex-col bg-card">
 	<!-- Header -->
-	<div class="flex items-center gap-1.5 px-2 py-2.5 border-b border-border/40 flex-shrink-0 bg-muted/20">
+	<div class="flex items-center gap-1.5 px-2 py-2.5 border-b border-border/10 flex-shrink-0 bg-muted/20">
 		{#if !collapsed}
 			<h2 class="text-sm font-semibold text-foreground flex-1">Prompt Sets</h2>
 			<UiTooltip content="Create new prompt set">
@@ -146,7 +146,7 @@
 		{#if isLoading}
 			<div class="space-y-1.5">
 				{#each Array(3) as _}
-					<div class="p-2 border border-border/40 rounded-lg animate-pulse">
+					<div class="p-2 border border-border/20 rounded-lg animate-pulse">
 						<div class="h-3 bg-gray-200 rounded w-3/4 mb-1.5"></div>
 						<div class="h-2 bg-gray-200 rounded w-1/2"></div>
 					</div>

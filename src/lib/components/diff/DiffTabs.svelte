@@ -42,8 +42,8 @@
 	</Tabs.Content>
 
 	<Tabs.Content value="unified">
-		<div class="rounded-md border border-border overflow-hidden">
-			<div class="bg-muted/50 px-4 py-2 border-b border-border">
+		<div class="rounded-md border border-border/30 overflow-hidden">
+		<div class="bg-muted/50 px-4 py-2 border-b border-border/10">
 				<h4 class="text-xs font-medium text-muted-foreground">Previous Version (Read-only)</h4>
 			</div>
 			<div bind:this={scrollElement} onscroll={onscroll} class="h-96 bg-muted/30 overflow-auto opacity-75">

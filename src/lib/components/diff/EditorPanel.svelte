@@ -22,8 +22,8 @@
 	}
 </script>
 
-<div class="rounded-md border-2 border-primary/40 overflow-hidden shadow-sm">
-	<div class="bg-primary/10 px-4 py-2 border-b border-primary/20">
+<div class="rounded-md border border-primary/30 overflow-hidden shadow-sm">
+	<div class="bg-primary/10 px-4 py-2 border-b border-primary/10">
 		<h4 class="text-xs font-semibold text-foreground">{title}</h4>
 	</div>
 	<textarea

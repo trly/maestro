@@ -6,7 +6,7 @@
 <AlertDialog.Root open={$confirmState.isOpen}>
 	<AlertDialog.Portal>
 		<AlertDialog.Overlay class="fixed inset-0 z-50 bg-black/40" />
-		<AlertDialog.Content class="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-background rounded-md shadow-2xl border border-border p-6">
+		<AlertDialog.Content class="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-background rounded-md shadow-2xl border border-border/30 p-6">
 			{#if $confirmState.isOpen}
 				<AlertDialog.Title class="text-xl font-bold text-foreground mb-3">
 					{$confirmState.title}
@@ -17,7 +17,7 @@
 				<div class="flex gap-3 justify-end">
 					<AlertDialog.Cancel
 						onclick={confirmNo}
-						class="px-5 py-2.5 border border-input-border text-foreground rounded-md hover:bg-muted transition-all font-semibold"
+						class="px-5 py-2.5 border border-border/30 text-foreground rounded-md hover:bg-muted transition-all font-semibold"
 					>
 						{$confirmState.cancelText || 'Cancel'}
 					</AlertDialog.Cancel>

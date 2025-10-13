@@ -9,6 +9,6 @@
 	let { repoId, children }: Props = $props();
 </script>
 
-<Accordion.Item value={repoId} class="border border-border rounded-md overflow-hidden mb-4">
+<Accordion.Item value={repoId} class="border border-border/20 rounded-md overflow-hidden mb-4">
 	{@render children()}
 </Accordion.Item>

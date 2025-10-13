@@ -3,7 +3,7 @@
 
 @theme {
 	--color-background: #f9f5d7;
-	--color-foreground: #1d2021;
+	--color-foreground: #282828;
 	--color-border: #d5c4a1;
 	--color-border-subtle: rgba(189, 174, 147, 0.3);
 	--color-ring: #bdae93;
@@ -12,31 +12,31 @@
 	--color-muted-foreground: #504945;
 
 	--color-card: #f2ead0;
-	--color-card-foreground: #1d2021;
+	--color-card-foreground: #282828;
 
 	--color-popover: #ebdbb2;
-	--color-popover-foreground: #1d2021;
+	--color-popover-foreground: #282828;
 
 	--color-accent: #d5c4a1;
-	--color-accent-foreground: #1d2021;
+	--color-accent-foreground: #282828;
 
 	--color-input-border: #bdae93;
 	--color-input-background: #f9f5d7;
 
-	--color-primary: #458588;
+	--color-primary: #076678;
 	--color-primary-foreground: #f9f5d7;
 
-	--color-secondary: #689d6a;
+	--color-secondary: #427b58;
 	--color-secondary-foreground: #f9f5d7;
 
-	--color-warning: #d79921;
-	--color-warning-foreground: #1d2021;
-	--color-warning-border: #d79921;
+	--color-warning: #b57614;
+	--color-warning-foreground: #282828;
+	--color-warning-border: #b57614;
 
-	--color-destructive: #cc241d;
+	--color-destructive: #9d0006;
 	--color-destructive-foreground: #f9f5d7;
 
-	--color-success: #98971a;
+	--color-success: #79740e;
 	--color-success-foreground: #f9f5d7;
 
 	--radius: 0.5rem;
@@ -49,23 +49,23 @@
 	.dark {
 		--color-background: #1d2021;
 		--color-foreground: #f9f5d7;
-		--color-border: #3c3836;
-		--color-border-subtle: rgba(60, 56, 54, 0.3);
-		--color-ring: #504945;
+		--color-border: #504945;
+		--color-border-subtle: rgba(80, 73, 69, 0.3);
+		--color-ring: #665c54;
 
-		--color-muted: #282828;
+		--color-muted: #3c3836;
 		--color-muted-foreground: #bdae93;
 
 		--color-card: #252525;
 		--color-card-foreground: #f9f5d7;
 
-		--color-popover: #282828;
+		--color-popover: #3c3836;
 		--color-popover-foreground: #f9f5d7;
 
-		--color-accent: #3c3836;
+		--color-accent: #504945;
 		--color-accent-foreground: #f9f5d7;
 
-		--color-input-border: #504945;
+		--color-input-border: #665c54;
 		--color-input-background: #1d2021;
 
 		--color-primary: #83a598;

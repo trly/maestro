@@ -2350,6 +2350,7 @@ name = "maestro"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
  "git2",
  "hex",

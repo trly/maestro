@@ -491,3 +491,77 @@ export interface ConfigPaths {
 export async function getConfigPaths(): Promise<ConfigPaths> {
 	return invokeCommand<ConfigPaths>('get_config_paths')
 }
+
+/**
+ * Open worktree in editor
+ */
+export async function openWorktreeInEditor(
+	promptsetId: string,
+	executionId: string,
+	editorCommand: string
+): Promise<void> {
+	return invokeCommand<void>('open_worktree_in_editor', {
+		promptsetId,
+		executionId,
+		editorCommand
+	})
+}
+
+// ============================================================================
+// CI Commands
+// ============================================================================
+
+/**
+ * Start CI checking for an execution (spawns background polling)
+ */
+export async function startCiCheck(executionId: string): Promise<void> {
+	return invokeCommand<void>('start_ci_check', { executionId })
+}
+
+/**
+ * Refresh CI status once (no polling)
+ */
+export async function refreshCiStatus(executionId: string): Promise<void> {
+	return invokeCommand<void>('refresh_ci_status', { executionId })
+}
+
+/**
+ * Reconcile stuck CI checks across all executions
+ * Resets any CI status that has been "pending" for more than the configured threshold
+ * @returns Number of executions fixed
+ */
+export async function reconcileStuckCi(): Promise<number> {
+	return invokeCommand<number>('reconcile_stuck_ci', {})
+}
+
+/**
+ * Push committed changes to remote
+ */
+export async function pushCommit(executionId: string, force: boolean = false): Promise<void> {
+	return invokeCommand<void>('push_commit', { executionId, force })
+}
+
+// ============================================================================
+// Settings Commands
+// ============================================================================
+
+/**
+ * Get a setting value by key
+ */
+export async function getSetting(key: string): Promise<string | null> {
+	return invokeCommand<string | null>('get_setting', { key })
+}
+
+/**
+ * Set a setting value
+ */
+export async function setSetting(key: string, value: string): Promise<void> {
+	return invokeCommand<void>('set_setting', { key, value })
+}
+
+/**
+ * Get the CI stuck threshold in minutes (how long before pending CI is marked as skipped)
+ */
+export async function getCiStuckThresholdMinutes(): Promise<number> {
+	return invokeCommand<number>('get_ci_stuck_threshold_minutes', {})
+}

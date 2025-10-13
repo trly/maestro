@@ -10,7 +10,7 @@ use crate::git::{
 	get_committed_diff, get_committed_file_diff, get_worktree_diff, get_worktree_file_diff,
 	GitService, ModifiedFilesResponse,
 };
-use crate::types::{CommitStatus, ExecutionStatus, PromptStatus, ValidationStatus};
+use crate::types::{CiStatus, CommitStatus, ExecutionStatus, PromptStatus, ValidationStatus};
 use crate::util::git::{parse_provider_id, maestro_branch_name};
 use crate::util::paths::{admin_repo_path, execution_worktree_path, worktree_path};
 use crate::Paths;
@@ -1112,6 +1112,142 @@ pub async fn commit_changes(
 }
 
 #[tauri::command]
+pub async fn push_commit(
+	execution_id: String,
+	force: bool,
+	app: tauri::AppHandle,
+	paths: tauri::State<'_, Paths>,
+) -> Result<(), String> {
+	use tauri::Manager;
+	
+	// Get execution details
+	let (promptset_id, repository_id, branch, commit_sha) = {
+		let store_state = app.state::<Mutex<Store>>();
+		let store = store_state.lock().unwrap();
+		let execution = store.get_execution(&execution_id)
+			.map_err(|e| e.to_string())?
+			.ok_or_else(|| format!("Execution {} not found", execution_id))?;
+
+		// Ensure execution has been committed
+		if execution.commit_status != CommitStatus::Committed {
+			return Err("Execution must be committed before pushing".to_string());
+		}
+
+		let branch = execution.branch.clone()
+			.ok_or_else(|| "No branch found for execution".to_string())?;
+		
+		let commit_sha = execution.commit_sha.clone()
+			.ok_or_else(|| "No commit SHA found for execution".to_string())?;
+
+		(
+			execution.promptset_id.clone(),
+			execution.repository_id.clone(),
+			branch,
+			commit_sha,
+		)
+	};
+
+	// Emit progress message
+	emit_execution_progress(&app, &execution_id, "Pushing commit to remote...");
+
+	// Push the branch
+	let worktree_path = execution_worktree_path(&paths, &promptset_id, &execution_id);
+	let repo = GitService::open(&worktree_path).map_err(|e| e.to_string())?;
+	
+	GitService::push_branch(&repo, "origin", &branch, force)
+		.map_err(|e| format!("Failed to push branch: {}", e))?;
+
+	emit_execution_progress(&app, &execution_id, "Push completed successfully");
+
+	// Wait for GitHub to process the push
+	tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+	// Start CI checking automatically after push
+	// Get repository details to construct CI context
+	let (owner, repo_name) = {
+		let store_state = app.state::<Mutex<Store>>();
+		let store = store_state.lock().unwrap();
+		let repository = store.get_repository(&repository_id)
+			.map_err(|e| e.to_string())?
+			.ok_or_else(|| format!("Repository {} not found", repository_id))?;
+		
+		// Parse owner/repo from provider_id (format: "owner/repo")
+		let parts: Vec<&str> = repository.provider_id.split('/').collect();
+		if parts.len() != 2 {
+			return Err(format!("Invalid provider_id format: {}", repository.provider_id));
+		}
+		(parts[0].to_string(), parts[1].to_string())
+	};
+
+	// Check if GitHub token is configured (from keyring, not env var)
+	use crate::commands::tokens::get_token_value;
+	if let Ok(Some(github_token)) = get_token_value("github_token") {
+		// Import CI modules
+		use crate::ci::{CiContext, GitHubProvider, CiProvider};
+		use std::sync::Arc;
+		
+		let provider = Arc::new(GitHubProvider::new(github_token).map_err(|e| e.to_string())?);
+		
+		let ctx = CiContext {
+			owner: owner.clone(),
+			repo: repo_name.clone(),
+			commit_sha: commit_sha.clone(),
+			branch: branch.clone(),
+			provider_cfg: serde_json::json!({}),
+		};
+		
+		// Check if CI is configured by polling once
+		let ci_url = format!("https://github.com/{}/{}/commit/{}/checks", owner, repo_name, commit_sha);
+		let ci_status = match provider.poll(&ctx).await {
+			Ok(checks) if checks.is_empty() => {
+				// No CI configured
+				use crate::types::CiStatus;
+				CiStatus::NotConfigured
+			},
+			Ok(_checks) => {
+				// CI exists, set to pending
+				use crate::types::CiStatus;
+				CiStatus::Pending
+			},
+			Err(e) => {
+				// API error - assume not configured to avoid false positives
+				log::warn!("Failed to check CI for {}/{} @ {}: {}", owner, repo_name, commit_sha, e);
+				use crate::types::CiStatus;
+				CiStatus::NotConfigured
+			}
+		};
+		
+		// Emit CI status
+		let status_str = match ci_status {
+			crate::types::CiStatus::NotConfigured => "not_configured",
+			crate::types::CiStatus::Pending => "pending",
+			_ => "pending",
+		};
+		use super::executor_events::emit_execution_ci;
+		emit_execution_ci(&app, &execution_id, status_str, Some(&ci_url));
+		
+		// Update database
+		{
+			let store_state = app.state::<Mutex<Store>>();
+			let store = store_state.lock().unwrap();
+			let now = chrono::Utc::now().timestamp_millis();
+			store.update_execution(
+				&execution_id,
+				ExecutionUpdates {
+					ci_status: Some(ci_status),
+					ci_checked_at: Some(now),
+					ci_url: Some(ci_url.clone()),
+					..Default::default()
+				},
+			)
+			.map_err(|e| e.to_string())?;
+		}
+	}
+
+	Ok(())
+}
+
+#[tauri::command]
 pub fn stop_execution(
 	execution_id: String,
 	app: tauri::AppHandle,
@@ -1234,9 +1370,77 @@ pub fn reconcile_on_startup(store: &Store) -> Result<()> {
 				},
 			)?;
 		}
+		
+		// Reset stuck pending CI checks (no active tracking, so check age)
+		if execution.ci_status == Some(CiStatus::Pending) {
+			if let Some(checked_at) = execution.ci_checked_at {
+				let threshold_minutes = store.get_ci_stuck_threshold_minutes().unwrap_or(10);
+				let now = chrono::Utc::now().timestamp_millis();
+				let age_minutes = (now - checked_at) / 1000 / 60;
+				
+				// If stuck for more than threshold, mark as skipped
+				if age_minutes > threshold_minutes {
+					log::warn!(
+						"Resetting stuck CI check for execution {} (pending for {} minutes, threshold: {})",
+						execution.id,
+						age_minutes,
+						threshold_minutes
+					);
+					store.update_execution(
+						&execution.id,
+						ExecutionUpdates {
+							ci_status: Some(CiStatus::Skipped),
+							..Default::default()
+						},
+					)?;
+				}
+			}
+		}
 	}
 	
 	Ok(())
+}
+
+/// Manually reconcile stuck CI checks across all executions
+#[tauri::command]
+pub fn reconcile_stuck_ci(
+	app: tauri::AppHandle,
+) -> Result<usize, String> {
+	let store = app.state::<Mutex<Store>>();
+	let store = store.lock().map_err(|e| e.to_string())?;
+	
+	let threshold_minutes = store.get_ci_stuck_threshold_minutes().unwrap_or(10);
+	let executions = store.get_all_executions().map_err(|e| e.to_string())?;
+	let mut fixed = 0;
+	
+	for execution in executions {
+		// Reset stuck pending CI checks
+		if execution.ci_status == Some(CiStatus::Pending) {
+			if let Some(checked_at) = execution.ci_checked_at {
+				let now = chrono::Utc::now().timestamp_millis();
+				let age_minutes = (now - checked_at) / 1000 / 60;
+				
+				if age_minutes > threshold_minutes {
+					log::warn!(
+						"Resetting stuck CI check for execution {} (pending for {} minutes, threshold: {})",
+						execution.id,
+						age_minutes,
+						threshold_minutes
+					);
+					store.update_execution(
+						&execution.id,
+						ExecutionUpdates {
+							ci_status: Some(CiStatus::Skipped),
+							..Default::default()
+						},
+					).map_err(|e| e.to_string())?;
+					fixed += 1;
+				}
+			}
+		}
+	}
+	
+	Ok(fixed)
 }
 
 #[tauri::command]

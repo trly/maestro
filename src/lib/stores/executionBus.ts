@@ -1,5 +1,5 @@
 import { writable, type Writable } from 'svelte/store'
-import type { ExecutionStatus, ValidationStatus, CommitStatus } from '../types'
+import type { ExecutionStatus, ValidationStatus, CommitStatus, CiStatus } from '../types'
 import { clearExecutionStats } from './executionStats'
 
 export interface ExecutionSessionEvent {
@@ -31,6 +31,12 @@ export interface ExecutionProgressEvent {
 	message: string
 }
 
+export interface ExecutionCiEvent {
+	executionId: string
+	ciStatus: CiStatus
+	ciUrl?: string
+}
+
 export interface ExecutionData {
 	sessionId?: string
 	threadUrl?: string
@@ -40,6 +46,8 @@ export interface ExecutionData {
 	commitStatus?: CommitStatus
 	commitSha?: string
 	committedAt?: number
+	ciStatus?: CiStatus
+	ciUrl?: string
 	progressMessage?: string
 }
 
@@ -101,7 +109,16 @@ export async function subscribeToExecutions() {
 		})
 	})
 
-	unlisteners = [unlisten1, unlisten2, unlisten3, unlisten4, unlisten5]
+	const unlisten6 = await listen<ExecutionCiEvent>('execution:ci', (event) => {
+		const { executionId, ciStatus, ciUrl } = event.payload
+		executionStore.update((map) => {
+			const existing = map.get(executionId) || {}
+			map.set(executionId, { ...existing, ciStatus, ciUrl })
+			return new Map(map)
+		})
+	})
+
+	unlisteners = [unlisten1, unlisten2, unlisten3, unlisten4, unlisten5, unlisten6]
 }
 
 export function unsubscribeFromExecutions() {

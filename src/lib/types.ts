@@ -47,6 +47,8 @@ export type PromptStatus = 'passed' | 'failed' | null;
 
 export type CommitStatus = 'none' | 'uncommitted' | 'committed';
 
+export type CiStatus = 'pending' | 'passed' | 'failed' | 'skipped' | 'not_configured';
+
 export interface Execution {
 	id: string;
 	promptsetId: string;
@@ -70,6 +72,9 @@ export interface Execution {
 	committedAt: number | null;
 	parentSha: string | null;
 	branch: string | null;
+	ciStatus: CiStatus | null;
+	ciCheckedAt: number | null;
+	ciUrl: string | null;
 	createdAt: number;
 	completedAt: number | null;
 	progressMessage?: string;

@@ -4,9 +4,10 @@
 	import { onMount, onDestroy } from 'svelte';
 	import DiffViewer from '$lib/components/DiffViewer.svelte';
 	import PromptSetHeader from '$lib/components/ui/PromptSetHeader.svelte';
+	import RevisionHeader from '$lib/components/ui/RevisionHeader.svelte';
 	import RevisionSidebar from '$lib/components/ui/RevisionSidebar.svelte';
 	import RevisionDetail from '$lib/components/ui/RevisionDetail.svelte';
-	import EditValidationDialog from '$lib/components/ui/EditValidationDialog.svelte';
+
 	import EditRepositoriesDialog from '$lib/components/ui/EditRepositoriesDialog.svelte';
 	import { api } from '$lib/api';
 	import { showToast } from '$lib/ui/toast';
@@ -50,12 +51,14 @@
 			...(updates?.commitStatus && { commitStatus: updates.commitStatus }),
 			...(updates?.commitSha && { commitSha: updates.commitSha }),
 			...(updates?.committedAt && { committedAt: updates.committedAt }),
+			...(updates?.ciStatus && { ciStatus: updates.ciStatus }),
+			...(updates?.ciUrl && { ciUrl: updates.ciUrl }),
 			...(updates?.progressMessage && { progressMessage: updates.progressMessage }),
 			filesAdded: effectiveStats.filesAdded,
 			filesRemoved: effectiveStats.filesRemoved,
 			filesModified: effectiveStats.filesModified,
 			linesAdded: effectiveStats.linesAdded,
-			 linesRemoved: effectiveStats.linesRemoved,
+			linesRemoved: effectiveStats.linesRemoved,
 		};
 		})
 	);
@@ -79,7 +82,29 @@
 			return acc;
 		}, {} as Record<string, { total: number; running: number; completed: number; validationPassed: number }>)
 	);
-	let editValidationOpen = $state(false);
+	
+	// Compute revision header props reactively
+	let revisionHeaderProps = $derived.by(() => {
+		if (!currentRevision) return null;
+		
+		const revisionExecutions = executionsWithUpdates.filter(e => e.revisionId === currentRevision!.id);
+		const hasRunning = revisionExecutions.some(e => e.status === 'running');
+		const hasRunningValidations = revisionExecutions.some(e => e.validationStatus === 'running');
+		const stats = revisionStats[currentRevision.id];
+		
+		return {
+			revision: currentRevision,
+			hasRunning,
+			hasRunningValidations,
+			stats,
+			onExecuteAll: () => executeRevision(currentRevision!),
+			onStopAll: stopAllExecutions,
+			onStopAllValidations: stopAllValidations,
+			onDelete: () => deleteRevisionWithConfirm(currentRevision!),
+			onRefreshAllCi: refreshAllCiManually
+		};
+	});
+	
 	let editReposOpen = $state(false);
 	let editingRepos = $state<ProviderRepository[]>([]);
 	let diffViewerOpen = $state(false);
@@ -236,7 +261,7 @@
 		filesAdded: 0,
 		filesRemoved: 0,
 		filesModified: 0,
-		 linesAdded: 0,
+		linesAdded: 0,
 		linesRemoved: 0,
 		commitStatus: 'none' as const,
 		sessionId: null,
@@ -245,6 +270,9 @@
 		committedAt: null,
 		parentSha: null,
 		branch: null,
+		ciStatus: null,
+		ciCheckedAt: null,
+		ciUrl: null,
 		createdAt: Date.now(),
 		completedAt: null,
 	}));
@@ -422,6 +450,51 @@
 					: e
 			);
 			showToast('Failed to resume execution: ' + err, 'error');
+		}
+	}
+
+	async function pushExecutionManually(execution: Execution) {
+		try {
+			showToast('Pushing commit to remote...', 'info');
+			await api.executions.push(execution.id, false); // false = not force push
+			showToast('Push completed successfully', 'success');
+			// CI status will update via event bus after push
+		} catch (err) {
+			showToast('Failed to push: ' + err, 'error');
+		}
+	}
+
+	async function refreshCiManually(execution: Execution) {
+		try {
+			showToast('Refreshing CI status...', 'info');
+			await api.ci.refreshStatus(execution.id);
+			// CI status will update via event bus
+			showToast('CI status refreshed', 'success');
+		} catch (err) {
+			showToast('Failed to refresh CI: ' + err, 'error');
+		}
+	}
+
+	async function refreshAllCiManually() {
+		if (!currentRevision) return;
+		
+		const revisionExecutions = executionsWithUpdates.filter(
+			e => e.revisionId === currentRevision?.id && e.commitStatus === 'committed'
+		);
+		
+		if (revisionExecutions.length === 0) {
+			showToast('No committed executions to refresh', 'info');
+			return;
+		}
+		
+		try {
+			showToast(`Refreshing CI status for ${revisionExecutions.length} execution(s)...`, 'info');
+			await Promise.all(
+				revisionExecutions.map(execution => api.ci.refreshStatus(execution.id))
+			);
+			showToast('All CI statuses refreshed', 'success');
+		} catch (err) {
+			showToast('Failed to refresh CI: ' + err, 'error');
 		}
 	}
 
@@ -670,16 +743,25 @@
 	<!-- Desktop App Layout -->
 	<div class="flex flex-col h-full overflow-hidden">
 		<!-- Top Header -->
-		<div class="flex-shrink-0 border-b border-border/40">
-			<PromptSetHeader
-				promptSet={currentPromptSet}
-				{repositories}
-				onEditRepos={async () => {
-					editingRepos = await loadEditingRepos();
-					editReposOpen = true;
-				}}
-				onEditValidation={() => editValidationOpen = true}
-			/>
+		<div class="flex-shrink-0 border-b border-border/20">
+			<div class="flex items-stretch divide-x divide-border/20">
+				<div class="flex-shrink-0">
+					<PromptSetHeader
+						promptSet={currentPromptSet}
+						{repositories}
+						onEditRepos={async () => {
+							editingRepos = await loadEditingRepos();
+							editReposOpen = true;
+						}}
+						onEditValidation={() => {}}
+					/>
+				</div>
+				{#if revisionHeaderProps}
+					<div class="flex-1 min-w-0">
+						<RevisionHeader {...revisionHeaderProps} />
+					</div>
+				{/if}
+			</div>
 		</div>
 
 		<!-- Main Content: Sidebar + Detail -->
@@ -707,10 +789,9 @@
 					executions={executionsWithUpdates.filter(e => e.revisionId === currentRevision!.id)}
 					{repositories}
 					hasValidationPrompt={!!currentPromptSet.validationPrompt}
-					onExecuteAll={() => executeRevision(currentRevision!)}
-					onStopAll={stopAllExecutions}
-					onStopAllValidations={stopAllValidations}
-					onDelete={() => deleteRevisionWithConfirm(currentRevision!)}
+					validationPrompt={currentPromptSet.validationPrompt}
+					autoValidate={currentPromptSet.autoValidate}
+					onSaveValidation={saveValidationPrompt}
 					onDeleteExecution={deleteExecutionWithConfirm}
 					onValidateExecution={validateExecutionManually}
 					onStopExecution={stopExecutionManually}
@@ -720,9 +801,12 @@
 						diffViewerExecutionId = executionId;
 						diffViewerOpen = true;
 					}}
+					onPushExecution={pushExecutionManually}
+					onRefreshCi={refreshCiManually}
 					onBulkDelete={bulkDeleteExecutions}
 					onBulkRestart={bulkRestartExecutions}
 					onBulkRevalidate={bulkRevalidateExecutions}
+					onExecuteAll={() => executeRevision(currentRevision!)}
 				/>
 			{:else}
 				<div class="flex-1 flex items-center justify-center">
@@ -736,13 +820,6 @@
 	</div>
 
 	<!-- Dialogs -->
-	<EditValidationDialog
-		bind:open={editValidationOpen}
-		validationPrompt={currentPromptSet.validationPrompt || ''}
-		autoValidate={currentPromptSet.autoValidate}
-		onSave={saveValidationPrompt}
-	/>
-
 	<EditRepositoriesDialog
 		bind:open={editReposOpen}
 		currentRepos={editingRepos}

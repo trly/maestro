@@ -142,7 +142,7 @@
 </script>
 
 {#if step === 'create'}
-	<div class="bg-card border border-border rounded-lg p-8 mb-6">
+	<div class="bg-card border border-border/30 rounded-lg p-8 mb-6">
 		<h2 class="text-2xl font-bold text-foreground mb-5">Create Prompt Set</h2>
 		
 		<FormField
@@ -185,7 +185,7 @@
 {/if}
 
 {#if step === 'prompt' && currentPromptSet}
-	<div class="bg-card border border-border rounded-lg p-8 mb-6">
+	<div class="bg-card border border-border/30 rounded-lg p-8 mb-6">
 		<div class="flex items-center justify-between mb-5">
 			<h2 class="text-2xl font-bold text-foreground">{currentPromptSet.name}</h2>
 			<span class="text-sm text-muted-foreground">
@@ -239,13 +239,13 @@
 		<button
 		onclick={() => saveRevision(false)}
 		disabled={!promptText.trim() || isRunning}
-		class="w-full sm:w-auto px-6 py-3.5 border border-primary text-primary rounded-md hover:bg-primary/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+		class="w-full sm:w-auto px-6 py-3.5 border border-primary/50 text-primary rounded-md hover:bg-primary/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
 		>
 		{revisions.length === 0 ? 'Create Only' : 'Save Only'}
 		</button>
 		<button
 		onclick={startOver}
-		class="w-full sm:w-auto px-6 py-3.5 border border-border text-foreground rounded-md hover:bg-accent transition-all font-semibold"
+		class="w-full sm:w-auto px-6 py-3.5 border border-border/30 text-foreground rounded-md hover:bg-accent transition-all font-semibold"
 		>
 		Cancel
 			</button>

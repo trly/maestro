@@ -6,6 +6,16 @@ fn get_entry(key: &str) -> Result<Entry, String> {
     Entry::new(SERVICE_NAME, key).map_err(|e| format!("Failed to access keyring: {}", e))
 }
 
+/// Internal helper to get token value (not a Tauri command)
+pub(crate) fn get_token_value(key: &str) -> Result<Option<String>, String> {
+    let entry = get_entry(key)?;
+    match entry.get_password() {
+        Ok(password) => Ok(Some(password)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(format!("Failed to retrieve token: {}", e))
+    }
+}
+
 #[tauri::command]
 pub fn set_token(key: String, value: String) -> Result<(), String> {
     let entry = get_entry(&key)?;
