@@ -42,6 +42,32 @@ AI-powered orchestrator for running prompts across multiple repositories using A
    bun run dev
    ```
 
+### Production Installation
+
+1. **Build the installer:**
+   ```bash
+   bun run build
+   ```
+
+2. **Install the app:**
+
+   **macOS:**
+   ```bash
+   # Option 1: Install from DMG (recommended)
+   open src-tauri/target/release/bundle/dmg/*.dmg
+   # Drag Maestro.app to Applications folder
+   
+   # Option 2: Run directly from bundle
+   open src-tauri/target/release/bundle/macos/Maestro.app
+   ```
+
+   **Linux (Debian/Ubuntu):**
+   ```bash
+   sudo dpkg -i src-tauri/target/release/bundle/deb/*.deb
+   # Launch from application menu or run:
+   maestro
+   ```
+
 ## Commands
 
 | Command | Description |
@@ -160,6 +186,20 @@ subscribeToExecutions() // Call once at app init
 import { fetchDiff } from '$lib/stores/diffStore'
 const files = await fetchDiff(executionId)
 ```
+
+## Troubleshooting
+
+### Keychain Access Prompts in Dev Mode
+
+**Issue:** macOS prompts for keychain access every time you run `bun run dev`, even after selecting "Always Allow".
+
+**Cause:** In development mode, the Tauri app isn't code-signed, so macOS treats each run as potentially different.
+
+**Workarounds:**
+- **Accept the prompt** - It's annoying but harmless during development
+- **Manual keychain config** - Open Keychain Access.app → find `dev.trly.maestro` entries → double-click → add the dev binary to "Always allow access"
+
+**Built apps:** This issue does **not** affect installed apps from `bun run build`. The "Always Allow" setting persists in production builds.
 
 ## Contributing
 
