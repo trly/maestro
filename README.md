@@ -113,8 +113,15 @@ User creates Prompt Set → Selects repositories → Executes Revision
 
 ### File System Layout
 
+Maestro uses platform-specific app data directories:
+
+- **macOS**: `~/Library/Application Support/dev.trly.maestro/`
+- **Linux**: `~/.local/share/maestro/`
+- **Windows**: `%APPDATA%\dev.trly.maestro\`
+- **Custom**: Set `MAESTRO_CONFIG` environment variable to override
+
 ```
-~/maestro/
+{app_data_dir}/
 ├── maestro.db              # SQLite database
 ├── repos/                  # Admin clones (permanent)
 │   └── owner/
