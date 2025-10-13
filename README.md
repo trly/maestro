@@ -1,8 +1,8 @@
 # Maestro
 
-AI-powered orchestrator for running prompts across multiple repositories using Amp AI.
+AI-powered orchestrator for running prompts across multiple repositories using [Amp](https://ampcode.com).
 
-**Built with SvelteKit + Tauri 2.0** for native desktop performance.
+**Built with SvelteKit + Tauri 2.0**
 
 ## Quick Start
 
