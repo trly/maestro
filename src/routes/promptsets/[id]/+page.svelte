@@ -3,9 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount, onDestroy } from 'svelte';
 	import DiffViewer from '$lib/components/DiffViewer.svelte';
-	import PromptSetHeader from '$lib/components/ui/PromptSetHeader.svelte';
 	import RevisionHeader from '$lib/components/ui/RevisionHeader.svelte';
-	import RevisionSidebar from '$lib/components/ui/RevisionSidebar.svelte';
 	import RevisionDetail from '$lib/components/ui/RevisionDetail.svelte';
 
 	import EditRepositoriesDialog from '$lib/components/ui/EditRepositoriesDialog.svelte';
@@ -113,6 +111,13 @@
 
 	const promptsetId = $derived($page.params.id);
 	const revisionParam = $derived($page.url.searchParams.get('revision'));
+	
+	// Reload prompt set when promptsetId changes
+	$effect(() => {
+		if (promptsetId) {
+			loadPromptSet();
+		}
+	});
 
 	async function loadPromptSet() {
 		if (!promptsetId) return;
@@ -133,20 +138,29 @@
 
 			await backfillMissingStats();
 
+			// After loading revisions, check if we need to load a specific revision
 			if (revisionParam) {
 				const revision = revisions.find(r => r.id === revisionParam || toShortHash(r.id) === revisionParam);
 				if (revision) {
 					await viewRevisionExecutions(revision);
 				}
-			} else if (revisions.length > 0) {
-				// Auto-select most recent revision (first in list)
-				await viewRevisionExecutions(revisions[0]);
 			}
 		} catch (err) {
 			showToast('Failed to load prompt set: ' + err, 'error');
 			goto('/');
 		}
 	}
+	
+	// Watch for revision parameter changes
+	$effect(() => {
+		const param = revisionParam;
+		if (!param || revisions.length === 0) return;
+		
+		const revision = revisions.find(r => r.id === param || toShortHash(r.id) === param);
+		if (revision && (!currentRevision || revision.id !== currentRevision.id)) {
+			viewRevisionExecutions(revision);
+		}
+	});
 
 	async function viewRevisionExecutions(revision: PromptRevision) {
 		currentRevision = revision;
@@ -696,8 +710,6 @@
 	let unlistenCommit: (() => void) | null = null;
 
 	onMount(async () => {
-		loadPromptSet();
-
 		const { listen } = await import('@tauri-apps/api/event');
 		unlistenCommit = await listen<{ executionId: string; commitStatus: string; commitSha?: string; committedAt?: number | null }>('execution:commit', (event) => {
 			const idx = executions.findIndex(e => e.id === event.payload.executionId);
@@ -742,47 +754,15 @@
 {#if currentPromptSet}
 	<!-- Desktop App Layout -->
 	<div class="flex flex-col h-full overflow-hidden">
-		<!-- Top Header -->
-		<div class="flex-shrink-0 border-b border-border/20">
-			<div class="flex items-stretch divide-x divide-border/20">
-				<div class="flex-shrink-0">
-					<PromptSetHeader
-						promptSet={currentPromptSet}
-						{repositories}
-						onEditRepos={async () => {
-							editingRepos = await loadEditingRepos();
-							editReposOpen = true;
-						}}
-						onEditValidation={() => {}}
-					/>
-				</div>
-				{#if revisionHeaderProps}
-					<div class="flex-1 min-w-0">
-						<RevisionHeader {...revisionHeaderProps} />
-					</div>
-				{/if}
+		<!-- Top Header: Revision Header Only -->
+		{#if revisionHeaderProps}
+			<div class="flex-shrink-0 border-b border-border/20">
+				<RevisionHeader {...revisionHeaderProps} />
 			</div>
-		</div>
+		{/if}
 
-		<!-- Main Content: Sidebar + Detail -->
-		<div class="flex-1 flex min-h-0">
-			<!-- Left Sidebar: Revisions List -->
-			<RevisionSidebar
-				{revisions}
-				{currentRevision}
-				{revisionStats}
-				hasValidationPrompt={!!currentPromptSet.validationPrompt}
-				onSelect={(revision) => {
-				if (revision) {
-				viewRevisionExecutions(revision);
-				} else {
-				currentRevision = null;
-				}
-				}}
-				onCreate={() => goto(`/create?promptset=${promptsetId}`)}
-			/>
-
-			<!-- Main Content Area: Selected Revision Detail -->
+		<!-- Main Content Area: Selected Revision Detail -->
+		<div class="flex-1 min-h-0">
 			{#if currentRevision}
 				<RevisionDetail
 					revision={currentRevision}
@@ -809,7 +789,7 @@
 					onExecuteAll={() => executeRevision(currentRevision!)}
 				/>
 			{:else}
-				<div class="flex-1 flex items-center justify-center">
+				<div class="flex items-center justify-center h-full">
 					<div class="text-center text-muted-foreground max-w-md">
 						<h3 class="text-lg font-semibold mb-2">Select a revision</h3>
 						<p class="text-sm">Choose a revision from the sidebar to view its executions and prompt details.</p>

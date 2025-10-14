@@ -2,21 +2,44 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import { Plus, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-svelte';
+	import { Plus, PanelLeftClose, PanelLeftOpen, Settings, ChevronDown } from 'lucide-svelte';
+	import { Accordion } from 'bits-ui';
 	import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
+	import UiScrollArea from '$lib/components/ui/UiScrollArea.svelte';
 	import { api } from '$lib/api';
 	import { showToast } from '$lib/ui/toast';
 	import { confirm } from '$lib/ui/confirm';
-	import type { PromptSet } from '$lib/types';
+	import { toShortHash } from '$lib/utils';
+	import type { PromptSet, PromptRevision } from '$lib/types';
 
 	let { collapsed = false, onToggleCollapse } = $props();
 
 	let allPromptSets = $state<PromptSet[]>([]);
+	let revisionsByPromptSet = $state<Map<string, PromptRevision[]>>(new Map());
+	let revisionStats = $state<Map<string, { total: number; running: number; completed: number; validationPassed: number }>>(new Map());
 	let isLoading = $state(true);
+	let accordionValue = $state<string[]>([]);
 
 	async function loadPromptSets() {
 		try {
 			allPromptSets = await api.promptSets.getAll();
+			
+			// Load revisions for each prompt set
+			for (const ps of allPromptSets) {
+				const revisions = await api.promptSets.getRevisions(ps.id);
+				revisionsByPromptSet.set(ps.id, revisions);
+				
+				// Load stats for each revision
+				for (const revision of revisions) {
+					const executions = await api.revisions.getExecutions(revision.id);
+					const total = executions.length;
+					const running = executions.filter(e => e.status === 'running').length;
+					const completed = executions.filter(e => e.status === 'completed').length;
+					const validationPassed = executions.filter(e => e.validationStatus === 'passed').length;
+					
+					revisionStats.set(revision.id, { total, running, completed, validationPassed });
+				}
+			}
 		} catch (err) {
 			showToast('Failed to load prompt sets: ' + err, 'error');
 		} finally {
@@ -52,6 +75,8 @@
 		}
 	}
 
+	let hasAutoNavigated = $state(false);
+
 	onMount(loadPromptSets);
 	
 	$effect(() => {
@@ -59,7 +84,33 @@
 		loadPromptSets();
 	});
 
-	const isActive = (id: string) => $page.url.pathname.startsWith(`/promptsets/${id}`);
+	// Auto-select newest revision when first landing on a prompt set without a revision
+	$effect(() => {
+		const currentPath = $page.url.pathname;
+		const currentRevisionParam = $page.url.searchParams.get('revision');
+		
+		// Only auto-navigate once when we're on a prompt set page without a revision
+		const promptSetMatch = currentPath.match(/^\/promptsets\/([^\/]+)$/);
+		if (promptSetMatch && !currentRevisionParam && !hasAutoNavigated) {
+			const promptSetId = promptSetMatch[1];
+			const revisions = revisionsByPromptSet.get(promptSetId);
+			
+			// If this prompt set has revisions, navigate to the newest one
+			if (revisions && revisions.length > 0) {
+				const newestRevision = revisions[0]; // Revisions are already sorted by createdAt desc
+				goto(`/promptsets/${promptSetId}?revision=${newestRevision.id}`, { replaceState: true });
+				hasAutoNavigated = true;
+			}
+		}
+		
+		// Reset flag when navigating away or to a different prompt set
+		if (currentRevisionParam || !promptSetMatch) {
+			hasAutoNavigated = false;
+		}
+	});
+
+	const isPromptSetActive = (id: string) => $page.url.pathname.startsWith(`/promptsets/${id}`);
+	const isRevisionActive = (revisionId: string) => $page.url.searchParams.get('revision') === revisionId || $page.url.searchParams.get('revision') === toShortHash(revisionId);
 </script>
 
 <div class="h-full flex flex-col bg-card">
@@ -142,62 +193,134 @@
 
 	<!-- Content -->
 	{#if !collapsed}
-		<div class="flex-1 overflow-y-auto p-2 space-y-1">
-		{#if isLoading}
-			<div class="space-y-1.5">
-				{#each Array(3) as _}
-					<div class="p-2 border border-border/20 rounded-lg animate-pulse">
-						<div class="h-3 bg-gray-200 rounded w-3/4 mb-1.5"></div>
-						<div class="h-2 bg-gray-200 rounded w-1/2"></div>
+		<UiScrollArea class="flex-1">
+			<div class="p-2">
+				{#if isLoading}
+					<div class="space-y-1.5">
+						{#each Array(3) as _}
+							<div class="p-2 border border-border/20 rounded-lg animate-pulse">
+								<div class="h-3 bg-gray-200 rounded w-3/4 mb-1.5"></div>
+								<div class="h-2 bg-gray-200 rounded w-1/2"></div>
+							</div>
+						{/each}
 					</div>
-				{/each}
-			</div>
-		{:else if allPromptSets.length === 0}
-			<div class="text-center py-6 text-muted-foreground">
-				<p class="mb-2 text-xs">No prompt sets yet</p>
-				<button
-					onclick={() => goto('/create')}
-					class="px-2.5 py-1.5 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-all text-xs"
-				>
-					Create your first prompt set
-				</button>
-			</div>
-		{:else}
-			{#each allPromptSets as ps}
-				<div class="group rounded-md border cursor-pointer transition-all {isActive(ps.id) ? 'bg-primary/10 border-primary' : 'border-transparent hover:border-muted hover:bg-muted/50'}">
-					<div class="flex items-start justify-between gap-1.5 p-2">
+				{:else if allPromptSets.length === 0}
+					<div class="text-center py-6 text-muted-foreground">
+						<p class="mb-2 text-xs">No prompt sets yet</p>
 						<button
-							onclick={() => goto(`/promptsets/${ps.id}`)}
-							class="flex-1 text-left min-w-0"
+							onclick={() => goto('/create')}
+							class="px-2.5 py-1.5 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-all text-xs"
 						>
-							<h3 class="font-medium text-foreground text-xs truncate">
-								{ps.name}
-							</h3>
-							<p class="text-[10px] text-muted-foreground mt-0.5">
-								{ps.repositoryIds.length} {ps.repositoryIds.length === 1 ? 'repo' : 'repos'}
-							</p>
+							Create your first prompt set
 						</button>
-						<UiTooltip content="Delete prompt set">
-							{#snippet children({ props })}
-								<button
-									{...props}
-									onclick={(e) => {
-										e.stopPropagation();
-										deletePromptSetWithConfirm(ps);
-									}}
-									class="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all flex-shrink-0"
-									aria-label="Delete prompt set"
-								>
-									<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-									</svg>
-								</button>
-							{/snippet}
-						</UiTooltip>
 					</div>
-				</div>
-			{/each}
-		{/if}
-		</div>
+				{:else}
+					<Accordion.Root type="multiple" bind:value={accordionValue} class="space-y-1">
+						{#each allPromptSets as ps (ps.id)}
+							{@const revisions = revisionsByPromptSet.get(ps.id) || []}
+							{@const isActive = isPromptSetActive(ps.id)}
+							
+							<Accordion.Item 
+								value={ps.id}
+								class="rounded-md border transition-all {isActive ? 'border-primary bg-primary/5' : 'border-transparent'}"
+							>
+								<Accordion.Header>
+									<Accordion.Trigger
+										class="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left hover:bg-muted/50 rounded-md transition-colors group"
+									>
+										<div class="flex-1 min-w-0">
+											<h3 class="font-medium text-foreground text-xs truncate">
+												{ps.name}
+											</h3>
+											<p class="text-[10px] text-muted-foreground mt-0.5">
+												{ps.repositoryIds.length} {ps.repositoryIds.length === 1 ? 'repo' : 'repos'}
+												· {revisions.length} {revisions.length === 1 ? 'revision' : 'revisions'}
+											</p>
+										</div>
+										
+										<div class="flex items-center gap-1">
+											<UiTooltip content="Delete prompt set">
+												{#snippet children({ props })}
+													<button
+														{...props}
+														onclick={(e) => {
+															e.stopPropagation();
+															deletePromptSetWithConfirm(ps);
+														}}
+														class="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+														aria-label="Delete prompt set"
+													>
+														<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+														</svg>
+													</button>
+												{/snippet}
+											</UiTooltip>
+											<ChevronDown class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+										</div>
+									</Accordion.Trigger>
+								</Accordion.Header>
+								
+								<Accordion.Content class="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+									<div class="pl-3 pr-2 pb-1 pt-1 space-y-0.5">
+										{#if revisions.length === 0}
+											<div class="px-2 py-2 text-[10px] text-muted-foreground italic text-center">
+												No revisions yet
+											</div>
+										{:else}
+											{#each revisions as revision (revision.id)}
+												{@const stats = revisionStats.get(revision.id)}
+												{@const isRevActive = isRevisionActive(revision.id)}
+												
+												<button
+													onclick={() => goto(`/promptsets/${ps.id}?revision=${revision.id}`)}
+													class={`w-full text-left px-2 py-1 rounded-md transition-all flex items-center gap-2 ${
+														isRevActive ? 'bg-primary/10 border border-primary' : 'hover:bg-muted/50 border border-transparent'
+													}`}
+												>
+													<span class="text-[10px] text-muted-foreground flex-shrink-0">
+														{new Date(revision.createdAt).toLocaleString()}
+													</span>
+													
+													{#if stats && stats.total > 0}
+														<div class="flex items-center gap-2 text-[10px] min-w-0 ml-auto">
+															<!-- Executions -->
+															<div class="flex items-center gap-1">
+																<span class="text-muted-foreground">Ex:</span>
+																<span class="font-medium">
+																	{stats.completed}/{stats.total}
+																</span>
+															</div>
+															
+															{#if stats.running > 0}
+																<div class="flex items-center gap-1 text-blue-600">
+																	<div class="w-1 h-1 rounded-full bg-blue-600 animate-pulse"></div>
+																	<span>{stats.running}</span>
+																</div>
+															{/if}
+
+															{#if ps.validationPrompt && stats.completed > 0}
+																<div class="flex items-center gap-1">
+																	<span class="text-muted-foreground">V:</span>
+																	<span class="font-medium text-green-600">
+																		{stats.validationPassed}/{stats.completed}
+																	</span>
+																</div>
+															{/if}
+														</div>
+													{:else}
+														<span class="text-[10px] text-muted-foreground italic ml-auto">Not executed</span>
+													{/if}
+												</button>
+											{/each}
+										{/if}
+									</div>
+								</Accordion.Content>
+							</Accordion.Item>
+						{/each}
+					</Accordion.Root>
+				{/if}
+			</div>
+		</UiScrollArea>
 	{/if}
 </div>
