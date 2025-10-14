@@ -33,18 +33,16 @@
 
 {#if icon}
 	<UiTooltip content={props.ciUrl ? `${icon.label} - Click to view` : (props.onRefresh && props.ciStatus !== 'skipped' && props.ciStatus !== 'not_configured') ? `${icon.label} - Click to refresh` : icon.label}>
-		{#snippet children({ tooltipProps })}
+		{#snippet children({ props: triggerProps })}
 			{@const Icon = icon.Icon}
-			<div {...tooltipProps}>
-				<button
-					onclick={handleClick}
-					class="flex items-center gap-1.5 hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-					disabled={!props.ciUrl && !props.onRefresh}
-				>
-					<Icon class={`w-4 h-4 ${icon.class}`} />
-					<span class="text-xs {props.ciStatus === 'skipped' || props.ciStatus === 'not_configured' ? 'text-muted-foreground/60' : 'text-muted-foreground'}">{props.ciStatus === 'skipped' || props.ciStatus === 'not_configured' ? 'No CI' : 'CI'}</span>
-				</button>
-			</div>
+			<button
+				{...triggerProps}
+				onclick={handleClick}
+				class="flex items-center hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+				disabled={!props.ciUrl && !props.onRefresh}
+			>
+				<Icon class={`w-4 h-4 ${icon.class}`} />
+			</button>
 		{/snippet}
 	</UiTooltip>
 {/if}
