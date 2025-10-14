@@ -133,6 +133,10 @@ pub fn run() {
       commands::settings::set_setting,
       commands::settings::get_ci_stuck_threshold_minutes,
       commands::worktree::open_worktree_in_editor,
+      commands::worktree::open_worktree_with_terminal,
+      commands::app_check::get_available_editors,
+      commands::app_check::get_available_terminals,
+      commands::app_check::check_app_installed,
     ])
     .plugin(tauri_plugin_notification::init())
     .plugin(tauri_plugin_shell::init())

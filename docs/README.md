@@ -4,68 +4,172 @@
 
 New to Maestro? Start here:
 
-1. **[SSH Authentication](ssh-authentication.md)** - Set up SSH for repository access (required for first-time setup)
-2. **[IPC Guide](ipc-guide.md)** - Learn how to call backend commands from the frontend
-3. **[Reactivity Guide](reactivity.md)** - Svelte 5 runes mode patterns and best practices
+1. **[Architecture Overview](./architecture.md)** - Understand the system design and core domains
+2. **[SSH Authentication](./ssh-authentication.md)** - Set up SSH for repository access (required)
+3. **[IPC Guide](./ipc-guide.md)** - Learn type-safe backend communication
+4. **[Reactivity Guide](./reactivity.md)** - Svelte 5 runes mode patterns
 
-## Architecture Guides
+## Core Domain Guides
 
-### [IPC Guide](ipc-guide.md)
-**When to read:** When adding new features that need backend communication
+### [Architecture Overview](./architecture.md)
 
-Centralized IPC layer for type-safe Tauri command invocations. Covers:
-- Common patterns and examples
-- Error handling
-- API reference for all commands
-- Migration from direct `invoke()` calls
+**Read first for system-wide understanding**
 
-### [Execution Event Bus](execution-event-bus.md)
-**When to read:** When building UI that needs real-time execution updates
+Complete architectural overview covering:
 
-Real-time event system for execution state changes. Covers:
-- Subscribing to execution events
-- Live progress updates
-- State management patterns
+- Technology stack (Tauri + SvelteKit)
+- Core domain models (Repositories, Prompt Sets, Revisions, Executions)
+- Data flow architecture (IPC, Event Bus, Reactivity)
+- Security architecture (Keyring, SSH)
+- File system layout
+- Concurrency & safety patterns
 
-### [Diff Architecture](diff-architecture.md)
-**When to read:** When working with file diffs or git operations
+### [Prompt Sets](./prompt-sets.md)
 
-Unified diff retrieval system for committed and uncommitted changes. Covers:
+**When to read:** Working with prompt sets, revisions, or repositories
+
+Covers the organizational layer:
+
+- Creating and managing prompt sets
+- Prompt revision DAG structure
+- Repository management
+- Executing revisions against repositories
+- Query API and UI components
+
+### [Executions & Validations](./executions.md)
+
+**When to read:** Working with execution lifecycle, validation, or commits
+
+Complete execution lifecycle:
+
+- Worktree creation and isolation
+- Real-time status tracking
+- Validation flow
+- Commit and push operations
+- Cancellation and resume
+- Bulk operations
+- Error handling and reconciliation
+
+### [Change Tracking](./change-tracking.md)
+
+**When to read:** Working with diffs, file changes, or change statistics
+
+How Maestro tracks code changes:
+
+- Diff architecture (committed vs worktree)
 - Backend diff module (`diff.rs`)
 - Frontend diff store with caching
-- How to fetch and display diffs
+- Diff statistics calculation
+- File-level diff viewing
 
-### [Diff Stats](diff-stats.md)
-**When to read:** When working with execution statistics or change tracking
+### [CI Tracking](./ci-tracking.md)
 
-How file change statistics are calculated and displayed. Covers:
-- Stats calculation during execution and after commit
-- Database storage and retrieval
-- Frontend display in ExecutionRow
-- Why stats are calculated multiple times
+**When to read:** Working with CI integration or GitHub API
 
-### [Reactivity Guide](reactivity.md)
-**When to read:** When building reactive UI components with Svelte 5
+GitHub CI/CD integration:
 
-Comprehensive guide to Svelte 5 runes mode and reactive patterns. Covers:
-- Core reactivity primitives (`$state`, `$derived`, `$props`)
-- Event bus integration patterns
+- CI status states (pending, passed, failed, not_configured)
+- Workflow from commit → push → CI check
+- Status aggregation (GitHub Actions + Commit Statuses)
+- Polling strategy and rate limits
+- UI components (badges, status display)
+
+## Infrastructure Guides
+
+### [IPC Guide](./ipc-guide.md)
+
+**When to read:** Adding new Tauri commands or backend features
+
+Centralized type-safe IPC layer:
+
+- Common patterns and examples
+- Error handling with `TauriIPCError`
+- Complete API reference (repositories, prompt sets, executions, tokens)
+- Migration from direct `invoke()` calls
+
+### [Execution Event Bus](./execution-event-bus.md)
+
+**When to read:** Building UI that needs real-time execution updates
+
+Real-time event system:
+
+- Subscribing to execution events
+- Supported events (session, status, validation, commit, progress, CI)
+- Reactive execution state patterns
+- Manual event handling
+- Backend event emission
+
+### [Reactivity Guide](./reactivity.md)
+
+**When to read:** Building reactive UI components with Svelte 5
+
+Comprehensive Svelte 5 patterns:
+
+- Core primitives (`$state`, `$derived`, `$props`)
+- Maestro-specific patterns (event bus integration)
 - Anti-patterns to avoid
-- Migration from Svelte 4 stores
 - Working with bits-ui components
+- Migration from Svelte 4 stores
 
 ## Setup & Configuration
 
-### [SSH Authentication](ssh-authentication.md)
-**When to read:** During initial setup or when troubleshooting git operations
+### [Settings & Configuration](./settings.md)
 
-Complete guide to SSH setup for GitHub repositories. Covers:
-- SSH key generation and setup
+**When to read:** Configuring editors, terminals, or CI preferences
+
+User settings and preferences:
+
+- Available settings (editor, terminal, CI threshold)
+- Settings store initialization
+- Editor and terminal detection
+- Opening worktrees with configured tools
+- Best practices and fallback behavior
+
+### [SSH Authentication](./ssh-authentication.md)
+
+**When to read:** During initial setup or troubleshooting git operations
+
+SSH setup for GitHub repositories:
+
+- SSH key generation and configuration
 - Adding keys to GitHub and ssh-agent
-- Common troubleshooting steps
 - How Maestro uses SSH internally
+- Troubleshooting common issues
+
+### [Distribution](./distribution.md)
+
+**When to read:** Preparing releases or distributing the app
+
+App distribution guide:
+
+- Apple Developer account requirements
+- Code signing and notarization
+- GitHub Actions CI/CD setup
+- Manual build and distribution
+- Troubleshooting signing issues
+
+## Additional References
+
+### [Change Tracking Stats](./change-tracking-stats.md)
+
+Detailed dive into statistics calculation:
+
+- On-demand stats retrieval
+- Frontend caching strategy
+- Why stats aren't stored in database
+- Display in ExecutionRow component
 
 ## Related Files
 
 - **[AGENTS.md](../AGENTS.md)** - Commands, architecture, and conventions for AI agents
 - **[README.md](../README.md)** - Project overview and getting started
+
+## Documentation Standards
+
+When updating docs:
+
+1. **Verify accuracy** - Check against current codebase
+2. **Include examples** - Show TypeScript/Rust code snippets
+3. **Link related docs** - Help users discover related concepts
+4. **Update this index** - Keep README.md in sync
+5. **Follow domain structure** - Organize by core domain (not implementation detail)

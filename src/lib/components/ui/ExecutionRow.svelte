@@ -142,8 +142,7 @@
 
 	async function handleOpenInEditor() {
 		try {
-			const editorCmd = $settingsStore.editorCommand || 'code';
-			await openInEditor(liveExecution, editorCmd);
+			await openInEditor(liveExecution);
 		} catch (error) {
 			console.error('Failed to open in editor:', error);
 		}

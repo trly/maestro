@@ -1,6 +1,6 @@
-# CI Tracking
+# CI Integration
 
-Maestro integrates with GitHub's CI/CD systems to track whether pushed commits pass all configured checks.
+Maestro integrates with GitHub's CI/CD systems to validate that pushed commits pass all configured checks.
 
 ## Overview
 

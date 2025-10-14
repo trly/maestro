@@ -470,6 +470,23 @@ export async function openWorktreeInEditor(
 	})
 }
 
+/**
+ * Open worktree in editor with terminal wrapper
+ */
+export async function openWorktreeWithTerminal(
+	promptsetId: string,
+	executionId: string,
+	editorCommand: string,
+	terminalCommand: string
+): Promise<void> {
+	return invokeCommand<void>('open_worktree_with_terminal', {
+		promptsetId,
+		executionId,
+		editorCommand,
+		terminalCommand
+	})
+}
+
 // ============================================================================
 // CI Commands
 // ============================================================================
@@ -518,4 +535,40 @@ export async function setSetting(key: string, value: string): Promise<void> {
  */
 export async function getCiStuckThresholdMinutes(): Promise<number> {
 	return invokeCommand<number>('get_ci_stuck_threshold_minutes', {})
+}
+
+// ============================================================================
+// Application Check Commands
+// ============================================================================
+
+export interface AppInfo {
+	command: string
+	displayName: string
+	needsTerminal: boolean
+}
+
+export interface TerminalInfo {
+	command: string
+	displayName: string
+}
+
+/**
+ * Get list of available/installed editors
+ */
+export async function getAvailableEditors(): Promise<AppInfo[]> {
+	return invokeCommand<AppInfo[]>('get_available_editors')
+}
+
+/**
+ * Get list of available/installed terminal apps
+ */
+export async function getAvailableTerminals(): Promise<TerminalInfo[]> {
+	return invokeCommand<TerminalInfo[]>('get_available_terminals')
+}
+
+/**
+ * Check if a specific app/command is installed
+ */
+export async function checkAppInstalled(command: string): Promise<boolean> {
+	return invokeCommand<boolean>('check_app_installed', { command })
 }

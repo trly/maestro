@@ -1,6 +1,6 @@
-# Diff Architecture
+# Change Tracking
 
-Unified system for retrieving git diffs from both committed history and live worktrees.
+Unified system for tracking file changes (diffs) and statistics from both committed history and live worktrees.
 
 ## Overview
 

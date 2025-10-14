@@ -3,6 +3,9 @@
 	import { tokenStore, type TokenKey } from '$lib/tokenStore';
 	import { themeStore, type Theme } from '$lib/stores/themeStore.svelte';
 	import { settingsStore } from '$lib/stores/settingsStore';
+	import * as ipc from '$lib/ipc';
+	import { Select } from 'bits-ui';
+	import { Check, ChevronDown } from 'lucide-svelte';
 
 	let ampToken = $state('');
 	let githubToken = $state('');
@@ -18,9 +21,19 @@
 	let editorCommand = $state('code');
 	let editingEditorCommand = $state(false);
 	let editorCommandInput = $state('code');
+	
+	let availableEditors = $state<ipc.AppInfo[]>([]);
+	let availableTerminals = $state<ipc.TerminalInfo[]>([]);
+	let selectedEditorValue = $state<string>('');
+	let selectedTerminalValue = $state<string>('');
 
 	// Derive currentTheme from themeStore
 	let currentTheme = $derived(themeStore.current);
+	
+	// Find if selected editor needs terminal
+	let editorNeedsTerminal = $derived(
+		availableEditors.find(e => e.command === selectedEditorValue)?.needsTerminal ?? false
+	);
 
 	onMount(async () => {
 		try {
@@ -30,6 +43,10 @@
 			githubTokenMasked = githubMasked || '';
 			
 			await settingsStore.load();
+			
+			// Load available editors and terminals
+			availableEditors = await ipc.getAvailableEditors();
+			availableTerminals = await ipc.getAvailableTerminals();
 		} finally {
 			loading = false;
 		}
@@ -39,6 +56,8 @@
 			ciThresholdInput = settings.ciStuckThresholdMinutes.toString();
 			editorCommand = settings.editorCommand;
 			editorCommandInput = settings.editorCommand;
+			selectedEditorValue = settings.selectedEditor || '';
+			selectedTerminalValue = settings.selectedTerminal || '';
 		});
 	});
 
@@ -162,6 +181,30 @@
 	function cancelEditorCommandEdit() {
 		editorCommandInput = editorCommand;
 		editingEditorCommand = false;
+	}
+	
+	async function handleEditorChange(value: string | undefined) {
+		if (!value) return;
+		try {
+			await settingsStore.setSelectedEditor(value);
+			saveStatus = { type: 'success', message: 'Editor preference saved' };
+			setTimeout(() => saveStatus = null, 3000);
+		} catch (error) {
+			saveStatus = { type: 'error', message: `Failed to save: ${error}` };
+			setTimeout(() => saveStatus = null, 5000);
+		}
+	}
+	
+	async function handleTerminalChange(value: string | undefined) {
+		if (!value) return;
+		try {
+			await settingsStore.setSelectedTerminal(value);
+			saveStatus = { type: 'success', message: 'Terminal preference saved' };
+			setTimeout(() => saveStatus = null, 3000);
+		} catch (error) {
+			saveStatus = { type: 'error', message: `Failed to save: ${error}` };
+			setTimeout(() => saveStatus = null, 5000);
+		}
 	}
 </script>
 
@@ -318,57 +361,90 @@
 					</p>
 
 					<div class="space-y-6">
+						<!-- Editor Selection -->
 						<div>
-							<label for="editor-command-input" class="block text-sm font-medium mb-2">Editor Command</label>
+							<label for="editor-select" class="block text-sm font-medium mb-2">Preferred Editor</label>
 							<p class="text-xs text-muted-foreground mb-2">
-								Command to open worktrees in your editor (e.g., <code>code</code>, <code>cursor</code>, <code>subl</code>)
+								Choose your preferred editor for opening worktrees
 							</p>
-							<div class="flex flex-col sm:flex-row gap-2">
-								{#if editingEditorCommand}
-									<div class="flex-1">
-										<input
-											id="editor-command-input"
-											type="text"
-											bind:value={editorCommandInput}
-											placeholder="code"
-											class="w-full px-3 py-2 border rounded-md bg-background"
-										/>
-									</div>
-									<button
-										type="button"
-										onclick={saveEditorCommand}
-										class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+							{#if availableEditors.length > 0}
+								<Select.Root
+									type="single"
+									value={selectedEditorValue}
+									onValueChange={handleEditorChange}
+									items={availableEditors.map(e => ({ value: e.command, label: e.displayName }))}
+								>
+									<Select.Trigger
+										id="editor-select"
+										class="w-full flex items-center justify-between px-3 py-2 border rounded-md bg-background hover:bg-muted/30 transition-colors"
 									>
-										Save
-									</button>
-									<button
-										type="button"
-										onclick={cancelEditorCommandEdit}
-										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+										<span>{availableEditors.find(e => e.command === selectedEditorValue)?.displayName || 'Select an editor'}</span>
+										<ChevronDown class="w-4 h-4 text-muted-foreground" />
+									</Select.Trigger>
+									<Select.Content
+										class="w-full bg-card border border-border/20 rounded-lg shadow-xl p-1 z-50"
+										sideOffset={4}
 									>
-										Cancel
-									</button>
-								{:else}
-									<div class="flex-1">
-										<input
-											type="text"
-											value={editorCommand}
-											disabled
-											class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-600"
-										/>
-									</div>
-									<button
-										type="button"
-										onclick={() => editingEditorCommand = true}
-										class="px-3 py-2 border rounded-md hover:bg-gray-50"
-									>
-										Update
-									</button>
-								{/if}
-							</div>
-							<p class="text-xs text-muted-foreground mt-2">
-								Make sure the command is in your PATH and can accept a directory argument
+										{#each availableEditors as editor (editor.command)}
+											<Select.Item
+												value={editor.command}
+												label={editor.displayName}
+												class="flex items-center justify-between px-3 py-2 text-sm rounded hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
+											>
+												<span>{editor.displayName}</span>
+												{#if selectedEditorValue === editor.command}
+													<Check class="w-4 h-4 text-primary" />
+												{/if}
+											</Select.Item>
+										{/each}
+									</Select.Content>
+								</Select.Root>
+							{:else}
+								<p class="text-sm text-muted-foreground">No supported editors found in PATH</p>
+							{/if}
+						</div>
+						
+						<!-- Terminal Selection -->
+						<div>
+							<label for="terminal-select" class="block text-sm font-medium mb-2">Terminal Application</label>
+							<p class="text-xs text-muted-foreground mb-2">
+								Choose terminal for vim/nvim (macOS only: Terminal or Ghostty)
 							</p>
+							{#if availableTerminals.length > 0}
+								<Select.Root
+									type="single"
+									value={selectedTerminalValue}
+									onValueChange={handleTerminalChange}
+									items={availableTerminals.map(t => ({ value: t.command, label: t.displayName }))}
+								>
+									<Select.Trigger
+										id="terminal-select"
+										class="w-full flex items-center justify-between px-3 py-2 border rounded-md bg-background hover:bg-muted/30 transition-colors"
+									>
+										<span>{availableTerminals.find(t => t.command === selectedTerminalValue)?.displayName || 'Select a terminal'}</span>
+										<ChevronDown class="w-4 h-4 text-muted-foreground" />
+									</Select.Trigger>
+									<Select.Content
+										class="w-full bg-card border border-border/20 rounded-lg shadow-xl p-1 z-50"
+										sideOffset={4}
+									>
+										{#each availableTerminals as terminal (terminal.command)}
+											<Select.Item
+												value={terminal.command}
+												label={terminal.displayName}
+												class="flex items-center justify-between px-3 py-2 text-sm rounded hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
+											>
+												<span>{terminal.displayName}</span>
+												{#if selectedTerminalValue === terminal.command}
+													<Check class="w-4 h-4 text-primary" />
+												{/if}
+											</Select.Item>
+										{/each}
+									</Select.Content>
+								</Select.Root>
+							{:else}
+								<p class="text-sm text-muted-foreground">No terminal applications found</p>
+							{/if}
 						</div>
 					</div>
 				</div>

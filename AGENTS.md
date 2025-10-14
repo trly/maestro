@@ -25,6 +25,7 @@
 2. **Prompt Revisions** - Versioned prompts executed against repositories
 3. **Executions** - Individual runs of a revision with worktree isolation
 4. **Validations** - Automated validation of execution results
+5. **Settings** - User preferences for editors, terminals, CI, and appearance
 
 ## Key Architectural Patterns
 
@@ -50,7 +51,7 @@ See @docs/execution-event-bus.md for event patterns.
 Unified diff access through backend module and frontend store:
 - Backend: `src-tauri/src/git/diff.rs` for all diff operations
 - Frontend: `src/lib/stores/diffStore.ts` for caching
-See @docs/diff-architecture.md for details.
+See @docs/change-tracking.md for details.
 
 ### Status Types
 Use type-safe enums (not strings) for all statuses:
@@ -302,6 +303,52 @@ let provider_clone = Arc::clone(&provider);
 - Use `REPO_LOCKS` mutex for concurrent safety
 - See @docs/ssh-authentication.md for SSH key setup
 
+## Settings & Configuration
+
+### Settings Store
+User settings are loaded globally at app startup in `+layout.svelte`:
+```typescript
+import { settingsStore } from '$lib/stores/settingsStore'
+
+onMount(async () => {
+  await settingsStore.load()  // Must be called on startup
+})
+```
+
+**Available Settings:**
+- `ciStuckThresholdMinutes` - CI timeout threshold (default: 10 minutes)
+- `selectedEditor` - Preferred editor command (e.g., "nvim", "code")
+- `selectedTerminal` - Terminal for vim/nvim (e.g., "ghostty", "open -a Terminal")
+- `editorCommand` - Legacy editor setting
+
+### Editor & Terminal Detection
+Maestro detects available editors/terminals on startup:
+```typescript
+// Frontend
+const editors = await ipc.getAvailableEditors()  // vim, nvim, code, cursor, zed
+const terminals = await ipc.getAvailableTerminals()  // Terminal.app, Ghostty (macOS)
+
+// Check if editor needs terminal
+const editorInfo = editors.find(e => e.command === 'nvim')
+if (editorInfo?.needsTerminal) {
+  // Requires terminal selection
+}
+```
+
+**Backend:** Uses `which` command to check PATH (`src-tauri/src/commands/app_check.rs`)
+
+### Opening Worktrees
+Always use `openInEditor` utility which reads settings:
+```typescript
+import { openInEditor } from '$lib/utils/worktree'
+
+await openInEditor(execution)  // Uses configured editor/terminal
+```
+
+**Critical:** Settings must be loaded in `+layout.svelte` before opening editors, otherwise falls back to default `'code'`.
+
+See @docs/settings.md for complete settings documentation.
+
 ## State Management Patterns
 
 ### Prevent Race Conditions
@@ -320,7 +367,7 @@ let provider_clone = Arc::clone(&provider);
 - **Committed executions**: Stats calculated from `get_committed_diff(parent_sha, commit_sha)`
 - **Uncommitted executions**: Stats calculated from `get_worktree_diff(worktree_path)`
 - **Frontend caching**: Stats cached per execution in `executionStats.ts` to avoid redundant IPC calls
-- See @docs/diff-stats.md for complete architecture
+- See @docs/change-tracking-stats.md for complete architecture
 
 ### Reactivity with Event Bus
 - Use `$derived` to merge event bus updates with local state arrays
@@ -376,13 +423,26 @@ check_ci_once(provider, ctx).await // Expects Arc<dyn CiProvider>
 
 ## Documentation Index
 
-For detailed guidance on specific topics, see:
-- @docs/README.md - Documentation index
-- @docs/reactivity.md - Svelte 5 runes mode and reactive patterns
-- @docs/ipc-guide.md - IPC command reference and patterns
-- @docs/execution-event-bus.md - Event handling architecture
-- @docs/diff-architecture.md - Diff access patterns
-- @docs/ssh-authentication.md - SSH setup for private repos
+For detailed guidance on specific topics, consult the domain-focused documentation:
+
+**Core Architecture & Domains:**
+- @docs/README.md - Complete documentation index with "when to read" guidance
+- @docs/architecture.md - System architecture, technology stack, data flow, security, concurrency patterns
+- @docs/prompt-sets.md - Prompt sets, revisions, repositories, DAG structure, execution triggering
+- @docs/executions.md - Execution lifecycle, validations, commits, cancellation, bulk operations
+- @docs/change-tracking.md - Diff architecture, worktree vs committed diffs, frontend caching
+- @docs/ci-tracking.md - GitHub CI integration, status aggregation, polling strategy
+
+**Infrastructure & Patterns:**
+- @docs/ipc-guide.md - Type-safe IPC layer, complete API reference, error handling
+- @docs/execution-event-bus.md - Real-time event system, subscription patterns, reactive updates
+- @docs/reactivity.md - Svelte 5 runes mode, event bus integration, anti-patterns
+
+**Setup & Additional:**
+- @docs/settings.md - User settings, editor/terminal detection, configuration patterns
+- @docs/ssh-authentication.md - SSH setup for git operations, troubleshooting
+- @docs/change-tracking-stats.md - Diff statistics calculation details
+- @docs/distribution.md - Code signing, notarization, release process
 
 ## Common Tasks
 

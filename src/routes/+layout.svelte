@@ -5,6 +5,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { subscribeToExecutions, unsubscribeFromExecutions } from '$lib/stores/executionBus';
 	import { themeStore } from '$lib/stores/themeStore.svelte';
+	import { settingsStore } from '$lib/stores/settingsStore';
 	import { Dialog } from 'bits-ui';
 	import '../app.css';
 
@@ -16,6 +17,7 @@
 	onMount(async () => {
 		subscribeToExecutions();
 		await themeStore.init();
+		await settingsStore.load();
 	});
 
 	onDestroy(() => {
