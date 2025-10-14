@@ -4,7 +4,7 @@
 	import PromptSidebar from '$lib/components/PromptSidebar.svelte';
 	import { onMount, onDestroy } from 'svelte';
 	import { subscribeToExecutions, unsubscribeFromExecutions } from '$lib/stores/executionBus';
-	import { themeStore } from '$lib/stores/themeStore';
+	import { themeStore } from '$lib/stores/themeStore.svelte';
 	import { Dialog } from 'bits-ui';
 	import '../app.css';
 

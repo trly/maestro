@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { tokenStore, type TokenKey } from '$lib/tokenStore';
-	import { themeStore, type Theme } from '$lib/stores/themeStore';
+	import { themeStore, type Theme } from '$lib/stores/themeStore.svelte';
 	import { settingsStore } from '$lib/stores/settingsStore';
 
 	let ampToken = $state('');
@@ -12,13 +12,15 @@
 	let editingGithub = $state(false);
 	let loading = $state(true);
 	let saveStatus = $state<{ type: 'success' | 'error'; message: string } | null>(null);
-	let currentTheme = $state<Theme>('auto');
 	let ciThreshold = $state(10);
 	let editingCiThreshold = $state(false);
 	let ciThresholdInput = $state('10');
 	let editorCommand = $state('code');
 	let editingEditorCommand = $state(false);
 	let editorCommandInput = $state('code');
+
+	// Derive currentTheme from themeStore
+	let currentTheme = $derived(themeStore.current);
 
 	onMount(async () => {
 		try {
@@ -32,10 +34,6 @@
 			loading = false;
 		}
 
-		themeStore.subscribe(theme => {
-			currentTheme = theme;
-		});
-		
 		settingsStore.subscribe(settings => {
 			ciThreshold = settings.ciStuckThresholdMinutes;
 			ciThresholdInput = settings.ciStuckThresholdMinutes.toString();
