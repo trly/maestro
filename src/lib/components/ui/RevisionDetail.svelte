@@ -78,7 +78,7 @@
 		if (manuallyResized || !containerRef) return promptHeight;
 		
 		const containerHeight = containerRef.clientHeight;
-		const maxHeight = Math.floor(containerHeight * 0.5);
+		const maxHeight = Math.floor(containerHeight * 0.6);
 		
 		return Math.min(maxHeight, 600);
 	}
@@ -212,7 +212,7 @@
 	<!-- Prompt Console -->
 	<div class="flex-shrink-0 border-b border-border/20 overflow-hidden bg-card">
 		<!-- Prompt Content - Two Column Layout -->
-		<div class="flex divide-x divide-border/20" style="max-height: {manuallyResized ? promptHeight : computedHeight}px;">
+		<div class="flex divide-x divide-border/20" style="height: {manuallyResized ? promptHeight : computedHeight}px;">
 			<!-- Revision Prompt (Left) -->
 			<div class="flex-1 flex flex-col min-w-0">
 				<div class="px-4 py-2 bg-muted/10 border-b border-border/10">

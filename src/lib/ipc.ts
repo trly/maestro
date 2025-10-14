@@ -149,17 +149,6 @@ export async function getPromptSet(id: string): Promise<PromptSet | null> {
 }
 
 /**
- * Find prompt set by ID prefix (short hash)
- */
-export async function findPromptSetByPrefix(
-	idPrefix: string
-): Promise<PromptSet | null> {
-	return invokeCommand<PromptSet | null>('find_promptset_by_prefix', {
-		idPrefix
-	})
-}
-
-/**
  * Update prompt set validation prompt
  */
 export async function updatePromptSetValidation(
@@ -256,17 +245,6 @@ export async function getPromptRevision(
 }
 
 /**
- * Find prompt revision by ID prefix (short hash)
- */
-export async function findPromptRevisionByPrefix(
-	idPrefix: string
-): Promise<PromptRevision | null> {
-	return invokeCommand<PromptRevision | null>('find_prompt_revision_by_prefix', {
-		idPrefix
-	})
-}
-
-/**
  * Delete prompt revision by ID
  */
 export async function deletePromptRevision(id: string): Promise<boolean> {
@@ -316,21 +294,6 @@ export async function stopAllValidations(revisionId: string): Promise<number> {
 // ============================================================================
 // Execution Commands
 // ============================================================================
-
-/**
- * Create a new execution
- */
-export async function createExecution(
-	promptsetId: string,
-	revisionId: string,
-	repositoryId: string
-): Promise<Execution> {
-	return invokeCommand<Execution>('create_execution', {
-		promptsetId,
-		revisionId,
-		repositoryId
-	})
-}
 
 /**
  * Get execution by ID
@@ -523,15 +486,6 @@ export async function startCiCheck(executionId: string): Promise<void> {
  */
 export async function refreshCiStatus(executionId: string): Promise<void> {
 	return invokeCommand<void>('refresh_ci_status', { executionId })
-}
-
-/**
- * Reconcile stuck CI checks across all executions
- * Resets any CI status that has been "pending" for more than the configured threshold
- * @returns Number of executions fixed
- */
-export async function reconcileStuckCi(): Promise<number> {
-	return invokeCommand<number>('reconcile_stuck_ci', {})
 }
 
 /**

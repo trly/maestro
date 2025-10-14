@@ -82,7 +82,3 @@ export function clearDiffCache(executionId?: string) {
 		fileDiffCache.set({})
 	}
 }
-
-export function invalidateDiff(executionId: string) {
-	clearDiffCache(executionId)
-}

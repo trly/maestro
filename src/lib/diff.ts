@@ -1,18 +1,10 @@
 import { diffLines, diffWords, parsePatch } from 'diff'
+import type { DiffItem } from './types/diff'
 
 export type DiffSegment = {
 	value: string
 	added?: boolean
 	removed?: boolean
-}
-
-export type DiffItem = {
-	type: 'added' | 'removed' | 'unchanged' | 'modified'
-	oldLine?: string
-	newLine?: string
-	segments?: DiffSegment[]
-	oldLineNumber?: number
-	newLineNumber?: number
 }
 
 export function processTextDiff(oldText: string, newText: string): DiffItem[] {

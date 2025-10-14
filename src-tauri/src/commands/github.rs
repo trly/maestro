@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::env;
 use crate::Paths;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -8,12 +7,6 @@ pub struct ConfigPaths {
 	pub admin_repo_dir: String,
 	pub worktree_dir: String,
 	pub db_path: String,
-}
-
-#[tauri::command]
-pub fn get_github_token() -> Result<String, String> {
-	env::var("MAESTRO_GITHUB_TOKEN")
-.map_err(|_| "GitHub token not configured. Set MAESTRO_GITHUB_TOKEN environment variable.".to_string())
 }
 
 #[tauri::command]

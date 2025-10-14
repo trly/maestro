@@ -123,7 +123,6 @@ pub fn run() {
       commands::executor::reconcile_stuck_ci,
       commands::ci::start_ci_check,
 			commands::ci::refresh_ci_status,
-      commands::github::get_github_token,
       commands::github::get_config_paths,
       commands::tokens::set_token,
       commands::tokens::get_token,

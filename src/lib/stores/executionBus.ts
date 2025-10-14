@@ -126,26 +126,4 @@ export function unsubscribeFromExecutions() {
 	unlisteners = []
 }
 
-export function getExecutionStatus(id: string): ExecutionData | undefined {
-	let data: ExecutionData | undefined
-	executionStore.subscribe((map) => {
-		data = map.get(id)
-	})()
-	return data
-}
-
-export function onExecutionUpdate(id: string, callback: (data: ExecutionData) => void) {
-	return executionStore.subscribe((map) => {
-		const data = map.get(id)
-		if (data) callback(data)
-	})
-}
-
-export function clearExecutionData(id: string) {
-	executionStore.update((map) => {
-		map.delete(id)
-		return new Map(map)
-	})
-}
-
 export { executionStore }
