@@ -1,14 +1,17 @@
 <script lang="ts">
-	import { X, Trash2, CheckSquare, Square as SquareIcon, ChevronDown, ChevronUp, Edit, Save, Play } from 'lucide-svelte';
+	import { X, Trash2, CheckSquare, Square as SquareIcon, ChevronDown, ChevronUp, Edit, Save, Play, FolderGit, GitMerge } from 'lucide-svelte';
 	import { Switch } from 'bits-ui';
 	import UiScrollArea from './UiScrollArea.svelte';
 	import ExecutionRow from './ExecutionRow.svelte';
+	import RepositorySelector from '$lib/components/RepositorySelector.svelte';
 	import type { PromptRevision, Execution, Repository } from '$lib/types';
+	import type { Repository as ProviderRepository } from '$lib/providers/types';
 
 	let {
 		revision,
 		executions,
 		repositories,
+		repositoryIds = [],
 		hasValidationPrompt = false,
 		validationPrompt = null,
 		autoValidate = false,
@@ -24,11 +27,13 @@
 		onBulkRestart,
 		onBulkRevalidate,
 		onSaveValidation,
+		onSaveRepositories,
 		onExecuteAll
 	}: {
 		revision: PromptRevision;
 		executions: Execution[];
 		repositories: Map<string, Repository>;
+		repositoryIds?: string[];
 		hasValidationPrompt?: boolean;
 		validationPrompt?: string | null;
 		autoValidate?: boolean;
@@ -44,6 +49,7 @@
 		onBulkRestart: (executions: Execution[]) => void;
 		onBulkRevalidate: (executions: Execution[]) => void;
 		onSaveValidation: (prompt: string, autoValidate: boolean) => Promise<void>;
+		onSaveRepositories: (repositoryIds: string[]) => Promise<void>;
 		onExecuteAll: () => void;
 	} = $props();
 
@@ -58,6 +64,9 @@
 	let isSaving = $state(false);
 	let manuallyResized = $state(false);
 	let containerRef = $state<HTMLDivElement | null>(null);
+	let isEditingRepositories = $state(false);
+	let editedRepositories = $state<ProviderRepository[]>([]);
+	let isSavingRepositories = $state(false);
 
 	function handleResizeStart(e: MouseEvent) {
 		isResizing = true;
@@ -202,6 +211,42 @@
 		}
 	}
 
+	function startEditingRepositories() {
+		// Convert current repository IDs to ProviderRepository format
+		const converted: ProviderRepository[] = [];
+		for (const id of repositoryIds) {
+			const repo = repositories.get(id);
+			if (!repo) continue;
+			converted.push({
+				provider: 'github' as const,
+				fullName: repo.providerId,
+				name: repo.providerId.split('/')[1] || repo.providerId,
+				owner: repo.providerId.split('/')[0] || '',
+				url: `https://github.com/${repo.providerId}`,
+				description: ''
+			});
+		}
+		editedRepositories = converted;
+		isEditingRepositories = true;
+	}
+
+	function cancelEditingRepositories() {
+		isEditingRepositories = false;
+		editedRepositories = [];
+	}
+
+	async function saveRepositories() {
+		isSavingRepositories = true;
+		try {
+			// Convert ProviderRepository back to repository IDs (provider_id format)
+			const repoIds = editedRepositories.map(r => r.fullName);
+			await onSaveRepositories(repoIds);
+			isEditingRepositories = false;
+		} finally {
+			isSavingRepositories = false;
+		}
+	}
+
 	$effect(() => {
 		editedValidationPrompt = validationPrompt || '';
 		editedAutoValidate = autoValidate;
@@ -209,6 +254,35 @@
 </script>
 
 <div bind:this={containerRef} class="flex-1 flex flex-col overflow-hidden bg-background">
+	<!-- Repository Editor (when active) -->
+	{#if isEditingRepositories}
+		<div class="flex-shrink-0 border-b border-border/20 bg-card p-4">
+			<div class="flex items-center justify-between mb-3">
+				<div class="flex items-center gap-2">
+					<FolderGit class="w-4 h-4 text-primary" />
+					<h3 class="text-sm font-semibold text-foreground">Edit Repositories</h3>
+				</div>
+				<div class="flex items-center gap-2">
+					<button
+						onclick={cancelEditingRepositories}
+						disabled={isSavingRepositories}
+						class="px-3 py-1.5 text-xs font-medium rounded-md text-muted-foreground hover:text-foreground border border-border/30 hover:bg-muted/50 transition-colors disabled:opacity-50"
+					>
+						Cancel
+					</button>
+					<button
+						onclick={saveRepositories}
+						disabled={isSavingRepositories || editedRepositories.length === 0}
+						class="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+					>
+						{isSavingRepositories ? 'Saving...' : 'Save'}
+					</button>
+				</div>
+			</div>
+			<RepositorySelector bind:selectedRepos={editedRepositories} />
+		</div>
+	{/if}
+
 	<!-- Prompt Console -->
 	<div class="flex-shrink-0 border-b border-border/20 overflow-hidden bg-card">
 		<!-- Prompt Content - Two Column Layout -->
@@ -303,20 +377,35 @@
 		<div class="flex-1 flex items-center justify-center text-muted-foreground">
 			<div class="text-center">
 				<p class="text-sm mb-4">No executions yet for this revision</p>
-				<button
-					onclick={onExecuteAll}
-					class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors font-medium text-sm"
-				>
-					<Play class="w-4 h-4" />
-					Execute on all repos
-				</button>
+				<div class="flex flex-col items-center gap-3">
+					<div class="flex items-center gap-2 px-3 py-1.5 bg-muted/30 rounded-md">
+						<GitMerge class="w-4 h-4 text-muted-foreground" />
+						<span class="text-sm font-medium text-foreground">{repositoryIds.length} {repositoryIds.length === 1 ? 'repository' : 'repositories'}</span>
+					</div>
+					<div class="flex flex-col gap-2">
+						<button
+							onclick={onExecuteAll}
+							class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors font-medium text-sm"
+						>
+							<Play class="w-4 h-4" />
+							Execute on all repos
+						</button>
+						<button
+							onclick={startEditingRepositories}
+							class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium text-sm"
+						>
+							<FolderGit class="w-4 h-4" />
+							Edit repositories
+						</button>
+					</div>
+				</div>
 			</div>
 		</div>
 	{:else}
 		<div class="flex-1 flex flex-col overflow-hidden @container/table">
-			<!-- Bulk Actions Toolbar -->
-			{#if selectedIds.size > 0}
-			<div class="flex-shrink-0 flex items-center gap-3 px-4 py-3 bg-primary/5 border-b border-border/10">
+			<!-- Toolbar -->
+			<div class="flex-shrink-0 flex items-center gap-3 px-4 py-3 bg-muted/5 border-b border-border/10">
+				{#if selectedIds.size > 0}
 					<span class="text-sm font-medium text-foreground">{selectedIds.size} selected</span>
 					<div class="flex items-center gap-2">
 						<button
@@ -347,8 +436,22 @@
 					>
 						Clear selection
 					</button>
-				</div>
-			{/if}
+				{:else}
+					<div class="flex items-center gap-2">
+						<div class="flex items-center gap-1.5 px-2 py-1 bg-muted/30 rounded-md">
+							<GitMerge class="w-3.5 h-3.5 text-muted-foreground" />
+							<span class="text-xs font-medium text-foreground">{repositoryIds.length}</span>
+						</div>
+						<button
+							onclick={startEditingRepositories}
+							class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+						>
+							<FolderGit class="w-3.5 h-3.5" />
+							Edit repositories
+						</button>
+					</div>
+				{/if}
+			</div>
 
 			<!-- Table Container (Header + Body) -->
 			<UiScrollArea class="flex-1">

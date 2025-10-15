@@ -379,7 +379,7 @@ See @docs/settings.md for complete settings documentation.
 ### Secure Token Storage
 Maestro uses the system keyring (via `keyring` crate) for secure credential storage:
 - **Service Name**: `dev.trly.maestro` (identifies app in keyring)
-- **Token Keys**: `amp_token`, `github_token`
+- **Token Keys**: `amp_token`, `github_token`, `sourcegraph_endpoint`, `sourcegraph_token`
 - **Never** store tokens in env vars, config files, or database
 - **Always** retrieve tokens at command execution time via `tokens::get_token_value(key)`
 
@@ -476,6 +476,12 @@ For detailed guidance on specific topics, consult the domain-focused documentati
 - Implementation: `GitHubProvider` using `octocrab`
 - Token: Retrieved from keyring at command execution time
 - Event: `emit_execution_ci()` for real-time UI updates
+
+**Example**: Sourcegraph repository search (see `src-tauri/src/sourcegraph/`)
+- Client: `SourcegraphClient` with GraphQL integration
+- Implementation: Direct `reqwest` HTTP client for GraphQL API
+- Tokens: Both endpoint and access token retrieved from keyring
+- Usage: `search_sourcegraph_repositories(query, limit)` command
 
 ### Creating a new UI component
 1. Use bits-ui primitives (Dialog, Checkbox, etc.) - never manual implementations

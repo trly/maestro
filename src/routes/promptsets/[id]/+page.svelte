@@ -659,6 +659,38 @@
 		showToast('Validation settings updated', 'success');
 	}
 
+	async function saveRepositoriesByIds(repoProviderIds: string[]) {
+		if (!currentPromptSet || repoProviderIds.length === 0) return;
+
+		// Convert provider IDs (owner/repo) to database IDs, creating repos if needed
+		const repoPromises = repoProviderIds.map(async (providerId) => {
+			try {
+				const dbRepo = await api.repositories.find('github', providerId)
+					.catch(async () => {
+						return await api.repositories.create('github', providerId);
+					});
+				repositories.set(dbRepo.id, dbRepo);
+				return dbRepo.id;
+			} catch (err) {
+				return null;
+			}
+		});
+
+		const repoIds = (await Promise.all(repoPromises)).filter(Boolean) as string[];
+
+		if (repoIds.length === 0) {
+			showToast('Failed to persist selected repositories', 'error');
+			return;
+		}
+
+		await api.promptSets.update(currentPromptSet.id, {
+			repositoryIds: repoIds
+		});
+		currentPromptSet.repositoryIds = repoIds;
+		showToast('Repositories updated', 'success');
+		await loadPromptSet();
+	}
+
 	async function loadEditingRepos() {
 		if (!currentPromptSet) return [];
 		
@@ -768,10 +800,12 @@
 					revision={currentRevision}
 					executions={executionsWithUpdates.filter(e => e.revisionId === currentRevision!.id)}
 					{repositories}
+					repositoryIds={currentPromptSet.repositoryIds}
 					hasValidationPrompt={!!currentPromptSet.validationPrompt}
 					validationPrompt={currentPromptSet.validationPrompt}
 					autoValidate={currentPromptSet.autoValidate}
 					onSaveValidation={saveValidationPrompt}
+					onSaveRepositories={saveRepositoriesByIds}
 					onDeleteExecution={deleteExecutionWithConfirm}
 					onValidateExecution={validateExecutionManually}
 					onStopExecution={stopExecutionManually}

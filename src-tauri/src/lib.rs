@@ -8,6 +8,7 @@ mod db;
 mod git;
 mod util;
 pub mod types;
+mod sourcegraph;
 
 #[derive(Clone)]
 pub struct Paths {
@@ -137,6 +138,7 @@ pub fn run() {
       commands::app_check::get_available_editors,
       commands::app_check::get_available_terminals,
       commands::app_check::check_app_installed,
+      commands::sourcegraph::search_sourcegraph_repositories,
     ])
     .plugin(tauri_plugin_notification::init())
     .plugin(tauri_plugin_shell::init())

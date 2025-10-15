@@ -254,6 +254,8 @@ fn get_entry(key: &str) -> Result<Entry, String> {
 **Token Keys:**
 - `amp_token` - Amp API authentication token
 - `github_token` - GitHub Personal Access Token
+- `sourcegraph_endpoint` - Sourcegraph instance URL
+- `sourcegraph_token` - Sourcegraph access token
 
 ### Token Operations
 
@@ -293,7 +295,7 @@ pub fn delete_token(key: String) -> Result<(), String> {
 // src/lib/tokenStore.ts
 import * as ipc from '$lib/ipc';
 
-export type TokenKey = 'amp_token' | 'github_token';
+export type TokenKey = 'amp_token' | 'github_token' | 'sourcegraph_endpoint' | 'sourcegraph_token';
 
 export const tokenStore = {
   async getToken(key: TokenKey): Promise<string | null> {
@@ -377,7 +379,7 @@ let provider = GitHubProvider::new(github_token)?;
 
 ### Settings Sections
 
-1. **API Tokens** - Amp and GitHub tokens (stored in keyring)
+1. **API Tokens** - Amp, GitHub, and Sourcegraph tokens (stored in keyring)
 2. **Development Tools** - Editor and terminal preferences
 3. **CI Monitoring** - CI stuck timeout threshold
 4. **Appearance** - Theme selection (light/dark/auto)
@@ -496,4 +498,5 @@ When settings aren't loaded or are empty, Maestro falls back to:
 
 - **[IPC Guide](./ipc-guide.md)** - Settings IPC commands
 - **[CI Tracking](./ci-tracking.md)** - CI stuck threshold usage
+- **[Sourcegraph Integration](./sourcegraph-integration.md)** - Repository search configuration
 - **[Architecture](./architecture.md)** - Overall system design

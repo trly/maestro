@@ -148,6 +148,18 @@ App distribution guide:
 - Manual build and distribution
 - Troubleshooting signing issues
 
+### [Sourcegraph Integration](./sourcegraph-integration.md)
+
+**When to read:** Working with repository search or Sourcegraph API
+
+Sourcegraph repository search integration:
+
+- GraphQL client architecture
+- Configuration and token storage
+- Search query syntax and examples
+- Frontend/backend API usage
+- Error handling patterns
+
 ## Additional References
 
 ### [Change Tracking Stats](./change-tracking-stats.md)

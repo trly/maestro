@@ -6,5 +6,6 @@ pub mod executor;
 pub mod executor_events;
 pub mod github;
 pub mod settings;
+pub mod sourcegraph;
 pub mod tokens;
 pub mod worktree;

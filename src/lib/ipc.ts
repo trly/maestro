@@ -401,7 +401,7 @@ export async function cleanupExecution(executionId: string): Promise<void> {
 // Token Commands
 // ============================================================================
 
-export type TokenKey = 'amp_token' | 'github_token'
+export type TokenKey = 'amp_token' | 'github_token' | 'sourcegraph_endpoint' | 'sourcegraph_token'
 
 /**
  * Set a token in the system keyring
@@ -436,6 +436,45 @@ export async function deleteToken(key: TokenKey): Promise<void> {
  */
 export async function hasToken(key: TokenKey): Promise<boolean> {
 	return invokeCommand<boolean>('has_token', { key })
+}
+
+// ============================================================================
+// Sourcegraph Commands
+// ============================================================================
+
+export interface SourcegraphRepository {
+	id: string
+	name: string
+	description: string | null
+	url: string
+	language: string | null
+	stars: number
+	isPrivate: boolean
+	isFork: boolean
+	isArchived: boolean
+	externalRepository: {
+		serviceType: string
+		serviceId: string
+	}
+}
+
+export interface RepositorySearchResult {
+	repositories: SourcegraphRepository[]
+	totalCount: number
+	hasNextPage: boolean
+}
+
+/**
+ * Search Sourcegraph repositories
+ */
+export async function searchSourcegraphRepositories(
+	query: string,
+	limit?: number
+): Promise<RepositorySearchResult> {
+	return invokeCommand<RepositorySearchResult>('search_sourcegraph_repositories', {
+		query,
+		limit
+	})
 }
 
 // ============================================================================

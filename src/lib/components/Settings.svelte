@@ -9,10 +9,16 @@
 
 	let ampToken = $state('');
 	let githubToken = $state('');
+	let sourcegraphEndpoint = $state('');
+	let sourcegraphToken = $state('');
 	let ampTokenMasked = $state('');
 	let githubTokenMasked = $state('');
+	let sourcegraphEndpointMasked = $state('');
+	let sourcegraphTokenMasked = $state('');
 	let editingAmp = $state(false);
 	let editingGithub = $state(false);
+	let editingSourcegraphEndpoint = $state(false);
+	let editingSourcegraphToken = $state(false);
 	let loading = $state(true);
 	let saveStatus = $state<{ type: 'success' | 'error'; message: string } | null>(null);
 	let ciThreshold = $state(10);
@@ -39,8 +45,12 @@
 		try {
 			const ampMasked = await tokenStore.getTokenMasked('amp_token');
 			const githubMasked = await tokenStore.getTokenMasked('github_token');
+			const sourcegraphEndpointMasked_ = await tokenStore.getTokenMasked('sourcegraph_endpoint');
+			const sourcegraphTokenMasked_ = await tokenStore.getTokenMasked('sourcegraph_token');
 			ampTokenMasked = ampMasked || '';
 			githubTokenMasked = githubMasked || '';
+			sourcegraphEndpointMasked = sourcegraphEndpointMasked_ || '';
+			sourcegraphTokenMasked = sourcegraphTokenMasked_ || '';
 			
 			await settingsStore.load();
 			
@@ -74,19 +84,33 @@
 					ampTokenMasked = masked || '';
 					ampToken = '';
 					editingAmp = false;
-				} else {
+				} else if (key === 'github_token') {
 					githubTokenMasked = masked || '';
 					githubToken = '';
 					editingGithub = false;
+				} else if (key === 'sourcegraph_endpoint') {
+					sourcegraphEndpointMasked = masked || '';
+					sourcegraphEndpoint = '';
+					editingSourcegraphEndpoint = false;
+				} else if (key === 'sourcegraph_token') {
+					sourcegraphTokenMasked = masked || '';
+					sourcegraphToken = '';
+					editingSourcegraphToken = false;
 				}
 			} else {
 				await tokenStore.deleteToken(key);
 				if (key === 'amp_token') {
 					ampTokenMasked = '';
 					editingAmp = false;
-				} else {
+				} else if (key === 'github_token') {
 					githubTokenMasked = '';
 					editingGithub = false;
+				} else if (key === 'sourcegraph_endpoint') {
+					sourcegraphEndpointMasked = '';
+					editingSourcegraphEndpoint = false;
+				} else if (key === 'sourcegraph_token') {
+					sourcegraphTokenMasked = '';
+					editingSourcegraphToken = false;
 				}
 			}
 			saveStatus = { type: 'success', message: 'Token saved securely to system keyring' };
@@ -104,10 +128,18 @@
 				ampToken = '';
 				ampTokenMasked = '';
 				editingAmp = false;
-			} else {
+			} else if (key === 'github_token') {
 				githubToken = '';
 				githubTokenMasked = '';
 				editingGithub = false;
+			} else if (key === 'sourcegraph_endpoint') {
+				sourcegraphEndpoint = '';
+				sourcegraphEndpointMasked = '';
+				editingSourcegraphEndpoint = false;
+			} else if (key === 'sourcegraph_token') {
+				sourcegraphToken = '';
+				sourcegraphTokenMasked = '';
+				editingSourcegraphToken = false;
 			}
 			saveStatus = { type: 'success', message: 'Token deleted from system keyring' };
 			setTimeout(() => saveStatus = null, 3000);
@@ -121,9 +153,15 @@
 		if (key === 'amp_token') {
 			editingAmp = true;
 			ampToken = '';
-		} else {
+		} else if (key === 'github_token') {
 			editingGithub = true;
 			githubToken = '';
+		} else if (key === 'sourcegraph_endpoint') {
+			editingSourcegraphEndpoint = true;
+			sourcegraphEndpoint = '';
+		} else if (key === 'sourcegraph_token') {
+			editingSourcegraphToken = true;
+			sourcegraphToken = '';
 		}
 	}
 
@@ -131,9 +169,15 @@
 		if (key === 'amp_token') {
 			editingAmp = false;
 			ampToken = '';
-		} else {
+		} else if (key === 'github_token') {
 			editingGithub = false;
 			githubToken = '';
+		} else if (key === 'sourcegraph_endpoint') {
+			editingSourcegraphEndpoint = false;
+			sourcegraphEndpoint = '';
+		} else if (key === 'sourcegraph_token') {
+			editingSourcegraphToken = false;
+			sourcegraphToken = '';
 		}
 	}
 	
@@ -349,6 +393,135 @@
 							</div>
 							<p class="text-xs text-muted-foreground mt-2">
 								Generate at <a href="https://github.com/settings/tokens" target="_blank" class="underline">github.com/settings/tokens</a> (requires <code>repo</code> scope)
+							</p>
+						</div>
+					</div>
+				</div>
+
+				<div class="p-6 border rounded-lg bg-card">
+					<h3 class="text-lg font-semibold mb-4">Sourcegraph</h3>
+					<p class="text-sm text-muted-foreground mb-6">
+						Configure Sourcegraph instance for repository search
+					</p>
+
+					<div class="space-y-6">
+						<div>
+							<label for="sourcegraph-endpoint" class="block text-sm font-medium mb-2">Sourcegraph Instance</label>
+							<p class="text-xs text-muted-foreground mb-2">URL of your Sourcegraph instance</p>
+							<div class="flex flex-col sm:flex-row gap-2">
+								{#if editingSourcegraphEndpoint}
+									<div class="flex-1">
+										<input
+											id="sourcegraph-endpoint"
+											type="text"
+											bind:value={sourcegraphEndpoint}
+											placeholder="https://sourcegraph.com"
+											class="w-full px-3 py-2 border rounded-md bg-background"
+										/>
+									</div>
+									<button
+										type="button"
+										onclick={() => saveToken('sourcegraph_endpoint', sourcegraphEndpoint)}
+										class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+									>
+										Save
+									</button>
+									<button
+										type="button"
+										onclick={() => cancelEditing('sourcegraph_endpoint')}
+										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+									>
+										Cancel
+									</button>
+								{:else}
+									<div class="flex-1">
+										<input
+											type="text"
+											value={sourcegraphEndpointMasked || 'Not set'}
+											disabled
+											class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-600"
+										/>
+									</div>
+									<button
+										type="button"
+										onclick={() => startEditing('sourcegraph_endpoint')}
+										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+									>
+										{sourcegraphEndpointMasked ? 'Update' : 'Set'}
+									</button>
+									{#if sourcegraphEndpointMasked}
+										<button
+											type="button"
+											onclick={() => deleteToken('sourcegraph_endpoint')}
+											class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
+										>
+											Delete
+										</button>
+									{/if}
+								{/if}
+							</div>
+							<p class="text-xs text-muted-foreground mt-2">
+								Example: <code>https://sourcegraph.com</code> or your self-hosted instance
+							</p>
+						</div>
+
+						<div>
+							<label for="sourcegraph-token" class="block text-sm font-medium mb-2">Sourcegraph Access Token</label>
+							<p class="text-xs text-muted-foreground mb-2">Required for repository search API access</p>
+							<div class="flex flex-col sm:flex-row gap-2">
+								{#if editingSourcegraphToken}
+									<div class="flex-1">
+										<input
+											id="sourcegraph-token"
+											type="text"
+											bind:value={sourcegraphToken}
+											placeholder="Enter Sourcegraph access token"
+											class="w-full px-3 py-2 border rounded-md bg-background"
+										/>
+									</div>
+									<button
+										type="button"
+										onclick={() => saveToken('sourcegraph_token', sourcegraphToken)}
+										class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+									>
+										Save
+									</button>
+									<button
+										type="button"
+										onclick={() => cancelEditing('sourcegraph_token')}
+										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+									>
+										Cancel
+									</button>
+								{:else}
+									<div class="flex-1">
+										<input
+											type="text"
+											value={sourcegraphTokenMasked || 'Not set'}
+											disabled
+											class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-600"
+										/>
+									</div>
+									<button
+										type="button"
+										onclick={() => startEditing('sourcegraph_token')}
+										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+									>
+										{sourcegraphTokenMasked ? 'Update' : 'Set'}
+									</button>
+									{#if sourcegraphTokenMasked}
+										<button
+											type="button"
+											onclick={() => deleteToken('sourcegraph_token')}
+											class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
+										>
+											Delete
+										</button>
+									{/if}
+								{/if}
+							</div>
+							<p class="text-xs text-muted-foreground mt-2">
+								Generate at your Sourcegraph instance: Settings → Access tokens
 							</p>
 						</div>
 					</div>
