@@ -402,7 +402,7 @@
 			</div>
 		</div>
 	{:else}
-		<div class="flex-1 flex flex-col overflow-hidden @container/table">
+		<div class="flex-1 flex flex-col min-h-0 @container/table">
 			<!-- Toolbar -->
 			<div class="flex-shrink-0 flex items-center gap-3 px-4 py-3 bg-muted/5 border-b border-border/10">
 				{#if selectedIds.size > 0}
@@ -454,7 +454,7 @@
 			</div>
 
 			<!-- Table Container (Header + Body) -->
-			<UiScrollArea class="flex-1">
+			<div class="flex-1 overflow-auto">
 				<div>
 					<!-- Table Header -->
 					<div
@@ -558,7 +558,7 @@
 						{/each}
 					</div>
 				</div>
-			</UiScrollArea>
+			</div>
 		</div>
 	{/if}
 </div>

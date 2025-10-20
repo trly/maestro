@@ -59,7 +59,7 @@ async fn ensure_admin_repo_and_fetch(admin_repo_dir: &PathBuf, owner: &str, repo
 	}
 
 	let repo = GitService::open(&admin_repo_path)?;
-	GitService::fetch(&repo, "origin", &["--all", "--prune"])
+	GitService::fetch(&repo, "origin", &["+refs/heads/*:refs/remotes/origin/*"])
 		.context("Failed to fetch from origin. Ensure SSH authentication is configured.")?;
 
 	Ok(admin_repo_path)
@@ -382,7 +382,7 @@ pub async fn execute_prompt(
 	execute_prompt_impl(execution_id, app, paths.inner().clone()).await.map_err(|e| e.to_string())
 }
 
-async fn execute_prompt_impl(
+pub(crate) async fn execute_prompt_impl(
 	execution_id: String,
 	app: tauri::AppHandle,
 	paths: Paths,
@@ -851,6 +851,16 @@ async fn resume_execution_impl(
 	app: tauri::AppHandle,
 	paths: Paths,
 ) -> Result<()> {
+	log::info!("[resume_execution] Starting resume for execution {}", execution_id);
+	
+	// Guard against duplicate runs
+	{
+		let active = ACTIVE_EXECUTIONS.lock().unwrap();
+		if active.contains_key(&execution_id) {
+			anyhow::bail!("Execution {} is already running", execution_id);
+		}
+	}
+	
 	let (execution, repository) = {
 		let store_state = app.state::<Mutex<Store>>();
 		let store = store_state.lock().unwrap();
@@ -858,12 +868,11 @@ async fn resume_execution_impl(
 		let execution = store.get_execution(&execution_id)?
 			.ok_or_else(|| anyhow::anyhow!("Execution {} not found", execution_id))?;
 
-		if execution.status != ExecutionStatus::Cancelled {
-			anyhow::bail!("Cannot resume execution {} with status {:?}", execution_id, execution.status);
-		}
-
-		if execution.session_id.is_none() {
-			anyhow::bail!("Cannot resume execution {} - no session ID found", execution_id);
+		log::info!("[resume_execution] Execution {} has status {:?}", execution_id, execution.status);
+		
+		// Allow resuming completed executions (to re-run), as well as cancelled/failed
+		if execution.status == ExecutionStatus::Running {
+			anyhow::bail!("Cannot resume execution {} - already running", execution_id);
 		}
 
 		let repository = store.get_repository(&execution.repository_id)?
@@ -895,15 +904,52 @@ async fn resume_execution_impl(
 	}
 
 	let result = async {
+		log::info!("[resume_execution] Parsing provider ID for {}", execution_id);
 		let (owner, repo) = parse_provider_id(&repository.provider_id)?;
 		
+		log::info!("[resume_execution] Ensuring admin repo and fetching for {}/{}", owner, repo);
 		let admin_repo_path = ensure_admin_repo_and_fetch(&paths.admin_repo_dir, &owner, &repo).await?;
 		let worktree_path = execution_worktree_path(&paths, &execution.promptset_id, &execution_id);
 
 		let branch_name = maestro_branch_name(&execution.promptset_id, &execution.revision_id, &execution_id);
 
+		// Recreate worktree if it was cleaned up
 		if !worktree_path.exists() {
-			anyhow::bail!("Worktree not found at {:?} - cannot resume execution that was cleaned up", worktree_path);
+			log::info!("[resume_execution] Worktree doesn't exist, recreating for {}", execution_id);
+			// Use stored default branch, or try fetching, or fall back to "main"
+			let default_branch = if let Some(branch) = &repository.default_branch {
+				branch.clone()
+			} else {
+				fetch_default_branch_from_github(&owner, &repo)
+					.await
+					.unwrap_or_else(|_| "main".to_string())
+			};
+			
+			log::info!("[resume_execution] Creating worktree on branch {} for {}", default_branch, execution_id);
+			let worktree_info = add_worktree(
+				&admin_repo_path,
+				&paths.worktree_dir,
+				&execution.promptset_id,
+				&execution.revision_id,
+				&execution_id,
+				&default_branch,
+			)
+			.await?;
+
+			// Update parent_sha and branch if they weren't set
+			let store_state = app.state::<Mutex<Store>>();
+			let store = store_state.lock().unwrap();
+			store.update_execution(
+				&execution_id,
+				ExecutionUpdates {
+					parent_sha: Some(worktree_info.base_commit.clone()),
+					branch: Some(worktree_info.branch_name.clone()),
+					..Default::default()
+				},
+			)?;
+			log::info!("[resume_execution] Worktree created successfully for {}", execution_id);
+		} else {
+			log::info!("[resume_execution] Worktree already exists for {}", execution_id);
 		}
 
 		let response_format = "
@@ -912,16 +958,37 @@ IMPORTANT: You MUST end your final response with exactly one of these lines on t
 PROMPT: PASS
 PROMPT: FAIL";
 		let resume_prompt = format!("Please continue with the previous task.{}", response_format);
-		let (_, result_message) = execute_with_amp(
+		
+		log::info!("[resume_execution] Starting Amp execution for {}", execution_id);
+		
+		let execution_id_clone = execution_id.clone();
+		let app_clone = app.clone();
+		
+		let (session_id, result_message) = execute_with_amp(
 			&worktree_path,
 			&resume_prompt,
 			execution.session_id.as_deref(),
 			Some(&format!("exec:{}", execution_id)),
 			Some(abort_flag.clone()),
-			None::<fn(&str)>,
+			Some(move |sid: &str| {
+				let thread_url = format!("https://ampcode.com/threads/{}", sid);
+				let store_state = app_clone.state::<Mutex<Store>>();
+				let store = store_state.lock().unwrap();
+				let _ = store.update_execution(
+					&execution_id_clone,
+					ExecutionUpdates {
+						session_id: Some(sid.to_string()),
+						thread_url: Some(thread_url.clone()),
+						..Default::default()
+					},
+				);
+				emit_execution_session(&app_clone, &execution_id_clone, sid, &thread_url);
+			}),
 			&app,
 		)
 		.await?;
+		
+		log::info!("[resume_execution] Amp execution completed for {}", execution_id);
 
 		let prompt_passed = result_message.as_ref().map(|m| m.contains("PROMPT: PASS")).unwrap_or(false);
 		let prompt_failed = result_message.as_ref().map(|m| m.contains("PROMPT: FAIL")).unwrap_or(false);
@@ -947,6 +1014,8 @@ PROMPT: FAIL";
 			None
 		};
 
+		let thread_url = format!("https://ampcode.com/threads/{}", session_id);
+		
 		let should_validate = {
 			let store_state = app.state::<Mutex<Store>>();
 			let store = store_state.lock().unwrap();
@@ -955,6 +1024,8 @@ PROMPT: FAIL";
 				&execution_id,
 				ExecutionUpdates {
 					status: Some(ExecutionStatus::Completed),
+					session_id: Some(session_id.clone()),
+					thread_url: Some(thread_url),
 					prompt_status: prompt_status,
 					prompt_result: result_message.clone(),
 					completed_at: Some(chrono::Utc::now().timestamp_millis()),

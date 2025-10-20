@@ -27,3 +27,11 @@ pub fn get_ci_stuck_threshold_minutes(
 	let store = store.lock().map_err(|e| e.to_string())?;
 	store.get_ci_stuck_threshold_minutes().map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn get_max_concurrent_executions(
+	store: tauri::State<Mutex<Store>>,
+) -> Result<i64, String> {
+	let store = store.lock().map_err(|e| e.to_string())?;
+	store.get_max_concurrent_executions().map_err(|e| e.to_string())
+}

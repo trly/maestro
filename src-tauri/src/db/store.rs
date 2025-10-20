@@ -732,6 +732,12 @@ impl Store {
 			.unwrap_or_else(|| "10".to_string());
 		value.parse::<i64>().map_err(|e| anyhow::anyhow!("Invalid CI threshold: {}", e))
 	}
+
+	pub fn get_max_concurrent_executions(&self) -> Result<i64> {
+		let value = self.get_setting("max_concurrent_executions")?
+			.unwrap_or_else(|| "10".to_string());
+		value.parse::<i64>().map_err(|e| anyhow::anyhow!("Invalid max concurrent executions: {}", e))
+	}
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
