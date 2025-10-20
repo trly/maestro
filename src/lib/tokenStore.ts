@@ -1,26 +1,46 @@
 import * as ipc from './ipc'
 
 export type TokenKey = ipc.TokenKey
+export type AllTokens = ipc.AllTokens
 
 class TokenStore {
+	// Cache tokens to avoid multiple keychain prompts
+	private tokenCache: AllTokens | null = null
+
 	async setToken(key: TokenKey, value: string): Promise<void> {
 		await ipc.setToken(key, value)
-	}
-
-	async getToken(key: TokenKey): Promise<string | null> {
-		return await ipc.getToken(key)
-	}
-
-	async getTokenMasked(key: TokenKey): Promise<string | null> {
-		return await ipc.getTokenMasked(key)
+		// Invalidate cache
+		this.tokenCache = null
 	}
 
 	async deleteToken(key: TokenKey): Promise<void> {
 		await ipc.deleteToken(key)
+		// Invalidate cache
+		this.tokenCache = null
 	}
 
-	async hasToken(key: TokenKey): Promise<boolean> {
-		return await ipc.hasToken(key)
+	/**
+	 * Load all tokens in a single keychain access (prevents multiple prompts)
+	 */
+	async getAllTokens(): Promise<AllTokens> {
+		if (!this.tokenCache) {
+			this.tokenCache = await ipc.getAllTokens()
+		}
+		return this.tokenCache
+	}
+
+	/**
+	 * Load all tokens masked in a single keychain access
+	 */
+	async getAllTokensMasked(): Promise<AllTokens> {
+		return await ipc.getAllTokensMasked()
+	}
+
+	/**
+	 * Clear the token cache (useful after updates)
+	 */
+	clearCache(): void {
+		this.tokenCache = null
 	}
 }
 

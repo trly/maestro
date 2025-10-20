@@ -36,6 +36,7 @@
 		selected = false,
 		onToggleSelect,
 		onDelete,
+		onStart,
 		onValidate,
 		onStop,
 		onStopValidation,
@@ -54,6 +55,7 @@
 		selected?: boolean;
 		onToggleSelect?: () => void;
 		onDelete: () => void;
+		onStart?: () => void;
 		onValidate?: () => void;
 		onStop?: () => void;
 		onStopValidation?: () => void;
@@ -118,13 +120,47 @@
 		}
 	});
 
+	// Execution action states
+	let canStart = $derived(
+		onStart &&
+		liveExecution.status === 'pending' &&
+		!liveExecution.sessionId &&
+		!liveExecution.threadUrl
+	);
+
+	let canStop = $derived(
+		onStop &&
+		liveExecution.status === 'running'
+	);
+
+	let canRestart = $derived(
+		onResume &&
+		(liveExecution.status === 'completed' || 
+		 liveExecution.status === 'failed' || 
+		 liveExecution.status === 'cancelled')
+	);
+
+	// Validation action states
 	let canValidate = $derived(
 		hasValidationPrompt && 
 		onValidate && 
 		(liveExecution.status === 'completed' || liveExecution.status === 'cancelled') && 
+		!liveExecution.validationStatus
+	);
+
+	let canRevalidate = $derived(
+		hasValidationPrompt &&
+		onValidate &&
+		liveExecution.validationStatus &&
 		liveExecution.validationStatus !== 'running'
 	);
 
+	let canStopValidation = $derived(
+		onStopValidation &&
+		liveExecution.validationStatus === 'running'
+	);
+
+	// Other action states
 	let canPush = $derived(
 		onPush && 
 		liveExecution.commitStatus === 'committed' &&
@@ -193,8 +229,21 @@
 	{/snippet}
 	</UiTooltip>
 	
-	<!-- Stop/Restart execution actions -->
-	{#if liveExecution.status === 'running'}
+	<!-- Start/Stop/Restart execution actions -->
+	{#if canStart}
+	<UiTooltip content="Start execution">
+	{#snippet children({ props })}
+	<button
+	{...props}
+	onclick={() => onStart?.()}
+	class="text-green-600 hover:text-green-700 transition-colors"
+	aria-label="Start execution"
+	>
+	<PlayCircle class="w-4 h-4" />
+	</button>
+	{/snippet}
+	</UiTooltip>
+	{:else if canStop}
 	<UiTooltip content="Stop execution">
 	{#snippet children({ props })}
 	<button
@@ -207,7 +256,7 @@
 	</button>
 	{/snippet}
 	</UiTooltip>
-	{:else if liveExecution.status === 'completed' || liveExecution.status === 'failed' || liveExecution.status === 'cancelled'}
+	{:else if canRestart}
 	<UiTooltip content="Restart execution">
 	{#snippet children({ props })}
 	<button
@@ -249,7 +298,7 @@
 	</UiTooltip>
 	
 	<!-- Validation actions -->
-	{#if liveExecution.validationStatus === 'running'}
+	{#if canStopValidation}
 	<UiTooltip content="Stop validation">
 	{#snippet children({ props })}
 	<button
@@ -263,19 +312,28 @@
 	{/snippet}
 	</UiTooltip>
 	{:else if canValidate}
-	<UiTooltip content={liveExecution.validationStatus ? 'Revalidate' : 'Validate'}>
+	<UiTooltip content="Start validation">
 	{#snippet children({ props })}
 	<button
 	{...props}
 	onclick={() => onValidate?.()}
-	class="{liveExecution.validationStatus ? 'text-blue-600 hover:text-blue-700' : 'text-green-600 hover:text-green-700'} transition-colors"
-	aria-label={liveExecution.validationStatus ? 'Revalidate' : 'Validate'}
+	class="text-green-600 hover:text-green-700 transition-colors"
+	aria-label="Start validation"
 	>
-	{#if liveExecution.validationStatus}
-	<RotateCw class="w-4 h-4" />
-	{:else}
 	<CheckCircle2 class="w-4 h-4" />
-	{/if}
+	</button>
+	{/snippet}
+	</UiTooltip>
+	{:else if canRevalidate}
+	<UiTooltip content="Revalidate">
+	{#snippet children({ props })}
+	<button
+	{...props}
+	onclick={() => onValidate?.()}
+	class="text-blue-600 hover:text-blue-700 transition-colors"
+	aria-label="Revalidate"
+	>
+	<RotateCw class="w-4 h-4" />
 	</button>
 	{/snippet}
 	</UiTooltip>
@@ -439,52 +497,72 @@
 					sideOffset={4}
 					strategy="fixed"
 				>
-					{#if liveExecution.status === 'completed' || liveExecution.status === 'failed' || liveExecution.status === 'cancelled'}
-						<DropdownMenu.Item
-							onSelect={() => onResume?.()}
-							class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
-						>
-							<RotateCw class="w-4 h-4" />
-							Restart execution
-						</DropdownMenu.Item>
-					{/if}
-					
-					{#if liveExecution.status === 'running'}
-						<DropdownMenu.Item
-							onSelect={() => onStop?.()}
-							class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
-						>
-							<Square class="w-4 h-4" />
-							Stop execution
-						</DropdownMenu.Item>
-					{/if}
-					
-					{#if liveExecution.validationStatus === 'running'}
-						<DropdownMenu.Item
-							onSelect={() => onStopValidation?.()}
-							class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
-						>
-							<X class="w-4 h-4" />
-							Stop validation
-						</DropdownMenu.Item>
-					{/if}
-					
-					{#if canValidate}
-						<DropdownMenu.Item
-							onSelect={() => onValidate?.()}
-							class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
-						>
-							{#if liveExecution.validationStatus}
+					<!-- Only show execution/validation actions in dropdown on small screens where columns are hidden -->
+					<div class="@md/table:hidden">
+						{#if canStart}
+							<DropdownMenu.Item
+								onSelect={() => onStart?.()}
+								class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
+							>
+								<PlayCircle class="w-4 h-4" />
+								Start execution
+							</DropdownMenu.Item>
+						{/if}
+						
+						{#if canRestart}
+							<DropdownMenu.Item
+								onSelect={() => onResume?.()}
+								class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
+							>
+								<RotateCw class="w-4 h-4" />
+								Restart execution
+							</DropdownMenu.Item>
+						{/if}
+						
+						{#if canStop}
+							<DropdownMenu.Item
+								onSelect={() => onStop?.()}
+								class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
+							>
+								<Square class="w-4 h-4" />
+								Stop execution
+							</DropdownMenu.Item>
+						{/if}
+						
+						{#if canStopValidation}
+							<DropdownMenu.Item
+								onSelect={() => onStopValidation?.()}
+								class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
+							>
+								<X class="w-4 h-4" />
+								Stop validation
+							</DropdownMenu.Item>
+						{/if}
+						
+						{#if canValidate}
+							<DropdownMenu.Item
+								onSelect={() => onValidate?.()}
+								class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
+							>
+								<CheckCircle2 class="w-4 h-4" />
+								Start validation
+							</DropdownMenu.Item>
+						{/if}
+						
+						{#if canRevalidate}
+							<DropdownMenu.Item
+								onSelect={() => onValidate?.()}
+								class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
+							>
 								<RotateCw class="w-4 h-4" />
 								Revalidate
-							{:else}
-								<CheckCircle2 class="w-4 h-4" />
-								Validate
-							{/if}
-						</DropdownMenu.Item>
-					{/if}
-					
-					<DropdownMenu.Separator class="h-px bg-border/40 my-1" />
+							</DropdownMenu.Item>
+						{/if}
+						
+						{#if canStart || canRestart || canStop || canStopValidation || canValidate || canRevalidate}
+							<DropdownMenu.Separator class="h-px bg-border/40 my-1" />
+						{/if}
+					</div>
 					
 					<DropdownMenu.Item
 						onSelect={handleOpenInEditor}

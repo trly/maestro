@@ -314,10 +314,32 @@ export async function findExecutionByPrefix(
 }
 
 /**
+ * Create a new execution (without starting it)
+ */
+export async function createExecution(
+	promptsetId: string,
+	revisionId: string,
+	repositoryId: string
+): Promise<Execution> {
+	return invokeCommand<Execution>('create_execution', {
+		promptsetId,
+		revisionId,
+		repositoryId
+	})
+}
+
+/**
  * Delete execution by ID
  */
 export async function deleteExecution(id: string): Promise<boolean> {
 	return invokeCommand<boolean>('delete_execution', { id })
+}
+
+/**
+ * Start an execution (new or restart)
+ */
+export async function startExecution(executionId: string): Promise<void> {
+	return invokeCommand<void>('execute_prompt', { executionId })
 }
 
 /**
@@ -411,31 +433,31 @@ export async function setToken(key: TokenKey, value: string): Promise<void> {
 }
 
 /**
- * Get a token from the system keyring
- */
-export async function getToken(key: TokenKey): Promise<string | null> {
-	return invokeCommand<string | null>('get_token', { key })
-}
-
-/**
- * Get a masked token (for display purposes)
- */
-export async function getTokenMasked(key: TokenKey): Promise<string | null> {
-	return invokeCommand<string | null>('get_token_masked', { key })
-}
-
-/**
  * Delete a token from the system keyring
  */
 export async function deleteToken(key: TokenKey): Promise<void> {
 	return invokeCommand<void>('delete_token', { key })
 }
 
+export interface AllTokens {
+	ampToken: string | null
+	githubToken: string | null
+	sourcegraphEndpoint: string | null
+	sourcegraphToken: string | null
+}
+
 /**
- * Check if a token exists in the system keyring
+ * Get all tokens from the system keyring (single keychain prompt)
  */
-export async function hasToken(key: TokenKey): Promise<boolean> {
-	return invokeCommand<boolean>('has_token', { key })
+export async function getAllTokens(): Promise<AllTokens> {
+	return invokeCommand<AllTokens>('get_all_tokens')
+}
+
+/**
+ * Get all tokens masked (single keychain prompt)
+ */
+export async function getAllTokensMasked(): Promise<AllTokens> {
+	return invokeCommand<AllTokens>('get_all_tokens_masked')
 }
 
 // ============================================================================

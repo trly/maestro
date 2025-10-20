@@ -84,11 +84,16 @@ pub async fn poll_ci_until_terminal(
 					},
 				);
 				
-				// Emit event
+				// Emit event (serialize status properly using serde)
+				let status_str = serde_json::to_value(&status)
+					.ok()
+					.and_then(|v| v.as_str().map(|s| s.to_string()))
+					.unwrap_or_else(|| format!("{:?}", status).to_lowercase());
+				
 				executor_events::emit_execution_ci(
 					&app,
 					&execution_id,
-					&format!("{:?}", status).to_lowercase(),
+					&status_str,
 					ci_url.as_deref(),
 				);
 				

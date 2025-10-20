@@ -43,14 +43,12 @@
 
 	onMount(async () => {
 		try {
-			const ampMasked = await tokenStore.getTokenMasked('amp_token');
-			const githubMasked = await tokenStore.getTokenMasked('github_token');
-			const sourcegraphEndpointMasked_ = await tokenStore.getTokenMasked('sourcegraph_endpoint');
-			const sourcegraphTokenMasked_ = await tokenStore.getTokenMasked('sourcegraph_token');
-			ampTokenMasked = ampMasked || '';
-			githubTokenMasked = githubMasked || '';
-			sourcegraphEndpointMasked = sourcegraphEndpointMasked_ || '';
-			sourcegraphTokenMasked = sourcegraphTokenMasked_ || '';
+			// Load all tokens in a single keychain access (prevents multiple prompts)
+			const allTokens = await tokenStore.getAllTokensMasked();
+			ampTokenMasked = allTokens.ampToken || '';
+			githubTokenMasked = allTokens.githubToken || '';
+			sourcegraphEndpointMasked = allTokens.sourcegraphEndpoint || '';
+			sourcegraphTokenMasked = allTokens.sourcegraphToken || '';
 			
 			await settingsStore.load();
 			
@@ -79,21 +77,24 @@
 		try {
 			if (value.trim()) {
 				await tokenStore.setToken(key, value.trim());
-				const masked = await tokenStore.getTokenMasked(key);
+				// Refresh all masked tokens after update
+				const allTokens = await tokenStore.getAllTokensMasked();
+				ampTokenMasked = allTokens.ampToken || '';
+				githubTokenMasked = allTokens.githubToken || '';
+				sourcegraphEndpointMasked = allTokens.sourcegraphEndpoint || '';
+				sourcegraphTokenMasked = allTokens.sourcegraphToken || '';
+				
+				// Clear input and exit editing mode
 				if (key === 'amp_token') {
-					ampTokenMasked = masked || '';
 					ampToken = '';
 					editingAmp = false;
 				} else if (key === 'github_token') {
-					githubTokenMasked = masked || '';
 					githubToken = '';
 					editingGithub = false;
 				} else if (key === 'sourcegraph_endpoint') {
-					sourcegraphEndpointMasked = masked || '';
 					sourcegraphEndpoint = '';
 					editingSourcegraphEndpoint = false;
 				} else if (key === 'sourcegraph_token') {
-					sourcegraphTokenMasked = masked || '';
 					sourcegraphToken = '';
 					editingSourcegraphToken = false;
 				}

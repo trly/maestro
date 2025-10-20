@@ -12,6 +12,7 @@
 	import { confirm } from '$lib/ui/confirm';
 	import { pollExecutions } from '$lib/polling';
 	import { toShortHash } from '$lib/utils';
+	import { sidebarStore } from '$lib/stores/sidebarStore';
 	import type { PromptSet, PromptRevision, Execution, Repository as DBRepository } from '$lib/types';
 	import type { Repository as ProviderRepository } from '$lib/providers/types';
 	import { executionStore } from '$lib/stores/executionBus';
@@ -85,21 +86,12 @@
 	let revisionHeaderProps = $derived.by(() => {
 		if (!currentRevision) return null;
 		
-		const revisionExecutions = executionsWithUpdates.filter(e => e.revisionId === currentRevision!.id);
-		const hasRunning = revisionExecutions.some(e => e.status === 'running');
-		const hasRunningValidations = revisionExecutions.some(e => e.validationStatus === 'running');
 		const stats = revisionStats[currentRevision.id];
 		
 		return {
 			revision: currentRevision,
-			hasRunning,
-			hasRunningValidations,
 			stats,
-			onExecuteAll: () => executeRevision(currentRevision!),
-			onStopAll: stopAllExecutions,
-			onStopAllValidations: stopAllValidations,
-			onDelete: () => deleteRevisionWithConfirm(currentRevision!),
-			onRefreshAllCi: refreshAllCiManually
+			onDelete: () => deleteRevisionWithConfirm(currentRevision!)
 		};
 	});
 	
@@ -330,7 +322,14 @@
 		
 		try {
 			await api.executions.delete(execution.id);
+			// Remove from state arrays
 			executions = executions.filter(e => e.id !== execution.id);
+			// Clear from event bus and stats cache
+			executionStore.update(map => {
+				map.delete(execution.id);
+				return new Map(map);
+			});
+			liveStats.delete(execution.id);
 			showToast('Execution deleted successfully', 'success');
 		} catch (err) {
 			showToast('Failed to delete execution: ' + err, 'error');
@@ -441,6 +440,30 @@
 		}
 	}
 
+	async function startExecutionManually(execution: Execution) {
+		try {
+			executions = executions.map(e => 
+				e.id === execution.id 
+					? { ...e, status: 'running' as const }
+					: e
+			);
+			
+			await api.executions.start(execution.id);
+			const revisionId = currentRevision?.id || execution.revisionId;
+			if (revisionId) {
+				startPolling(revisionId);
+			}
+			showToast('Execution started', 'info');
+		} catch (err) {
+			executions = executions.map(e => 
+				e.id === execution.id 
+					? { ...e, status: execution.status }
+					: e
+			);
+			showToast('Failed to start execution: ' + err, 'error');
+		}
+	}
+
 	async function resumeExecutionManually(execution: Execution) {
 		try {
 			// Optimistic update
@@ -524,15 +547,28 @@
 		
 		let successCount = 0;
 		let failCount = 0;
+		const deletedIds: string[] = [];
 		
 		for (const execution of selectedExecutions) {
 			try {
 				await api.executions.delete(execution.id);
 				executions = executions.filter(e => e.id !== execution.id);
+				deletedIds.push(execution.id);
 				successCount++;
 			} catch (err) {
 				failCount++;
 			}
+		}
+		
+		// Clean up event bus and stats for deleted executions
+		if (deletedIds.length > 0) {
+			executionStore.update(map => {
+				deletedIds.forEach(id => {
+					map.delete(id);
+					liveStats.delete(id);
+				});
+				return new Map(map);
+			});
 		}
 		
 		if (successCount > 0) {
@@ -540,6 +576,41 @@
 		}
 		if (failCount > 0) {
 			showToast(`Failed to delete ${failCount} execution${failCount > 1 ? 's' : ''}`, 'error');
+		}
+	}
+
+	async function bulkStartExecutions(selectedExecutions: Execution[]) {
+		let successCount = 0;
+		let failCount = 0;
+		
+		for (const execution of selectedExecutions) {
+			try {
+				executions = executions.map(e => 
+					e.id === execution.id 
+						? { ...e, status: 'running' as const }
+						: e
+				);
+				await api.executions.start(execution.id);
+				successCount++;
+			} catch (err) {
+				executions = executions.map(e => 
+					e.id === execution.id 
+						? { ...e, status: execution.status }
+						: e
+				);
+				failCount++;
+			}
+		}
+		
+		if (currentRevision) {
+			startPolling(currentRevision.id);
+		}
+		
+		if (successCount > 0) {
+			showToast(`${successCount} execution${successCount > 1 ? 's' : ''} started`, 'info');
+		}
+		if (failCount > 0) {
+			showToast(`Failed to start ${failCount} execution${failCount > 1 ? 's' : ''}`, 'error');
 		}
 	}
 
@@ -578,7 +649,7 @@
 		}
 	}
 
-	async function bulkRevalidateExecutions(selectedExecutions: Execution[]) {
+	async function bulkStartValidations(selectedExecutions: Execution[]) {
 		let successCount = 0;
 		let failCount = 0;
 		
@@ -613,6 +684,41 @@
 		}
 	}
 
+	async function bulkRevalidateExecutions(selectedExecutions: Execution[]) {
+		let successCount = 0;
+		let failCount = 0;
+		
+		for (const execution of selectedExecutions) {
+			try {
+				executions = executions.map(e => 
+					e.id === execution.id 
+						? { ...e, validationStatus: 'running' as const }
+						: e
+				);
+				await api.executions.validate(execution.id);
+				successCount++;
+			} catch (err) {
+				executions = executions.map(e => 
+					e.id === execution.id 
+						? { ...e, validationStatus: execution.validationStatus }
+						: e
+				);
+				failCount++;
+			}
+		}
+		
+		if (currentRevision) {
+			startPolling(currentRevision.id);
+		}
+		
+		if (successCount > 0) {
+			showToast(`${successCount} validation${successCount > 1 ? 's' : ''} revalidated`, 'info');
+		}
+		if (failCount > 0) {
+			showToast(`Failed to revalidate ${failCount} validation${failCount > 1 ? 's' : ''}`, 'error');
+		}
+	}
+
 
 
 	async function deleteRevisionWithConfirm(revision: PromptRevision) {
@@ -639,6 +745,7 @@
 				executions = [];
 			}
 			await loadPromptSet();
+			sidebarStore.refresh(); // Trigger sidebar to reload
 			showToast('Revision deleted successfully', 'success');
 		} catch (err) {
 			showToast('Failed to delete revision: ' + err, 'error');
@@ -660,7 +767,7 @@
 	}
 
 	async function saveRepositoriesByIds(repoProviderIds: string[]) {
-		if (!currentPromptSet || repoProviderIds.length === 0) return;
+		if (!currentPromptSet || !currentRevision || repoProviderIds.length === 0) return;
 
 		// Convert provider IDs (owner/repo) to database IDs, creating repos if needed
 		const repoPromises = repoProviderIds.map(async (providerId) => {
@@ -683,11 +790,36 @@
 			return;
 		}
 
+		// Update prompt set repositories
 		await api.promptSets.update(currentPromptSet.id, {
 			repositoryIds: repoIds
 		});
 		currentPromptSet.repositoryIds = repoIds;
-		showToast('Repositories updated', 'success');
+		
+		// Find new repositories (not in existing executions)
+		const existingRepoIds = new Set(
+			executions
+				.filter(e => e.revisionId === currentRevision!.id)
+				.map(e => e.repositoryId)
+		);
+		const newRepoIds = repoIds.filter(id => !existingRepoIds.has(id));
+		
+		// Create pending executions for new repositories (without starting them)
+		if (newRepoIds.length > 0) {
+			const newExecutions = await Promise.all(
+				newRepoIds.map(repoId => 
+					api.executions.create(currentPromptSet!.id, currentRevision!.id, repoId)
+				)
+			);
+			
+			// Add new executions to state
+			executions = [...executions, ...newExecutions];
+			
+			showToast(`Repositories updated, ${newRepoIds.length} new execution${newRepoIds.length > 1 ? 's' : ''} created`, 'success');
+		} else {
+			showToast('Repositories updated', 'success');
+		}
+		
 		await loadPromptSet();
 	}
 
@@ -807,6 +939,7 @@
 					onSaveValidation={saveValidationPrompt}
 					onSaveRepositories={saveRepositoriesByIds}
 					onDeleteExecution={deleteExecutionWithConfirm}
+					onStartExecution={startExecutionManually}
 					onValidateExecution={validateExecutionManually}
 					onStopExecution={stopExecutionManually}
 					onStopValidation={stopValidationManually}
@@ -818,9 +951,14 @@
 					onPushExecution={pushExecutionManually}
 					onRefreshCi={refreshCiManually}
 					onBulkDelete={bulkDeleteExecutions}
+					onBulkStart={bulkStartExecutions}
 					onBulkRestart={bulkRestartExecutions}
+					onBulkStartValidations={bulkStartValidations}
 					onBulkRevalidate={bulkRevalidateExecutions}
 					onExecuteAll={() => executeRevision(currentRevision!)}
+					onStopAll={stopAllExecutions}
+					onStopAllValidations={stopAllValidations}
+					onRefreshAllCi={refreshAllCiManually}
 				/>
 			{:else}
 				<div class="flex items-center justify-center h-full">

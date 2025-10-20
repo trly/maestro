@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { X, Trash2, CheckSquare, Square as SquareIcon, ChevronDown, ChevronUp, Edit, Save, Play, FolderGit, GitMerge } from 'lucide-svelte';
+	import { X, Trash2, CheckSquare, Square as SquareIcon, ChevronDown, ChevronUp, Edit, Save, Play, FolderGit, GitMerge, Square, RotateCw } from 'lucide-svelte';
+	import UiTooltip from './UiTooltip.svelte';
 	import { Switch } from 'bits-ui';
 	import UiScrollArea from './UiScrollArea.svelte';
 	import ExecutionRow from './ExecutionRow.svelte';
@@ -16,6 +17,7 @@
 		validationPrompt = null,
 		autoValidate = false,
 		onDeleteExecution,
+		onStartExecution,
 		onValidateExecution,
 		onStopExecution,
 		onStopValidation,
@@ -24,11 +26,16 @@
 		onPushExecution,
 		onRefreshCi,
 		onBulkDelete,
+		onBulkStart,
 		onBulkRestart,
+		onBulkStartValidations,
 		onBulkRevalidate,
 		onSaveValidation,
 		onSaveRepositories,
-		onExecuteAll
+		onExecuteAll,
+		onStopAll,
+		onStopAllValidations,
+		onRefreshAllCi
 	}: {
 		revision: PromptRevision;
 		executions: Execution[];
@@ -38,6 +45,7 @@
 		validationPrompt?: string | null;
 		autoValidate?: boolean;
 		onDeleteExecution: (execution: Execution, repoName: string) => void;
+		onStartExecution: (execution: Execution) => void;
 		onValidateExecution: (execution: Execution) => void;
 		onStopExecution: (execution: Execution) => void;
 		onStopValidation: (execution: Execution) => void;
@@ -46,11 +54,16 @@
 		onPushExecution: (execution: Execution) => void;
 		onRefreshCi: (execution: Execution) => void;
 		onBulkDelete: (executions: Execution[]) => void;
+		onBulkStart: (executions: Execution[]) => void;
 		onBulkRestart: (executions: Execution[]) => void;
+		onBulkStartValidations: (executions: Execution[]) => void;
 		onBulkRevalidate: (executions: Execution[]) => void;
 		onSaveValidation: (prompt: string, autoValidate: boolean) => Promise<void>;
 		onSaveRepositories: (repositoryIds: string[]) => Promise<void>;
 		onExecuteAll: () => void;
+		onStopAll: () => void;
+		onStopAllValidations: () => void;
+		onRefreshAllCi: () => void;
 	} = $props();
 
 	let selectedIds = $state<Set<string>>(new Set());
@@ -108,6 +121,9 @@
 	let allSelected = $derived(executions.length > 0 && selectedIds.size === executions.length);
 	let someSelected = $derived(selectedIds.size > 0 && !allSelected);
 	let selectedExecutions = $derived(executions.filter(e => selectedIds.has(e.id)));
+	
+	let hasRunning = $derived(executions.some(e => e.status === 'running'));
+	let hasRunningValidations = $derived(executions.some(e => e.validationStatus === 'running'));
 
 	let sortedExecutions = $derived.by(() => {
 		if (!sortColumn) return executions;
@@ -179,8 +195,18 @@
 		selectedIds = new Set();
 	}
 
+	function handleBulkStart() {
+		onBulkStart(selectedExecutions);
+		selectedIds = new Set();
+	}
+
 	function handleBulkRestart() {
 		onBulkRestart(selectedExecutions);
+		selectedIds = new Set();
+	}
+
+	function handleBulkStartValidations() {
+		onBulkStartValidations(selectedExecutions);
 		selectedIds = new Set();
 	}
 
@@ -409,12 +435,24 @@
 					<span class="text-sm font-medium text-foreground">{selectedIds.size} selected</span>
 					<div class="flex items-center gap-2">
 						<button
+							onclick={handleBulkStart}
+							class="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
+						>
+							Start
+						</button>
+						<button
 							onclick={handleBulkRestart}
 							class="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
 						>
 							Restart
 						</button>
 						{#if hasValidationPrompt}
+							<button
+								onclick={handleBulkStartValidations}
+								class="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
+							>
+								Start validation
+							</button>
 							<button
 								onclick={handleBulkRevalidate}
 								class="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
@@ -490,19 +528,49 @@
 								{/if}
 							{/if}
 						</button>
+						<div class="flex items-center gap-2">
 						<button
-							onclick={() => handleSort('status')}
-							class="text-left hover:text-foreground transition-colors truncate"
+						 onclick={() => handleSort('status')}
+						  class="text-left hover:text-foreground transition-colors truncate"
 						>
-							Execution
-							{#if sortColumn === 'status'}
-								{#if sortDirection === 'asc'}
-									<ChevronUp class="w-3 h-3 inline ml-1" />
-								{:else}
-									<ChevronDown class="w-3 h-3 inline ml-1" />
-								{/if}
-							{/if}
-						</button>
+						 Execution
+						{#if sortColumn === 'status'}
+						{#if sortDirection === 'asc'}
+						  <ChevronUp class="w-3 h-3 inline ml-1" />
+						{:else}
+						  <ChevronDown class="w-3 h-3 inline ml-1" />
+						  {/if}
+						  {/if}
+						 </button>
+						{#if hasRunning}
+						 <UiTooltip content="Stop all running executions">
+						   {#snippet children({ props })}
+						   <button
+						    {...props}
+						   onclick={onStopAll}
+						  class="text-orange-600 hover:text-orange-700 transition-colors"
+						   aria-label="Stop all running executions"
+						 >
+						   <Square class="w-3.5 h-3.5" />
+						   </button>
+						   {/snippet}
+							</UiTooltip>
+						{:else if executions.length > 0}
+							<UiTooltip content="Execute on all repos">
+								{#snippet children({ props })}
+									<button
+										{...props}
+										onclick={onExecuteAll}
+										class="text-green-600 hover:text-green-700 transition-colors"
+										aria-label="Execute on all repos"
+									>
+										<Play class="w-3.5 h-3.5" />
+									</button>
+								{/snippet}
+							</UiTooltip>
+						{/if}
+					</div>
+					<div class="flex items-center gap-2">
 						<button
 							onclick={() => handleSort('validationStatus')}
 							class="text-left hover:text-foreground transition-colors truncate"
@@ -516,6 +584,21 @@
 								{/if}
 							{/if}
 						</button>
+						{#if hasRunningValidations}
+							<UiTooltip content="Stop all running validations">
+								{#snippet children({ props })}
+									<button
+										{...props}
+										onclick={onStopAllValidations}
+										class="text-orange-600 hover:text-orange-700 transition-colors"
+										aria-label="Stop all running validations"
+									>
+										<Square class="w-3.5 h-3.5 fill-current" />
+									</button>
+								{/snippet}
+							</UiTooltip>
+						{/if}
+					</div>
 						<button
 							onclick={() => handleSort('commitStatus')}
 							class="text-left hover:text-foreground transition-colors truncate @max-md/table:hidden"
@@ -529,7 +612,23 @@
 								{/if}
 							{/if}
 						</button>
-						<div class="text-left truncate @max-md/table:hidden">CI</div>
+						<div class="flex items-center gap-2 @max-md/table:hidden">
+							<span class="text-left truncate">CI</span>
+							{#if executions.some(e => e.commitStatus === 'committed')}
+								<UiTooltip content="Refresh all CI statuses">
+									{#snippet children({ props })}
+										<button
+											{...props}
+											onclick={onRefreshAllCi}
+											class="text-blue-600 hover:text-blue-700 transition-colors"
+											aria-label="Refresh all CI statuses"
+										>
+											<RotateCw class="w-3.5 h-3.5" />
+										</button>
+									{/snippet}
+								</UiTooltip>
+							{/if}
+						</div>
 						<div class="text-right truncate">Actions</div>
 					</div>
 
@@ -543,6 +642,7 @@
 								selected={selectedIds.has(execution.id)}
 								onToggleSelect={() => toggleSelect(execution.id)}
 								onDelete={() => onDeleteExecution(execution, getRepoName(execution.repositoryId))}
+								onStart={() => onStartExecution(execution)}
 								onValidate={() => onValidateExecution(execution)}
 								onStop={() => onStopExecution(execution)}
 								onStopValidation={() => onStopValidation(execution)}

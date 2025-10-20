@@ -3,7 +3,9 @@
 	import { getConfiguredProviders, type Repository } from '../providers';
 	import { onMount } from 'svelte';
 	import { Search, Check, Globe } from 'lucide-svelte';
+	import { tokenStore } from '$lib/tokenStore';
 	import * as ipc from '$lib/ipc';
+	import type { SourcegraphRepository } from '$lib/ipc';
 
 	let {
 		selectedRepos = $bindable([])
@@ -28,9 +30,8 @@
 
 	onMount(async () => {
 		providers = await getConfiguredProviders();
-		const sgEndpoint = await ipc.hasToken('sourcegraph_endpoint');
-		const sgToken = await ipc.hasToken('sourcegraph_token');
-		hasSgConfig = sgEndpoint && sgToken;
+		const tokens = await tokenStore.getAllTokens();
+		hasSgConfig = !!(tokens.sourcegraphEndpoint && tokens.sourcegraphToken);
 	});
 
 	// Clear search when dropdown closes
@@ -80,7 +81,7 @@
 			const result = await ipc.searchSourcegraphRepositories(query, 20);
 			
 			// Convert to Repository format
-			sgResults = result.repositories.map(r => {
+			sgResults = result.repositories.map((r: SourcegraphRepository) => {
 				// Sourcegraph returns names like "github.com/owner/repo", strip the prefix
 				const repoPath = r.name.replace(/^github\.com\//, '');
 				const parts = repoPath.split('/');

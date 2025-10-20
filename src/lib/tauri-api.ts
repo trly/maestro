@@ -59,6 +59,9 @@ export const tauriApi = {
 
 		getExecutions: (id: string) => ipc.getExecutionsByPromptSet(id),
 
+		createRevision: (promptsetId: string, promptText: string, parentRevisionId: string | null = null) =>
+			ipc.createPromptRevision(promptsetId, promptText, parentRevisionId),
+
 		delete: async (id: string) => {
 			const success = await ipc.deletePromptSet(id)
 			return { success }
@@ -107,6 +110,14 @@ export const tauriApi = {
 				throw new Error('Execution not found')
 			}
 			return execution
+		},
+
+		create: async (promptsetId: string, revisionId: string, repositoryId: string) => {
+			return await ipc.createExecution(promptsetId, revisionId, repositoryId)
+		},
+
+		start: async (id: string) => {
+			await ipc.startExecution(id)
 		},
 
 		delete: async (id: string) => {

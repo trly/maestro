@@ -27,9 +27,9 @@ export class GitHubProvider implements RepositoryProvider {
 
   private async initializeToken(): Promise<void> {
     try {
-      const token = await tokenStore.getToken('github_token');
-      if (token) {
-        this.octokit = new Octokit({ auth: token });
+      const tokens = await tokenStore.getAllTokens();
+      if (tokens.githubToken) {
+        this.octokit = new Octokit({ auth: tokens.githubToken });
       }
     } finally {
       this.initialized = true;

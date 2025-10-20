@@ -10,6 +10,7 @@
 	import { showToast } from '$lib/ui/toast';
 	import { confirm } from '$lib/ui/confirm';
 	import { toShortHash } from '$lib/utils';
+	import { sidebarStore } from '$lib/stores/sidebarStore';
 	import type { PromptSet, PromptRevision } from '$lib/types';
 
 	let { collapsed = false, onToggleCollapse } = $props();
@@ -22,12 +23,18 @@
 
 	async function loadPromptSets() {
 		try {
-			allPromptSets = await api.promptSets.getAll();
+			isLoading = true;
+			
+			const promptSets = await api.promptSets.getAll();
+			
+			// Build new Maps to ensure Svelte 5 reactivity
+			const nextRevisionsByPromptSet = new Map<string, PromptRevision[]>();
+			const nextRevisionStats = new Map<string, { total: number; running: number; completed: number; validationPassed: number }>();
 			
 			// Load revisions for each prompt set
-			for (const ps of allPromptSets) {
+			for (const ps of promptSets) {
 				const revisions = await api.promptSets.getRevisions(ps.id);
-				revisionsByPromptSet.set(ps.id, revisions);
+				nextRevisionsByPromptSet.set(ps.id, revisions);
 				
 				// Load stats for each revision
 				for (const revision of revisions) {
@@ -37,9 +44,14 @@
 					const completed = executions.filter(e => e.status === 'completed').length;
 					const validationPassed = executions.filter(e => e.validationStatus === 'passed').length;
 					
-					revisionStats.set(revision.id, { total, running, completed, validationPassed });
+					nextRevisionStats.set(revision.id, { total, running, completed, validationPassed });
 				}
 			}
+			
+			// Reassign Maps to trigger reactivity
+			allPromptSets = promptSets;
+			revisionsByPromptSet = nextRevisionsByPromptSet;
+			revisionStats = nextRevisionStats;
 		} catch (err) {
 			showToast('Failed to load prompt sets: ' + err, 'error');
 		} finally {
@@ -79,8 +91,9 @@
 
 	onMount(loadPromptSets);
 	
+	// Reload when triggered by sidebarStore
 	$effect(() => {
-		$page.url;
+		const _ = $sidebarStore; // Subscribe to refresh trigger
 		loadPromptSets();
 	});
 
@@ -239,6 +252,21 @@
 										</div>
 										
 										<div class="flex items-center gap-1">
+											<UiTooltip content="Create new revision">
+												{#snippet children({ props })}
+													<button
+														{...props}
+														onclick={(e) => {
+															e.stopPropagation();
+															goto(`/promptsets/${ps.id}/new-revision`);
+														}}
+														class="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+														aria-label="Create new revision"
+													>
+														<Plus class="w-3 h-3" />
+													</button>
+												{/snippet}
+											</UiTooltip>
 											<UiTooltip content="Delete prompt set">
 												{#snippet children({ props })}
 													<button
@@ -247,7 +275,7 @@
 															e.stopPropagation();
 															deletePromptSetWithConfirm(ps);
 														}}
-														class="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+														class="p-1 rounded-md text-destructive hover:bg-destructive/10 transition-all"
 														aria-label="Delete prompt set"
 													>
 														<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
