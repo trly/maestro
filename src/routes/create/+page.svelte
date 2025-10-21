@@ -3,10 +3,9 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import RepositorySelector from '$lib/components/RepositorySelector.svelte';
-	import PromptDiff from '$lib/components/PromptDiff.svelte';
+	import RevisionEditor from '$lib/components/ui/RevisionEditor.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import UiInput from '$lib/components/ui/UiInput.svelte';
-	import UiTextarea from '$lib/components/ui/UiTextarea.svelte';
 	import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 	import type { Repository } from '$lib/providers';
 	import { api } from '$lib/api';
@@ -49,13 +48,14 @@
 			return;
 		}
 
+		const newRepos = new Map(repositories);
 		const repoPromises = selectedRepos.map(async (repo) => {
 			try {
 				const dbRepo = await api.repositories.find(repo.provider, repo.fullName)
 					.catch(async (findErr) => {
 						return await api.repositories.create(repo.provider, repo.fullName, repo.name);
 					});
-				repositories.set(dbRepo.id, dbRepo);
+				newRepos.set(dbRepo.id, dbRepo);
 				return dbRepo.id;
 			} catch (err) {
 				return null;
@@ -63,6 +63,7 @@
 		});
 
 		const repoIds = (await Promise.all(repoPromises)).filter(Boolean) as string[];
+		repositories = newRepos;
 
 		if (repoIds.length === 0) {
 			showToast('Failed to persist selected repositories', 'error');
@@ -92,11 +93,14 @@
 		isRunning = true;
 		try {
 			if (revisions.length === 0 && validationPromptText.trim()) {
-				await api.promptSets.update(currentPromptSet.id, {
-					validationPrompt: validationPromptText
-				});
-				currentPromptSet.validationPrompt = validationPromptText;
-			}
+			await api.promptSets.update(currentPromptSet.id, {
+			validationPrompt: validationPromptText
+			});
+			currentPromptSet = {
+			  ...currentPromptSet,
+				validationPrompt: validationPromptText
+			};
+		}
 			
 			const currentRevision = await api.revisions.create(
 				currentPromptSet.id,
@@ -126,8 +130,10 @@
 				
 				goto(`/promptsets/${currentPromptSet.id}?revision=${currentRevision.id}`);
 			} else {
+				// Prepare executions (create worktrees) without starting them
+				await api.revisions.prepare(currentRevision.id);
 				showToast('Revision created successfully', 'success');
-				goto(`/promptsets/${currentPromptSet.id}`);
+				goto(`/promptsets/${currentPromptSet.id}?revision=${currentRevision.id}`);
 			}
 		} catch (err) {
 			showToast('Failed to save and execute revision: ' + err, 'error');
@@ -193,62 +199,15 @@
 			</span>
 		</div>
 
-		{#if revisions.length === 0}
-			<FormField
-				label="Initial Prompt"
-				htmlFor="initial-prompt"
-				required
-				helperText="This prompt will be executed across all repositories in the set"
-			>
-				<UiTextarea
-					id="initial-prompt"
-					bind:value={promptText}
-					placeholder="Enter your prompt to execute across all repositories..."
-					rows={12}
-				/>
-			</FormField>
-			
-			<FormField
-				label="Validation Prompt"
-				htmlFor="validation-prompt"
-				helperText="This prompt will run against the modified branch after each successful execution"
-			>
-				<UiTextarea
-					id="validation-prompt"
-					bind:value={validationPromptText}
-					placeholder="Enter a prompt to validate each execution after it completes..."
-					rows={6}
-				/>
-			</FormField>
-		{:else}
-			<PromptDiff
-				oldText={revisions[0].promptText}
-				newText={promptText}
-				onupdate={(text) => promptText = text}
-			/>
-		{/if}
-
-		<div class="flex flex-col sm:flex-row gap-3 mt-5">
-		<button
-		onclick={() => saveRevision(true)}
-		disabled={!promptText.trim() || isRunning}
-		class="flex-1 px-8 py-3.5 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-		>
-		{isRunning ? 'Creating...' : (revisions.length === 0 ? 'Create & Execute' : 'Save Revision & Execute')}
-		</button>
-		<button
-		onclick={() => saveRevision(false)}
-		disabled={!promptText.trim() || isRunning}
-		class="w-full sm:w-auto px-6 py-3.5 border border-primary/50 text-primary rounded-md hover:bg-primary/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-		>
-		{revisions.length === 0 ? 'Create Only' : 'Save Only'}
-		</button>
-		<button
-		onclick={startOver}
-		class="w-full sm:w-auto px-6 py-3.5 border border-border/30 text-foreground rounded-md hover:bg-accent transition-all font-semibold"
-		>
-		Cancel
-			</button>
-		</div>
+		<RevisionEditor
+			bind:promptText
+			bind:validationPromptText
+			oldPromptText={revisions.length > 0 ? revisions[0].promptText : null}
+			showValidationPrompt={revisions.length === 0}
+			isProcessing={isRunning}
+			onCreateOnly={() => saveRevision(false)}
+			onCreateAndExecute={() => saveRevision(true)}
+			onCancel={startOver}
+		/>
 	</div>
 {/if}

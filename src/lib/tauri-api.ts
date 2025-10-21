@@ -82,6 +82,11 @@ export const tauriApi = {
 
 		getExecutions: (id: string) => ipc.getExecutionsByRevision(id),
 
+		prepare: async (id: string, repositoryIds?: string[]) => {
+			const revision = await tauriApi.revisions.get(id)
+			return await ipc.prepareExecutions(revision.promptsetId, id, repositoryIds)
+		},
+
 		execute: async (id: string, repositoryIds?: string[]) => {
 			const revision = await tauriApi.revisions.get(id)
 			return await ipc.executePromptSet(revision.promptsetId, id, repositoryIds)

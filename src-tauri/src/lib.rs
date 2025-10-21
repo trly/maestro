@@ -110,6 +110,7 @@ pub fn run() {
       commands::db::delete_repository,
       commands::db::delete_prompt_revision,
       commands::executor::execute_promptset,
+      commands::executor::prepare_executions,
       commands::executor::execute_prompt,
       commands::executor::validate_execution,
       commands::executor::resume_execution,

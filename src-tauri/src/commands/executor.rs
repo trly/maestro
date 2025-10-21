@@ -374,6 +374,117 @@ pub async fn execute_promptset(
 }
 
 #[tauri::command]
+pub async fn prepare_executions(
+	promptset_id: String,
+	revision_id: String,
+	repository_ids: Option<Vec<String>>,
+	app: tauri::AppHandle,
+	paths: tauri::State<'_, Paths>,
+) -> Result<Vec<String>, String> {
+	let promptset = {
+		let store_state = app.state::<Mutex<Store>>();
+		let store = store_state.lock().map_err(|e| e.to_string())?;
+		store
+			.get_promptset(&promptset_id)
+			.map_err(|e| e.to_string())?
+			.ok_or_else(|| format!("PromptSet {} not found", promptset_id))?
+	};
+
+	let repo_ids = if let Some(ids) = repository_ids {
+		ids.into_iter()
+			.filter(|id| promptset.repository_ids.contains(id))
+			.collect()
+	} else {
+		promptset.repository_ids.clone()
+	};
+
+	let mut execution_ids = Vec::new();
+
+	for repository_id in repo_ids {
+		let execution = {
+			let store_state = app.state::<Mutex<Store>>();
+			let store = store_state.lock().map_err(|e| e.to_string())?;
+			store
+				.create_execution(&promptset_id, &revision_id, &repository_id)
+				.map_err(|e| e.to_string())?
+		};
+		
+		execution_ids.push(execution.id.clone());
+
+		let execution_id = execution.id.clone();
+		let app_clone = app.clone();
+		let paths_clone = paths.inner().clone();
+		
+		tokio::spawn(async move {
+			if let Err(e) = prepare_execution_impl(execution_id, app_clone, paths_clone).await {
+				log::error!("Execution preparation failed: {}", e);
+			}
+		});
+	}
+
+	Ok(execution_ids)
+}
+
+async fn prepare_execution_impl(
+	execution_id: String,
+	app: tauri::AppHandle,
+	paths: Paths,
+) -> Result<()> {
+	let (execution, repository) = {
+		let store_state = app.state::<Mutex<Store>>();
+		let store = store_state.lock().unwrap();
+		
+		let execution = store.get_execution(&execution_id)?
+			.ok_or_else(|| anyhow::anyhow!("Execution {} not found", execution_id))?;
+		let repository = store.get_repository(&execution.repository_id)?
+			.ok_or_else(|| anyhow::anyhow!("Repository {} not found", execution.repository_id))?;
+		
+		(execution, repository)
+	};
+
+	if repository.provider != "github" {
+		anyhow::bail!("Only GitHub repositories are supported");
+	}
+
+	let (owner, repo) = parse_provider_id(&repository.provider_id)?;
+
+	let admin_repo_path = ensure_admin_repo_and_fetch(&paths.admin_repo_dir, &owner, &repo).await?;
+
+	let default_branch = fetch_default_branch_from_github(&owner, &repo).await?;
+	
+	if repository.default_branch.as_deref() != Some(&default_branch) {
+		let store_state = app.state::<Mutex<Store>>();
+		let store = store_state.lock().unwrap();
+		let _ = store.update_repository_default_branch(&repository.id, &default_branch);
+	}
+
+	let worktree_info = add_worktree(
+		&admin_repo_path,
+		&paths.worktree_dir,
+		&execution.promptset_id,
+		&execution.revision_id,
+		&execution_id,
+		&default_branch,
+	)
+	.await?;
+
+	{
+		let store_state = app.state::<Mutex<Store>>();
+		let store = store_state.lock().unwrap();
+		store.update_execution(
+			&execution_id,
+			ExecutionUpdates {
+				parent_sha: Some(worktree_info.base_commit.clone()),
+				branch: Some(worktree_info.branch_name.clone()),
+				..Default::default()
+			},
+		)?;
+	}
+
+	Ok(())
+}
+
+#[tauri::command]
 pub async fn execute_prompt(
 	execution_id: String,
 	app: tauri::AppHandle,

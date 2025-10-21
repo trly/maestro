@@ -263,6 +263,21 @@ export async function getExecutionsByRevision(
 }
 
 /**
+ * Prepare executions: create execution records and worktrees without starting
+ */
+export async function prepareExecutions(
+	promptsetId: string,
+	revisionId: string,
+	repositoryIds?: string[]
+): Promise<string[]> {
+	return invokeCommand<string[]>('prepare_executions', {
+		promptsetId,
+		revisionId,
+		repositoryIds
+	})
+}
+
+/**
  * Execute a prompt set with a specific revision
  */
 export async function executePromptSet(

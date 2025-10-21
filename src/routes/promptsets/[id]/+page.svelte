@@ -114,9 +114,13 @@
 	const promptsetId = $derived($page.params.id);
 	const revisionParam = $derived($page.url.searchParams.get('revision'));
 	
-	// Reload prompt set when promptsetId changes
+	// Reload prompt set when promptsetId changes or when navigating with a new revision
 	$effect(() => {
-		if (promptsetId) {
+		// Access both to create dependencies
+		const id = promptsetId;
+		const rev = revisionParam;
+		
+		if (id) {
 			loadPromptSet();
 		}
 	});
@@ -156,12 +160,15 @@
 		}
 	}
 	
-	// Watch for revision parameter changes
+	// Watch for revision parameter changes (when switching between already-loaded revisions)
 	$effect(() => {
+		// Access dependencies explicitly
 		const param = revisionParam;
-		if (!param || revisions.length === 0) return;
+		const revs = revisions;
 		
-		const revision = revisions.find(r => r.id === param || toShortHash(r.id) === param);
+		if (!param || revs.length === 0) return;
+		
+		const revision = revs.find(r => r.id === param || toShortHash(r.id) === param);
 		if (revision && (!currentRevision || revision.id !== currentRevision.id)) {
 			viewRevisionExecutions(revision);
 		}
@@ -843,9 +850,10 @@
 	async function loadEditingRepos() {
 		if (!currentPromptSet) return [];
 		
-		return await Promise.all(
+		const repos = await Promise.all(
 			currentPromptSet.repositoryIds.map(async (id) => {
 				const repo = await api.repositories.get(id);
+				if (!repo?.providerId) return null;
 				return {
 					provider: repo.provider,
 					fullName: repo.providerId,
@@ -855,6 +863,7 @@
 				};
 			})
 		);
+		return repos.filter((r): r is NonNullable<typeof r> => r !== null);
 	}
 
 	async function openEditRepositories() {

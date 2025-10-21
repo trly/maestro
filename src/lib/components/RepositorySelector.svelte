@@ -145,6 +145,10 @@
 		selectedRepos = selectedRepos.filter(r => r.fullName !== repo.fullName);
 	}
 
+	function clearAll() {
+		selectedRepos = [];
+	}
+
 	let filteredResults = $derived(
 		searchResults.filter(r => !selectedRepos.find(s => s.fullName === r.fullName))
 	);
@@ -161,13 +165,24 @@
 			<p class="text-sm mt-1 text-muted-foreground">Configure GitHub token in Settings to enable GitHub integration</p>
 		</div>
 	{:else}
+		<div class="flex items-center justify-between gap-2 mb-2">
+			{#if selectedRepos.length > 0}
+				<span class="text-sm text-muted-foreground">{selectedRepos.length} {selectedRepos.length === 1 ? 'repository' : 'repositories'} selected</span>
+				<button
+					onclick={clearAll}
+					class="text-sm text-destructive hover:text-destructive/80 transition-colors"
+				>
+					Clear all
+				</button>
+			{/if}
+		</div>
 		<div class="flex flex-wrap gap-2 mb-4">
 			{#each selectedRepos as repo}
-				<div class="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg transition-all">
+				<div class="flex items-center gap-1.5 bg-primary text-primary-foreground px-2.5 py-1 rounded-lg transition-all">
 					<span class="text-sm font-semibold">{repo.fullName}</span>
 					<button
 						onclick={() => removeRepo(repo)}
-						class="hover:bg-primary-foreground/20 rounded-full p-1 transition-all"
+						class="hover:bg-primary-foreground/20 rounded-full p-0.5 transition-all"
 						aria-label="Remove {repo.fullName}"
 					>
 						✕
