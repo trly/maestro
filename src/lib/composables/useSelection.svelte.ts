@@ -5,8 +5,6 @@
 
 export interface SelectionState {
 	selectedIds: Set<string>
-	allSelected: boolean
-	someSelected: boolean
 	toggleAll: (itemIds: string[]) => void
 	toggle: (id: string) => void
 	clear: () => void
@@ -15,12 +13,6 @@ export interface SelectionState {
 
 export function useSelection(): SelectionState {
 	let selectedIds = $state<Set<string>>(new Set())
-
-	let allSelected = $derived.by(() => {
-		return false
-	})
-
-	let someSelected = $derived(selectedIds.size > 0 && !allSelected)
 
 	function toggleAll(itemIds: string[]) {
 		if (itemIds.length === 0) {
@@ -56,8 +48,6 @@ export function useSelection(): SelectionState {
 
 	return {
 		get selectedIds() { return selectedIds },
-		get allSelected() { return allSelected },
-		get someSelected() { return someSelected },
 		toggleAll,
 		toggle,
 		clear,
