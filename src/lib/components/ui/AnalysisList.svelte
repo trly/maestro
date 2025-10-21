@@ -13,20 +13,22 @@
 	} = $props()
 	
 	// Merge analyses with live updates from event bus
-	let analysesWithUpdates = $derived(
-		props.analyses.map(analysis => {
-			const updates = $analysisStore.get(analysis.id)
-			if (!updates) return analysis
+	let analysesWithUpdates = $derived.by(() => {
+		const updates = $analysisStore
+		return props.analyses.map(analysis => {
+			const data = updates.get(analysis.id)
+			if (!data) return analysis
 			return {
 				...analysis,
-				...(updates.status && { status: updates.status }),
-				...(updates.ampThreadUrl && { ampThreadUrl: updates.ampThreadUrl }),
-				...(updates.ampSessionId && { ampSessionId: updates.ampSessionId }),
-				...(updates.analysisResult && { analysisResult: updates.analysisResult }),
-				...(updates.errorMessage && { errorMessage: updates.errorMessage })
+				...(data.status && { status: data.status }),
+				...(data.ampThreadUrl && { ampThreadUrl: data.ampThreadUrl }),
+				...(data.ampSessionId && { ampSessionId: data.ampSessionId }),
+				...(data.analysisResult && { analysisResult: data.analysisResult }),
+				...(data.errorMessage && { errorMessage: data.errorMessage }),
+				...(data.completedAt && { completedAt: data.completedAt })
 			}
 		})
-	)
+	})
 	
 	let sortedAnalyses = $derived(
 		[...analysesWithUpdates].sort((a, b) => b.createdAt - a.createdAt)

@@ -43,9 +43,10 @@
 	let bulkDeleting = $state(false);
 	
 	// Merge executions with live updates from the event bus and live stats
-	let executionsWithUpdates = $derived(
-		executions.map(execution => {
-			const updates = $executionStore.get(execution.id);
+	let executionsWithUpdates = $derived.by(() => {
+		const updates = $executionStore;
+		return executions.map(execution => {
+			const executionUpdates = updates.get(execution.id);
 			const stats = liveStats.get(execution.id);
 			
 			// Use live stats if available, otherwise fall back to DB stats
@@ -59,17 +60,17 @@
 			
 			return {
 			...execution,
-			...(updates?.sessionId && { sessionId: updates.sessionId }),
-			...(updates?.threadUrl && { threadUrl: updates.threadUrl }),
-			...(updates?.status && { status: updates.status }),
-			...(updates?.validationStatus && { validationStatus: updates.validationStatus }),
-			...(updates?.validationThreadUrl && { validationThreadUrl: updates.validationThreadUrl }),
-			...(updates?.commitStatus && { commitStatus: updates.commitStatus }),
-			...(updates?.commitSha && { commitSha: updates.commitSha }),
-			...(updates?.committedAt && { committedAt: updates.committedAt }),
-			...(updates?.ciStatus && { ciStatus: updates.ciStatus }),
-			...(updates?.ciUrl && { ciUrl: updates.ciUrl }),
-			...(updates?.progressMessage && { progressMessage: updates.progressMessage }),
+			...(executionUpdates?.sessionId && { sessionId: executionUpdates.sessionId }),
+			...(executionUpdates?.threadUrl && { threadUrl: executionUpdates.threadUrl }),
+			...(executionUpdates?.status && { status: executionUpdates.status }),
+			...(executionUpdates?.validationStatus && { validationStatus: executionUpdates.validationStatus }),
+			...(executionUpdates?.validationThreadUrl && { validationThreadUrl: executionUpdates.validationThreadUrl }),
+			...(executionUpdates?.commitStatus && { commitStatus: executionUpdates.commitStatus }),
+			...(executionUpdates?.commitSha && { commitSha: executionUpdates.commitSha }),
+			...(executionUpdates?.committedAt && { committedAt: executionUpdates.committedAt }),
+			...(executionUpdates?.ciStatus && { ciStatus: executionUpdates.ciStatus }),
+			...(executionUpdates?.ciUrl && { ciUrl: executionUpdates.ciUrl }),
+			...(executionUpdates?.progressMessage && { progressMessage: executionUpdates.progressMessage }),
 			filesAdded: effectiveStats.filesAdded,
 			filesRemoved: effectiveStats.filesRemoved,
 			filesModified: effectiveStats.filesModified,
@@ -77,7 +78,7 @@
 			linesRemoved: effectiveStats.linesRemoved,
 		};
 		})
-	);
+	});
 
 	// Compute reactive execution stats per revision (from all executions, not just current)
 	let revisionStats = $derived(

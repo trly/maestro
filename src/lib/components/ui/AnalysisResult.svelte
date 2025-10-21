@@ -18,9 +18,13 @@
 	} = $props()
 
 	// Merge static analysis with live updates from event bus
-	let reactiveAnalysis = $derived({
-		...analysis,
-		...($analysisStore.get(analysis.id) || {})
+	let reactiveAnalysis = $derived.by(() => {
+		const updates = $analysisStore
+		const data = updates.get(analysis.id)
+		return {
+			...analysis,
+			...(data || {})
+		}
 	})
 
 	let typeLabel = $derived(reactiveAnalysis.type === 'execution' ? 'Execution' : 'Validation')

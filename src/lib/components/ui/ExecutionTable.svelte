@@ -47,26 +47,27 @@
 	const selection = useSelection()
 	
 	// Merge event bus updates with static execution data
-	let executionsLive = $derived(
-		props.executions.map(e => {
-			const updates = $executionStore.get(e.id)
-			if (!updates) return e
+	let executionsLive = $derived.by(() => {
+		const updates = $executionStore
+		return props.executions.map(e => {
+			const data = updates.get(e.id)
+			if (!data) return e
 			return {
 				...e,
-				...(updates.sessionId && { sessionId: updates.sessionId }),
-				...(updates.threadUrl && { threadUrl: updates.threadUrl }),
-				...(updates.status && { status: updates.status }),
-				...(updates.validationStatus && { validationStatus: updates.validationStatus }),
-				...(updates.validationThreadUrl && { validationThreadUrl: updates.validationThreadUrl }),
-				...(updates.commitStatus && { commitStatus: updates.commitStatus }),
-				...(updates.commitSha && { commitSha: updates.commitSha }),
-				...(updates.committedAt && { committedAt: updates.committedAt }),
-				...(updates.ciStatus && { ciStatus: updates.ciStatus }),
-				...(updates.ciUrl && { ciUrl: updates.ciUrl }),
-				...(updates.progressMessage && { progressMessage: updates.progressMessage })
+				...(data.sessionId && { sessionId: data.sessionId }),
+				...(data.threadUrl && { threadUrl: data.threadUrl }),
+				...(data.status && { status: data.status }),
+				...(data.validationStatus && { validationStatus: data.validationStatus }),
+				...(data.validationThreadUrl && { validationThreadUrl: data.validationThreadUrl }),
+				...(data.commitStatus && { commitStatus: data.commitStatus }),
+				...(data.commitSha && { commitSha: data.commitSha }),
+				...(data.committedAt && { committedAt: data.committedAt }),
+				...(data.ciStatus && { ciStatus: data.ciStatus }),
+				...(data.ciUrl && { ciUrl: data.ciUrl }),
+				...(data.progressMessage && { progressMessage: data.progressMessage })
 			}
 		})
-	)
+	})
 	
 	let executionIds = $derived(executionsLive.map(e => e.id))
 	let selectedExecutions = $derived(selection.getSelected(executionsLive))

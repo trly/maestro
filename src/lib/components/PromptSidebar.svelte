@@ -10,13 +10,14 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 	import { confirm } from '$lib/ui/confirm';
 	import { toShortHash } from '$lib/utils';
 	import { sidebarStore } from '$lib/stores/sidebarStore';
-	import type { PromptSet, PromptRevision } from '$lib/types';
+	import { executionStore } from '$lib/stores/executionBus';
+	import type { PromptSet, PromptRevision, Execution } from '$lib/types';
 
 	let { collapsed = false, onToggleCollapse } = $props();
 
 	let allPromptSets = $state<PromptSet[]>([]);
 	let revisionsByPromptSet = $state<Map<string, PromptRevision[]>>(new Map());
-	let revisionStats = $state<Map<string, { total: number; running: number; completed: number; validationPassed: number }>>(new Map());
+	let executionsByRevision = $state<Map<string, Execution[]>>(new Map());
 	let isLoading = $state(true);
 	let accordionValue = $state<string[]>([]);
 
@@ -28,29 +29,24 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 			
 			// Build new Maps to ensure Svelte 5 reactivity
 			const nextRevisionsByPromptSet = new Map<string, PromptRevision[]>();
-			const nextRevisionStats = new Map<string, { total: number; running: number; completed: number; validationPassed: number }>();
+			const nextExecutionsByRevision = new Map<string, Execution[]>();
 			
 			// Load revisions for each prompt set
 			for (const ps of promptSets) {
 				const revisions = await api.promptSets.getRevisions(ps.id);
 				nextRevisionsByPromptSet.set(ps.id, revisions);
 				
-				// Load stats for each revision
+				// Load executions for each revision
 				for (const revision of revisions) {
 					const executions = await api.revisions.getExecutions(revision.id);
-					const total = executions.length;
-					const running = executions.filter(e => e.status === 'running').length;
-					const completed = executions.filter(e => e.status === 'completed').length;
-					const validationPassed = executions.filter(e => e.validationStatus === 'passed').length;
-					
-					nextRevisionStats.set(revision.id, { total, running, completed, validationPassed });
+					nextExecutionsByRevision.set(revision.id, executions);
 				}
 			}
 			
 			// Reassign Maps to trigger reactivity
 			allPromptSets = promptSets;
 			revisionsByPromptSet = nextRevisionsByPromptSet;
-			revisionStats = nextRevisionStats;
+			executionsByRevision = nextExecutionsByRevision;
 		} catch (err) {
 			showToast('Failed to load prompt sets: ' + err, 'error');
 		} finally {
@@ -120,6 +116,34 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 			hasAutoNavigated = false;
 		}
 	});
+
+	// Compute revision stats reactively with live execution updates
+	let revisionStats = $derived.by(() => {
+		const updates = $executionStore
+		const stats = new Map<string, { total: number; running: number; completed: number; validationPassed: number }>()
+		
+		for (const [revisionId, executions] of executionsByRevision.entries()) {
+			// Merge static executions with live updates
+			const executionsWithUpdates = executions.map(e => {
+				const data = updates.get(e.id)
+				if (!data) return e
+				return {
+					...e,
+					...(data.status && { status: data.status }),
+					...(data.validationStatus && { validationStatus: data.validationStatus })
+				}
+			})
+			
+			const total = executionsWithUpdates.length
+			const running = executionsWithUpdates.filter(e => e.status === 'running').length
+			const completed = executionsWithUpdates.filter(e => e.status === 'completed').length
+			const validationPassed = executionsWithUpdates.filter(e => e.validationStatus === 'passed').length
+			
+			stats.set(revisionId, { total, running, completed, validationPassed })
+		}
+		
+		return stats
+	})
 
 	const isPromptSetActive = (id: string) => $page.url.pathname.startsWith(`/promptsets/${id}`);
 	const isRevisionActive = (revisionId: string) => $page.url.searchParams.get('revision') === revisionId || $page.url.searchParams.get('revision') === toShortHash(revisionId);

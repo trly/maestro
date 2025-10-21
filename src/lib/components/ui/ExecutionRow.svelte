@@ -54,21 +54,22 @@
 
 	// Merge prop with live updates from event bus
 	let liveExecution = $derived.by(() => {
-		const updates = $executionStore.get(props.execution.id);
-		if (!updates) return props.execution;
+		const updates = $executionStore
+		const data = updates.get(props.execution.id);
+		if (!data) return props.execution;
 		return {
 			...props.execution,
-			...(updates.sessionId && { sessionId: updates.sessionId }),
-			...(updates.threadUrl && { threadUrl: updates.threadUrl }),
-			...(updates.status && { status: updates.status }),
-			...(updates.validationStatus && { validationStatus: updates.validationStatus }),
-			...(updates.validationThreadUrl && { validationThreadUrl: updates.validationThreadUrl }),
-			...(updates.commitStatus && { commitStatus: updates.commitStatus }),
-			...(updates.commitSha && { commitSha: updates.commitSha }),
-			...(updates.committedAt && { committedAt: updates.committedAt }),
-			...(updates.ciStatus && { ciStatus: updates.ciStatus }),
-			...(updates.ciUrl && { ciUrl: updates.ciUrl }),
-			...(updates.progressMessage && { progressMessage: updates.progressMessage })
+			...(data.sessionId && { sessionId: data.sessionId }),
+			...(data.threadUrl && { threadUrl: data.threadUrl }),
+			...(data.status && { status: data.status }),
+			...(data.validationStatus && { validationStatus: data.validationStatus }),
+			...(data.validationThreadUrl && { validationThreadUrl: data.validationThreadUrl }),
+			...(data.commitStatus && { commitStatus: data.commitStatus }),
+			...(data.commitSha && { commitSha: data.commitSha }),
+			...(data.committedAt && { committedAt: data.committedAt }),
+			...(data.ciStatus && { ciStatus: data.ciStatus }),
+			...(data.ciUrl && { ciUrl: data.ciUrl }),
+			...(data.progressMessage && { progressMessage: data.progressMessage })
 		};
 	});
 
