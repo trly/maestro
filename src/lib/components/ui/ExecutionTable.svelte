@@ -176,7 +176,8 @@
 	/>
 {/if}
 
-<div class="flex-1 overflow-auto">
+<div class="flex-1 min-h-0 flex flex-col overflow-hidden">
+	<div class="flex-1 overflow-auto">
 	<ExecutionTableHeader
 		{allSelected}
 		{someSelected}
@@ -225,5 +226,6 @@
 				isRefreshingCi={props.refreshingCi.has(execution.id)}
 			/>
 		{/each}
+	</div>
 	</div>
 </div>

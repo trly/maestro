@@ -24,16 +24,25 @@
 	let manuallyResized = $state(false);
 	let promptContentRef = $state<HTMLPreElement | null>(null);
 	let validationContentRef = $state<HTMLElement | null>(null);
+	let containerRef = $state<HTMLDivElement | null>(null);
+	let startY = $state(0);
+	let startHeight = $state(0);
 
 	function handleResizeStart(e: MouseEvent) {
 		isResizing = true;
 		manuallyResized = true;
+		startY = e.clientY;
+		startHeight = promptHeight;
 		e.preventDefault();
 	}
 
 	function handleResizeMove(e: MouseEvent) {
 		if (!isResizing) return;
-		promptHeight = Math.max(100, Math.min(window.innerHeight * 0.5, e.clientY - 100));
+		const delta = e.clientY - startY;
+		const newHeight = startHeight + delta;
+		const minHeight = 100;
+		const maxHeight = window.innerHeight * 0.7;
+		promptHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
 	}
 
 	function handleResizeEnd() {
@@ -99,7 +108,7 @@
 	});
 </script>
 
-<div class="flex-shrink-0">
+<div class="flex-shrink-0" bind:this={containerRef}>
 	<!-- Prompt Content -->
 	<div class="border-b border-border/20 overflow-hidden bg-card">
 		<div class="flex divide-x divide-border/20" style="height: {manuallyResized ? promptHeight : computedHeight}px;">

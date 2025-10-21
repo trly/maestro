@@ -122,8 +122,6 @@
 	let diffViewerExecutionId = $state<string | null>(null);
 	let stopPolling = $state<(() => void) | null>(null);
 	let activeTab = $state<string>('executions');
-	let tabsHeight = $state(400);
-	let isResizingTabs = $state(false);
 
 	const promptsetId = $derived($page.params.id);
 	const revisionParam = $derived($page.url.searchParams.get('revision'));
@@ -1076,33 +1074,6 @@
 		}
 	}
 
-	function handleTabsResizeStart(e: MouseEvent) {
-		isResizingTabs = true;
-		e.preventDefault();
-	}
-
-	function handleTabsResizeMove(e: MouseEvent) {
-		if (!isResizingTabs) return;
-		const maxHeight = window.innerHeight * 0.7;
-		const newHeight = window.innerHeight - e.clientY;
-		tabsHeight = Math.max(200, Math.min(maxHeight, newHeight));
-	}
-
-	function handleTabsResizeEnd() {
-		isResizingTabs = false;
-	}
-
-	$effect(() => {
-		if (isResizingTabs) {
-			document.addEventListener('mousemove', handleTabsResizeMove);
-			document.addEventListener('mouseup', handleTabsResizeEnd);
-			return () => {
-				document.removeEventListener('mousemove', handleTabsResizeMove);
-				document.removeEventListener('mouseup', handleTabsResizeEnd);
-			};
-		}
-	});
-
 	let unlistenCommit: (() => void) | null = null;
 
 	onMount(async () => {
@@ -1157,31 +1128,19 @@
 			</div>
 		{/if}
 
-		<!-- Main Content Area: PromptConsole + Tabs with resizable divider -->
-		<div class="flex-1 min-h-0 flex flex-col overflow-hidden">
+		<!-- Main Content Area: PromptConsole + Tabs -->
+		<div class="flex-1 min-h-0 flex flex-col bg-background">
 			{#if currentRevision}
-				<!-- Prompt Console (top, flexible) -->
-				<div class="flex-1 min-h-0 overflow-hidden">
-					<PromptConsole
-						revision={currentRevision}
-						validationPrompt={currentPromptSet.validationPrompt}
-						autoValidate={currentPromptSet.autoValidate}
-						onSaveValidation={saveValidationPrompt}
-					/>
-				</div>
+				<!-- Prompt Console (resizable) -->
+				<PromptConsole
+					revision={currentRevision}
+					validationPrompt={currentPromptSet.validationPrompt}
+					autoValidate={currentPromptSet.autoValidate}
+					onSaveValidation={saveValidationPrompt}
+				/>
 
-				<!-- Resize Handle -->
-				<button
-					onmousedown={handleTabsResizeStart}
-					class="flex-shrink-0 h-1.5 bg-border/40 hover:bg-primary/40 transition-colors cursor-ns-resize group relative"
-					aria-label="Resize tabs area"
-				>
-					<div class="absolute inset-x-0 -top-1 -bottom-1"></div>
-				</button>
-
-				<!-- Tabs Area (bottom, fixed height) -->
-				<div class="flex-shrink-0 flex flex-col overflow-hidden bg-background" style="height: {tabsHeight}px;">
-					<Tabs.Root bind:value={activeTab} class="flex flex-col flex-1 min-h-0 overflow-hidden">
+				<!-- Tabs Area (fixed below PromptConsole) -->
+				<Tabs.Root bind:value={activeTab} class="flex flex-col flex-1 min-h-0">
 						<Tabs.List class="flex-shrink-0 flex items-center gap-1 px-4 py-2 bg-muted/5 border-b border-border/10">
 							<Tabs.Trigger
 								value="executions"
@@ -1201,7 +1160,7 @@
 							</Tabs.Trigger>
 						</Tabs.List>
 						
-						<Tabs.Content value="executions" class="flex-1 flex flex-col overflow-auto @container/table">
+						<Tabs.Content value="executions" class="flex-1 flex flex-col min-h-0 overflow-hidden @container/table data-[state=active]:flex data-[state=inactive]:hidden">
 							<ExecutionTable
 								executions={executionsWithUpdates.filter(e => e.revisionId === currentRevision!.id)}
 								{repositories}
@@ -1241,7 +1200,7 @@
 							/>
 						</Tabs.Content>
 						
-						<Tabs.Content value="analyses" class="flex-1 min-h-0 overflow-auto">
+						<Tabs.Content value="analyses" class="flex-1 min-h-0 overflow-hidden data-[state=active]:flex data-[state=inactive]:hidden">
 							<AnalysisList
 								{analyses}
 								onDelete={(analysis) => handleDeleteAnalysis(analysis.id)}
@@ -1249,7 +1208,6 @@
 							/>
 						</Tabs.Content>
 					</Tabs.Root>
-				</div>
 			{:else}
 				<div class="flex items-center justify-center h-full">
 					<div class="text-center text-muted-foreground max-w-md">
