@@ -1,10 +1,11 @@
 <script lang="ts">
 	import type { Analysis } from '$lib/types'
-	import { ExternalLink, AlertCircle, CheckCircle2, Clock, Loader2, RotateCw, Trash2 } from 'lucide-svelte'
+	import { ExternalLink, RotateCw, Trash2, AlertCircle, Loader2, Clock } from 'lucide-svelte'
 	import { openInBrowser } from '$lib/utils/browser'
 	import UiTooltip from './UiTooltip.svelte'
 	import { marked } from 'marked'
 	import { analysisStore } from '$lib/stores/executionBus'
+	import { getAnalysisStatusConfig } from '$lib/utils/statusConfig'
 
 	let { 
 		analysis,
@@ -25,19 +26,8 @@
 	let typeLabel = $derived(reactiveAnalysis.type === 'execution' ? 'Execution' : 'Validation')
 	let formattedResult = $derived(reactiveAnalysis.analysisResult ? marked.parse(reactiveAnalysis.analysisResult) as string : '')
 
-	// Status icon configuration matching ExecutionRow pattern
-	let statusConfig = $derived.by(() => {
-		switch (reactiveAnalysis.status) {
-			case 'completed': 
-				return { Icon: CheckCircle2, class: 'text-success', bgClass: 'bg-success/10', textClass: 'text-success', label: 'Completed' }
-			case 'failed': 
-				return { Icon: AlertCircle, class: 'text-destructive', bgClass: 'bg-destructive/10', textClass: 'text-destructive', label: 'Failed' }
-			case 'running': 
-				return { Icon: Loader2, class: 'text-primary animate-spin', bgClass: 'bg-primary/10', textClass: 'text-primary', label: 'Running' }
-			default: 
-				return { Icon: Clock, class: 'text-muted-foreground', bgClass: 'bg-muted', textClass: 'text-muted-foreground', label: 'Pending' }
-		}
-	})
+	// Status icon configuration
+	let statusConfig = $derived(getAnalysisStatusConfig(reactiveAnalysis.status))
 
 	function formatDate(timestamp: number): string {
 		return new Date(timestamp).toLocaleString()

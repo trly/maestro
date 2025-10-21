@@ -1,9 +1,10 @@
 <script lang="ts">
 	import type { Analysis } from '$lib/types'
-	import { CheckCircle2, AlertCircle, Clock, Loader2, ExternalLink } from 'lucide-svelte'
+	import { ExternalLink } from 'lucide-svelte'
 	import { Dialog } from 'bits-ui'
 	import AnalysisResult from './AnalysisResult.svelte'
 	import { analysisStore } from '$lib/stores/executionBus'
+	import { getAnalysisStatusConfig } from '$lib/utils/statusConfig'
 	
 	let {
 		analyses,
@@ -43,24 +44,6 @@
 		dialogOpen = true
 	}
 	
-	function getStatusIcon(status: string) {
-		switch (status) {
-			case 'completed': return CheckCircle2
-			case 'failed': return AlertCircle
-			case 'running': return Loader2
-			default: return Clock
-		}
-	}
-	
-	function getStatusClass(status: string) {
-		switch (status) {
-			case 'completed': return 'text-success'
-			case 'failed': return 'text-destructive'
-			case 'running': return 'text-primary'
-			default: return 'text-muted-foreground'
-		}
-	}
-	
 	function formatDate(timestamp: number): string {
 		return new Date(timestamp).toLocaleString('en-US', {
 			month: 'short',
@@ -84,15 +67,15 @@
 		</div>
 	{:else}
 		{#each sortedAnalyses as analysis (analysis.id)}
-			{@const StatusIcon = getStatusIcon(analysis.status)}
-			{@const statusClass = getStatusClass(analysis.status)}
+			{@const statusConfig = getAnalysisStatusConfig(analysis.status)}
+			{@const StatusIcon = statusConfig.Icon}
 			
 			<button
 				onclick={() => openAnalysis(analysis)}
 				class="w-full text-left rounded-[var(--radius)] border border-border bg-card hover:bg-accent/50 transition-colors p-3"
 			>
 				<div class="flex items-center gap-3">
-					<StatusIcon class="w-4 h-4 {statusClass} {analysis.status === 'running' ? 'animate-spin' : ''}" />
+					<StatusIcon class="w-4 h-4 {statusConfig.class}" />
 					
 					<div class="flex-1 min-w-0">
 						<div class="flex items-center gap-2 mb-1">

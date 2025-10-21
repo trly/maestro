@@ -27,6 +27,7 @@
 	import CiStatusBadge from './CiStatusBadge.svelte';
 	import { openInEditor, copyWorktreePath } from '$lib/utils/worktree';
 	import { executionStore } from '$lib/stores/executionBus';
+	import { getExecutionStatusConfig, getValidationStatusConfig, getCommitStatusConfig } from '$lib/utils/statusConfig';
 
 	let {
 		execution,
@@ -89,36 +90,13 @@
 	});
 
 	// Reactive icon/color for execution status
-	let executionIcon = $derived.by(() => {
-		switch (liveExecution.status) {
-			case 'running': return { Icon: Loader2, class: 'text-primary animate-spin' };
-			case 'completed': return { Icon: CheckCircle2, class: 'text-success' };
-			case 'failed': return { Icon: XCircle, class: 'text-destructive' };
-			case 'cancelled': return { Icon: Ban, class: 'text-warning' };
-			case 'pending': return { Icon: Clock, class: 'text-muted-foreground' };
-			default: return { Icon: Clock, class: 'text-muted-foreground' };
-		}
-	});
+	let executionIcon = $derived(getExecutionStatusConfig(liveExecution.status));
 
 	// Reactive icon/color for validation status
-	let validationIcon = $derived.by(() => {
-		if (!liveExecution.validationStatus) return null;
-		switch (liveExecution.validationStatus) {
-			case 'running': return { Icon: Loader2, class: 'text-primary animate-spin' };
-			case 'passed': return { Icon: CheckCircle2, class: 'text-success' };
-			case 'failed': return { Icon: XCircle, class: 'text-destructive' };
-			default: return null;
-		}
-	});
+	let validationIcon = $derived(getValidationStatusConfig(liveExecution.validationStatus ?? null));
 
 	// Reactive icon/color for commit status
-	let commitIcon = $derived.by(() => {
-		switch (liveExecution.commitStatus) {
-			case 'committed': return { Icon: GitCommit, class: 'text-success' };
-			case 'uncommitted': return { Icon: GitBranch, class: 'text-warning' };
-			default: return null;
-		}
-	});
+	let commitIcon = $derived(getCommitStatusConfig(liveExecution.commitStatus));
 
 	// Execution action states
 	let canStart = $derived(
