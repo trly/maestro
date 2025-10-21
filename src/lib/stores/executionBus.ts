@@ -68,6 +68,7 @@ export interface AnalysisData {
 	status?: AnalysisStatus
 	analysisResult?: string
 	ampThreadUrl?: string
+	ampSessionId?: string
 	completedAt?: number
 	errorMessage?: string
 }
