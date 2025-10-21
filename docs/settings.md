@@ -1,6 +1,12 @@
 # Settings & Configuration
 
-Maestro provides user-configurable settings for development tools, CI monitoring, and appearance preferences. Settings are stored in the SQLite database and loaded globally at app startup.
+Maestro provides user-configurable settings for development tools, CI monitoring, and appearance preferences. **For common settings patterns, see AGENTS.md Settings & Configuration section.**
+
+## When to Read This
+
+- Detailed settings domain model
+- OS-specific editor/terminal behavior
+- Understanding settings persistence and loading lifecycle
 
 ## Settings Domain
 
@@ -43,51 +49,9 @@ pub fn get_ci_stuck_threshold_minutes(store: State<Mutex<Store>>)
 
 ## Frontend Store
 
-### Settings Store Pattern
+Settings are loaded once at app startup via `settingsStore.load()` in `+layout.svelte` and cached in a Svelte store for reactive access throughout the app.
 
-```typescript
-// src/lib/stores/settingsStore.ts
-import { writable } from 'svelte/store';
-import * as ipc from '$lib/ipc';
-
-export interface Settings {
-  ciStuckThresholdMinutes: number;
-  editorCommand: string;
-  selectedEditor: string;
-  selectedTerminal: string;
-}
-
-const settingsStore = createSettingsStore();
-
-// Load settings from backend
-await settingsStore.load();
-
-// Update individual settings
-await settingsStore.setCiStuckThreshold(15);
-await settingsStore.setSelectedEditor('nvim');
-await settingsStore.setSelectedTerminal('ghostty');
-```
-
-**Key Pattern:** Settings are loaded once at app startup and cached in a Svelte store for reactive access throughout the app.
-
-## App Initialization
-
-Settings must be loaded during app initialization to ensure they're available when needed:
-
-```svelte
-<!-- src/routes/+layout.svelte -->
-<script lang="ts">
-  import { settingsStore } from '$lib/stores/settingsStore';
-  import { onMount } from 'svelte';
-
-  onMount(async () => {
-    await settingsStore.load();  // Load settings on startup
-    // Settings now available throughout app
-  });
-</script>
-```
-
-**Critical:** Settings must be loaded in `+layout.svelte` before components that depend on them (e.g., opening editors) are used. Otherwise, they fall back to defaults.
+**Critical:** Settings must be loaded before components that depend on them (e.g., opening editors) are used. Otherwise, they fall back to defaults.
 
 ## Editor & Terminal Detection
 

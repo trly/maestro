@@ -5,13 +5,15 @@
 ## Quick Reference
 
 ### Commands
+
 - `bun run dev` - Start Tauri desktop app in development mode
-- `bun run build` - Build production installer  
+- `bun run build` - Build production installer
 - `bun run check` - TypeScript type checking (run before commits)
 - `cargo test` - Run Rust tests in `src-tauri/` directory
 - `cargo test <test_name>` - Run specific Rust test
 
 ### Architecture Overview
+
 - **Frontend**: SvelteKit (Svelte 5) + adapter-static at `src/`
 - **Backend**: Tauri 2.0 (Rust) at `src-tauri/src/`
 - **Database**: SQLite via rusqlite at `src-tauri/src/db/`
@@ -21,6 +23,7 @@
 - **Types**: TypeScript enums mirror Rust enums via serde
 
 ### Core Domain Models
+
 1. **Prompt Sets** - Collections of prompt revisions with repository associations
 2. **Prompt Revisions** - Versioned prompts executed against repositories
 3. **Executions** - Individual runs of a revision with worktree isolation
@@ -31,47 +34,159 @@
 ## Key Architectural Patterns
 
 ### IPC Layer
+
 All frontend-backend communication uses typed wrappers in `src/lib/ipc.ts`:
+
+**Rule:** Never use `invoke()` directly - always use typed wrappers. Source of truth is `src/lib/ipc.ts`.
+
+**Common Wrappers:**
+
 ```typescript
-// Never use invoke() directly - use typed wrappers
-import { getExecution, executePrompt } from '$lib/ipc'
-const execution = await getExecution(id)
+// Executions
+await ipc.getExecution(id) // => Execution | null
+await ipc.getExecutionsByRevision(revisionId) // => Execution[]
+await ipc.validateExecution(executionId) // => void
+await ipc.stopExecution(executionId) // => void
+await ipc.commitChanges(executionId, files?) // => void
+await ipc.cleanupExecution(executionId) // => void
+
+// Prompt Sets & Revisions
+await ipc.createPromptSet(name, repoIds, validationPrompt?) // => PromptSet
+await ipc.createPromptRevision(promptsetId, text, parentId?) // => PromptRevision
+await ipc.executePromptSet(promptsetId, revisionId, repoIds?) // => string[]
+
+// Repositories
+await ipc.createRepository(provider, providerId) // => Repository
+await ipc.getAllRepositories() // => Repository[]
+
+// Settings & Tokens
+await ipc.getAvailableEditors() // => AppInfo[]
+await ipc.getAvailableTerminals() // => TerminalInfo[]
+await ipc.setToken(key, value) // => void
+await ipc.getToken(key) // => string | null
+
+// Diffs
+await ipc.getExecutionModifiedFiles(executionId) // => ModifiedFilesResponse
 ```
-See @docs/ipc-guide.md for complete API reference.
+
+**Error Handling:**
+
+```typescript
+import { TauriIPCError } from "$lib/ipc";
+
+try {
+  const execution = await ipc.getExecution(id);
+} catch (error) {
+  if (error instanceof TauriIPCError) {
+    console.error(`${error.command} failed:`, error.message);
+  }
+}
+```
 
 ### Event Bus
+
 Centralized execution events via `src/lib/stores/executionBus.ts`:
+
 ```typescript
 // Subscribe once at app init in +layout.svelte
-import { subscribeToExecutions } from '$lib/stores/executionBus'
-subscribeToExecutions()
+import { subscribeToExecutions } from "$lib/stores/executionBus";
+subscribeToExecutions();
 ```
-See @docs/execution-event-bus.md for event patterns.
+
+**Supported Events:**
+
+1. **execution:session** - Session ID and Amp thread URL
+2. **execution:status** - Execution status (pending, running, completed, failed, cancelled)
+3. **execution:validation** - Validation status and thread URL
+4. **execution:commit** - Commit status, SHA, and timestamp
+5. **execution:progress** - Progress messages during execution
+6. **execution:ci** - CI status and URL
+
+**Event Payloads:**
+
+```typescript
+// Event store structure (keyed by execution ID)
+{
+  [executionId]: {
+    sessionId?: string,
+    sessionUrl?: string,
+    status?: ExecutionStatus,
+    validationStatus?: ValidationStatus,
+    validationThreadUrl?: string,
+    commitStatus?: CommitStatus,
+    commitSha?: string,
+    committedAt?: string,
+    progress?: string,
+    ciStatus?: CiStatus,
+    ciUrl?: string
+  }
+}
+```
+
+**Usage Pattern:**
+
+```typescript
+import { getExecutionWithUpdates } from "$lib/stores/executions";
+
+const executionStore = getExecutionWithUpdates(execution);
+$: status = $executionStore.status; // Auto-updates with events
+```
 
 ### Diff Architecture
+
 Unified diff access through backend module and frontend store:
+
 - Backend: `src-tauri/src/git/diff.rs` for all diff operations
 - Frontend: `src/lib/stores/diffStore.ts` for caching
-See @docs/change-tracking.md for details.
+
+**Usage Pattern:**
+
+```typescript
+import { fetchDiff, fetchFileDiff } from "$lib/stores/diffStore";
+
+// Get file list (cached)
+const response = await fetchDiff(executionId);
+// response.source: 'worktree' | 'committed'
+// response.files: Array<{ status, path, additions, deletions }>
+
+// Get specific file diff (cached)
+const diffText = await fetchFileDiff(executionId, "src/main.ts");
+
+// Clear cache after commit
+import { invalidateDiff } from "$lib/stores/diffStore";
+invalidateDiff(executionId);
+```
+
+**Key Behavior:**
+
+- **Committed executions**: Diffs regenerated from `get_committed_diff(parent_sha, commit_sha)` in admin repo
+- **Uncommitted executions**: Diffs from `get_worktree_diff(worktree_path)`
+- Worktrees can be safely cleaned up after commit (diffs regenerated from git history)
 
 ### Status Types
+
 Use type-safe enums (not strings) for all statuses:
+
 ```rust
 // Rust
 use crate::types::{ExecutionStatus, ValidationStatus, CommitStatus};
 ```
+
 ```typescript
 // TypeScript
-import type { ExecutionStatus, ValidationStatus } from '$lib/types'
+import type { ExecutionStatus, ValidationStatus } from "$lib/types";
 ```
 
 ### UUID Strategy
+
 - **Storage**: Full UUIDs in database and file paths
 - **Display**: 8-char short hashes via `toShortHash()` utility
 - **Git branches**: `maestro/{promptsetId:8}/{revisionId:8}/{executionId:8}`
 
 ### File System Layout
+
 Maestro uses Tauri's app data directory for storage:
+
 - **macOS**: `~/Library/Application Support/dev.trly.maestro/`
 - **Linux**: `~/.local/share/maestro/`
 - **Windows**: `%APPDATA%\dev.trly.maestro\`
@@ -125,6 +240,7 @@ Maestro uses **Gruvbox color scheme** with Tailwind 4's CSS variable system for 
 ```
 
 **Common Semantic Tokens:**
+
 - `bg-background` / `text-foreground` - Base app background/text
 - `bg-card` / `text-card-foreground` - Card/panel backgrounds
 - `bg-muted` / `text-muted-foreground` - Subtle/disabled elements
@@ -140,18 +256,19 @@ Maestro uses **Gruvbox color scheme** with Tailwind 4's CSS variable system for 
 Theme managed by [themeStore.svelte.ts](file:///Users/trly/src/github.com/trly/maestro/src/lib/stores/themeStore.svelte.ts):
 
 ```typescript
-import { themeStore } from '$lib/stores/themeStore.svelte'
+import { themeStore } from "$lib/stores/themeStore.svelte";
 
 // Set theme (stores in localStorage)
-await themeStore.setTheme('dark')   // Force dark mode
-await themeStore.setTheme('light')  // Force light mode
-await themeStore.setTheme('auto')   // Follow system preference
+await themeStore.setTheme("dark"); // Force dark mode
+await themeStore.setTheme("light"); // Force light mode
+await themeStore.setTheme("auto"); // Follow system preference
 
 // Initialize on app startup (in +layout.svelte)
-await themeStore.init()
+await themeStore.init();
 ```
 
 **How it works:**
+
 - Toggles `.dark` class on `<html>` element
 - CSS variables automatically switch via `.dark { ... }` rules
 - Syncs with Tauri native window theme
@@ -175,6 +292,7 @@ await themeStore.init()
 ### Status Icon/Color Mappings (Use These Everywhere)
 
 **Execution Status:**
+
 - `pending` → `text-muted-foreground` (gray) + `Clock` icon
 - `running` → `text-primary animate-spin` (blue) + `Loader2` icon
 - `completed` → `text-success` (green) + `CheckCircle2` icon
@@ -182,12 +300,14 @@ await themeStore.init()
 - `cancelled` → `text-warning` (orange) + `Ban` icon
 
 **Validation Status:**
+
 - `pending` → `text-muted-foreground` (gray) + `Clock` icon
 - `running` → `text-primary animate-spin` (blue) + `Loader2` icon
 - `passed` → `text-success` (green) + `CheckCircle2` icon
 - `failed` → `text-destructive` (red) + `XCircle` icon
 
 **Action Button Colors:**
+
 - Start/Validate → `text-success hover:text-success/90`
 - Stop/Cancel → `text-warning hover:text-warning/90`
 - Delete → `text-destructive hover:text-destructive/90`
@@ -195,6 +315,7 @@ await themeStore.init()
 - Push/Analyze → `text-accent hover:text-accent/90`
 
 **Never Use Raw Colors:**
+
 - ❌ `text-green-600`, `text-red-500`, `text-blue-700`
 - ❌ `bg-gray-50`, `bg-green-100`, `bg-red-100`
 - ✅ Use semantic tokens instead: `text-success`, `text-destructive`, `bg-muted`
@@ -202,6 +323,7 @@ await themeStore.init()
 ## Code Conventions
 
 ### TypeScript/Svelte
+
 - Strict mode, tabs, no semicolons
 - Use `$lib/` alias for imports
 - camelCase for variables/functions
@@ -210,31 +332,36 @@ await themeStore.init()
 - Never use native HTML dialogs/checkboxes - use bits-ui primitives
 
 #### Svelte 5 Runes Mode (Critical)
+
 - **ALWAYS** reference https://svelte.dev/llms-full.txt when working with Svelte components
 - **ALWAYS** reference https://bits-ui.com/docs/llms.txt when working with bits-ui components
-- See @docs/reactivity.md for detailed patterns and examples
 - Use `$state` for reactive component state (NOT traditional stores)
 - Use `$derived` for computed values
 - Use `$props()` for component inputs
 - Use `$effect` for side effects with automatic cleanup
 - **Components are dynamic by default** - use `<Component />` directly instead of `<svelte:component this={Component} />`
-- **NEVER** destructure props if they need to be reactive - keep as single object and access via `props.fieldName`
-- **NEVER** create stores inside `{#each}` loops - use `$derived` instead
-- **NEVER** subscribe to stores in scoped blocks - make data reactive at component top level
-- **NEVER** use manual `store.subscribe()` - use `$effect` with `$store` auto-subscription instead
+
+**Top 5 Reactivity Footguns (NEVER DO THIS):**
+
+1. **Don't destructure props** - Keep as object, access via `props.fieldName` (most common bug)
+2. **Don't create stores inside `{#each}` loops** - Use `$derived` instead
+3. **Don't subscribe to stores in scoped blocks** - Make data reactive at component top level
+4. **Don't use manual `store.subscribe()`** - Use `$effect` with `$store` auto-subscription
+5. **Don't use getters in composable returns** - Return reactive state directly (getters hide dependencies)
 
 **Props Pattern (CRITICAL - Most Common Reactivity Bug):**
+
 ```svelte
 <!-- ✅ DO: Keep props as object for reactivity -->
 <script lang="ts">
-  const props: { 
+  const props: {
     executions: Execution[];
     onDelete: (e: Execution) => void;
   } = $props();
-  
+
   // Reference via props.X everywhere
   let filtered = $derived(props.executions.filter(e => e.status === 'completed'));
-  
+
   function handleClick() {
     props.onDelete(props.executions[0]);
   }
@@ -254,14 +381,89 @@ await themeStore.init()
 </script>
 ```
 
+**Composable Pattern (CRITICAL - Common Reactivity Bug):**
+
+```typescript
+// ✅ DO: Return reactive state directly from composables
+export function useFilters(options: Options) {
+  let filters = $state<Filters>({})
+  let filteredData = $derived(applyFilters(options.data(), filters))
+
+  function setFilters(newFilters: Filters) {
+    filters = newFilters
+  }
+
+  // Return state directly - Svelte tracks access
+  return {
+    filters,           // ✅ Reactive - components can access and track
+    filteredData,      // ✅ Reactive - updates when filters or data change
+    setFilters
+  }
+}
+
+// ❌ DON'T: Use getters (hides dependencies from Svelte)
+export function useFilters(options: Options) {
+  let filters = $state<Filters>({})
+
+  return {
+    get filters() {    // ❌ Breaks reactivity tracking
+      return filters   // Components accessing this won't update when filters change
+    }
+  }
+}
+
+// Usage in component:
+const composable = useFilters({ ... })
+
+// With direct return (✅):
+{#if composable.filters.status}  <!-- Svelte tracks this -->
+
+// With getter return (❌):
+{#if composable.filters.status}  <!-- Svelte can't track through getter -->
+```
+
+**bits-ui Select Component:**
+
+```svelte
+<!-- ✅ DO: Use value and onValueChange with string values -->
+<script lang="ts">
+  const props = $props<{ filters?: Filters, onFilterChange: (f: Filters) => void }>()
+</script>
+
+<Select.Root
+  type="single"
+  value={props.filters?.status || 'all'}
+  onValueChange={(v) => {
+    if (!v) return
+    props.onFilterChange({ ...props.filters, status: v === 'all' ? undefined : v })
+  }}
+>
+  <Select.Trigger>
+    <span>{props.filters?.status || 'All'}</span>
+  </Select.Trigger>
+  <Select.Content>
+    {#each options as option}
+      <Select.Item value={option.value} label={option.label} />
+    {/each}
+  </Select.Content>
+</Select.Root>
+
+<!-- ❌ DON'T: Use selected/onSelectedChange or object values -->
+<Select.Root
+  selected={{ value: status }}  <!-- Wrong API -->
+  onSelectedChange={(v) => ...}  <!-- Wrong event -->
+>
+```
+
 **Store Subscription Pattern:**
+
 ```svelte
 <!-- ✅ DO: Use $effect with $store auto-subscription -->
 <script lang="ts">
   import { settingsStore } from '$lib/stores/settingsStore';
-  
+
   let localValue = $state('');
-  
+
   // Automatically subscribes and cleans up
   $effect(() => {
     const settings = $settingsStore;
@@ -273,7 +475,7 @@ await themeStore.init()
 <script lang="ts">
   import { onMount } from 'svelte';
   import { settingsStore } from '$lib/stores/settingsStore';
-  
+
   onMount(() => {
     settingsStore.subscribe(settings => {
       // No unsubscribe = memory leak!
@@ -283,6 +485,7 @@ await themeStore.init()
 ```
 
 **bits-ui Snippet Parameter Naming:**
+
 ```svelte
 <!-- ✅ DO: Rename snippet params to avoid shadowing props -->
 <script lang="ts">
@@ -306,18 +509,19 @@ await themeStore.init()
 ```
 
 **Side Effect Cleanup:**
+
 ```svelte
 <!-- ✅ DO: Clean up timers and listeners in onDestroy -->
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  
+
   let debounceTimer: number;
-  
+
   function search(query: string) {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => doSearch(query), 300);
   }
-  
+
   onDestroy(() => {
     clearTimeout(debounceTimer);
   });
@@ -333,6 +537,7 @@ await themeStore.init()
 ```
 
 ### Rust
+
 - Standard rustfmt
 - Use `anyhow::Result` for error handling
 - snake_case for functions/variables
@@ -340,6 +545,7 @@ await themeStore.init()
 - Use utility helpers from `src-tauri/src/util/` (never duplicate parsing/path logic)
 
 #### Enum Serialization Rules (Critical)
+
 When adding status enums that cross the Rust/TypeScript boundary:
 
 ```rust
@@ -366,6 +572,7 @@ pub enum ExecutionStatus {
 ```
 
 **Guidelines:**
+
 - Use `#[serde(rename_all = "snake_case")]` for enums with **any** multi-word variants
 - Use `#[serde(rename_all = "lowercase")]` only for enums with **all** single-word variants
 - TypeScript types must exactly match serialized format (e.g., `'not_configured'` not `'notConfigured'`)
@@ -373,6 +580,7 @@ pub enum ExecutionStatus {
 - When adding new enum variants, verify TypeScript type alignment
 
 #### Logging Conventions
+
 Use logging sparingly - only for critical information, not routine operations:
 
 ```rust
@@ -390,6 +598,7 @@ log::info!("Started CI checking");  // Redundant with state changes
 ```
 
 **Guidelines:**
+
 - Use `log::error!` for critical failures that need investigation
 - Use `log::warn!` for recoverable issues or API failures
 - Use `log::info!` sparingly for important milestones (e.g., repository configuration changes)
@@ -398,6 +607,7 @@ log::info!("Started CI checking");  // Redundant with state changes
 - User-facing status updates should go through the event bus, not logs
 
 #### Thread-Safe Shared Ownership with Arc
+
 Use `Arc<T>` (Atomic Reference Counted) for sharing data across async tasks/threads:
 
 ```rust
@@ -411,50 +621,58 @@ let provider_clone = Arc::clone(&provider);
 ```
 
 **When to use Arc:**
+
 - Passing trait objects across async boundaries: `Arc<dyn CiProvider>`
 - Sharing read-only data across multiple async tasks
 - Required by functions that might spawn concurrent operations
 
 **Key characteristics:**
+
 - **Thread-safe**: Uses atomic operations for reference counting
 - **Cheap cloning**: Only increments counter, doesn't copy data
 - **Automatic cleanup**: Data freed when last Arc is dropped
 - **Immutable by default**: Use `Arc<Mutex<T>>` for mutable shared state
 
 ### Git Operations
+
 - **Always** use `git2` library (never shell out to `git` command)
 - **Always** use git worktrees for isolation (via `git worktree add/remove`)
 - **Never** use `rm -rf` on worktree directories
 - Use `REPO_LOCKS` mutex for concurrent safety
-- See @docs/ssh-authentication.md for SSH key setup
+- SSH authentication via `git2::Cred::ssh_key_from_agent()` - requires SSH key in ssh-agent
 
 ## Settings & Configuration
 
 ### Settings Store
+
 User settings are loaded globally at app startup in `+layout.svelte`:
+
 ```typescript
-import { settingsStore } from '$lib/stores/settingsStore'
+import { settingsStore } from "$lib/stores/settingsStore";
 
 onMount(async () => {
-  await settingsStore.load()  // Must be called on startup
-})
+  await settingsStore.load(); // Must be called on startup
+});
 ```
 
 **Available Settings:**
+
 - `ciStuckThresholdMinutes` - CI timeout threshold (default: 10 minutes)
 - `selectedEditor` - Preferred editor command (e.g., "nvim", "code")
 - `selectedTerminal` - Terminal for vim/nvim (e.g., "ghostty", "open -a Terminal")
 - `editorCommand` - Legacy editor setting
 
 ### Editor & Terminal Detection
+
 Maestro detects available editors/terminals on startup:
+
 ```typescript
 // Frontend
-const editors = await ipc.getAvailableEditors()  // vim, nvim, code, cursor, zed
-const terminals = await ipc.getAvailableTerminals()  // Terminal.app, Ghostty (macOS)
+const editors = await ipc.getAvailableEditors(); // vim, nvim, code, cursor, zed
+const terminals = await ipc.getAvailableTerminals(); // Terminal.app, Ghostty (macOS)
 
 // Check if editor needs terminal
-const editorInfo = editors.find(e => e.command === 'nvim')
+const editorInfo = editors.find((e) => e.command === "nvim");
 if (editorInfo?.needsTerminal) {
   // Requires terminal selection
 }
@@ -463,52 +681,74 @@ if (editorInfo?.needsTerminal) {
 **Backend:** Uses `which` command to check PATH (`src-tauri/src/commands/app_check.rs`)
 
 ### Opening Worktrees
-Always use `openInEditor` utility which reads settings:
-```typescript
-import { openInEditor } from '$lib/utils/worktree'
 
-await openInEditor(execution)  // Uses configured editor/terminal
+Always use `openInEditor` utility which reads settings:
+
+```typescript
+import { openInEditor } from "$lib/utils/worktree";
+
+await openInEditor(execution); // Uses configured editor/terminal
 ```
 
 **Critical:** Settings must be loaded in `+layout.svelte` before opening editors, otherwise falls back to default `'code'`.
 
-See @docs/settings.md for complete settings documentation.
-
 ## State Management Patterns
 
 ### Prevent Race Conditions
+
 - Check `ACTIVE_EXECUTIONS`/`ACTIVE_VALIDATIONS` before starting work
 - Use repo-level locking via `REPO_LOCKS` mutex
 - Namespace child processes: `exec:{id}` for executions, `val:{id}` for validations
 - App startup calls `reconcile_on_startup()` to reset stuck states
 
 ### Diff & Commit Tracking
+
 - Store commit metadata (SHA, parent SHA, branch) immediately after worktree creation
 - Regenerate diffs on-demand from admin repo (ephemeral approach)
 - Worktrees can be safely cleaned up via `cleanup_execution()` command
 
 ### Diff Stats Calculation
+
 - **Always calculated on-demand** - never stored in database
 - **Committed executions**: Stats calculated from `get_committed_diff(parent_sha, commit_sha)`
 - **Uncommitted executions**: Stats calculated from `get_worktree_diff(worktree_path)`
 - **Frontend caching**: Stats cached per execution in `executionStats.ts` to avoid redundant IPC calls
-- See @docs/change-tracking-stats.md for complete architecture
 
 ### Reactivity with Event Bus
+
 - Use `$derived` to merge event bus updates with local state arrays
 - Never subscribe to stores per-item in loops - compute derived state at top level
-- See @docs/reactivity.md for complete patterns and anti-patterns
+
+**Pattern:**
+
+```typescript
+import { executionStore } from "$lib/stores/executionBus";
+
+let executions = $state<Execution[]>([]);
+
+// Merge static data with live updates
+let executionsWithUpdates = $derived(
+  executions.map((execution) => {
+    const updates = $executionStore.get(execution.id);
+    if (!updates) return execution;
+    return { ...execution, ...updates };
+  }),
+);
+```
 
 ## Token Management & Security
 
 ### Secure Token Storage
+
 Maestro uses the system keyring (via `keyring` crate) for secure credential storage:
+
 - **Service Name**: `dev.trly.maestro` (identifies app in keyring)
 - **Token Keys**: `amp_token`, `github_token`, `sourcegraph_endpoint`, `sourcegraph_token`, `amp_client_id`, `amp_client_secret`
 - **Never** store tokens in env vars, config files, or database
 - **Always** retrieve tokens at command execution time via `tokens::get_token_value(key)`
 
 ### Token Access Pattern
+
 ```rust
 // In Tauri commands - retrieve token from keyring
 use crate::commands::tokens::get_token_value;
@@ -521,6 +761,7 @@ let github_token = get_token_value("github_token")
 ### CI Integration with GitHub API
 
 #### Octocrab Usage
+
 - **GitHub API client**: Use `octocrab` crate for all GitHub API interactions
 - **Authentication**: Create provider with personal access token from keyring
 - **Provider pattern**: Wrap API logic in `GitHubProvider` (see `src-tauri/src/ci/github_provider.rs`)
@@ -536,44 +777,22 @@ check_ci_once(provider, ctx).await // Expects Arc<dyn CiProvider>
 ```
 
 #### CI Status Retrieval
+
 - **Dual API approach**: Check both GitHub Status API and Checks API
 - **Status API**: Legacy CI systems (Jenkins, CircleCI, external webhooks)
 - **Checks API**: GitHub Actions and modern integrations
 - **Aggregation**: Merge results from both APIs to determine overall CI status
 
 #### CI Events via Event Bus
+
 - CI status updates emit events like execution status: `emit_execution_ci(app, execution_id, status, url)`
 - Frontend subscribes via `executionBus` and updates UI reactively
 - CI status is persisted to database for historical tracking
 
-## Documentation Index
-
-For detailed guidance on specific topics, consult the domain-focused documentation:
-
-**Core Architecture & Domains:**
-- @docs/README.md - Complete documentation index with "when to read" guidance
-- @docs/architecture.md - System architecture, technology stack, data flow, security, concurrency patterns
-- @docs/prompt-sets.md - Prompt sets, revisions, repositories, DAG structure, execution triggering
-- @docs/executions.md - Execution lifecycle, validations, commits, cancellation, bulk operations
-- @docs/analyses.md - Failure analysis using Amp V2 API, OAuth2 authentication, categorizing failures
-- @docs/change-tracking.md - Diff architecture, worktree vs committed diffs, frontend caching
-- @docs/ci-tracking.md - GitHub CI integration, status aggregation, polling strategy
-
-**Infrastructure & Patterns:**
-- @docs/ipc-guide.md - Type-safe IPC layer, complete API reference, error handling
-- @docs/execution-event-bus.md - Real-time event system, subscription patterns, reactive updates
-- @docs/reactivity.md - Svelte 5 runes mode, event bus integration, anti-patterns
-
-**Setup & Additional:**
-- @docs/settings.md - User settings, editor/terminal detection, configuration patterns
-- @docs/ssh-authentication.md - SSH setup for git operations, troubleshooting
-- @docs/change-tracking-stats.md - Diff statistics calculation details
-- @docs/distribution.md - Code signing, notarization, release process
-- @docs/sourcegraph-integration.md - Sourcegraph repository search, GraphQL API, configuration
-
 ## Common Tasks
 
 ### Adding a new Tauri command
+
 1. Add command handler in `src-tauri/src/commands/`
 2. Register in `src-tauri/src/lib.rs` invoke_handler
 3. Add typed wrapper in `src/lib/ipc.ts`
@@ -581,17 +800,20 @@ For detailed guidance on specific topics, consult the domain-focused documentati
 5. Use wrapper in components (never direct `invoke()`)
 
 **Example**: Adding CI refresh command
+
 - Backend: `commands/ci.rs::refresh_ci_status(execution_id)`
 - IPC: `ipc.ts::refreshCiStatus(executionId)`
 - API: `tauri-api.ts::api.ci.refreshStatus(id)`
 - UI: `+page.svelte::refreshCiManually(execution)`
 
 ### Adding a new execution event
+
 1. Emit event in `src-tauri/src/commands/executor_events.rs`
 2. Add event type in `src/lib/stores/executionBus.ts`
 3. Subscribe in `executionBus.ts` and update store
 
 ### Adding external API integration
+
 1. **Add provider trait** in `src-tauri/src/<domain>/provider.rs`
 2. **Implement provider** using appropriate API client (`octocrab`, `reqwest`, etc.)
 3. **Retrieve tokens from keyring** in command handlers using `tokens::get_token_value()`
@@ -599,24 +821,28 @@ For detailed guidance on specific topics, consult the domain-focused documentati
 5. **Update database** to persist state changes
 
 **Example**: CI status checking (see `src-tauri/src/ci/`)
+
 - Trait: `CiProvider` with `check_status()` method
 - Implementation: `GitHubProvider` using `octocrab`
 - Token: Retrieved from keyring at command execution time
 - Event: `emit_execution_ci()` for real-time UI updates
 
 **Example**: Sourcegraph repository search (see `src-tauri/src/sourcegraph/`)
+
 - Client: `SourcegraphClient` with GraphQL integration
 - Implementation: Direct `reqwest` HTTP client for GraphQL API
 - Tokens: Both endpoint and access token retrieved from keyring
 - Usage: `search_sourcegraph_repositories(query, limit)` command
 
 **Example**: Amp V2 API integration (see `src-tauri/src/amp/`)
+
 - Client: `AmpV2Client` with OAuth2 authentication
 - Implementation: `reqwest` HTTP client for REST API
 - Tokens: `amp_client_id` and `amp_client_secret` from keyring
 - Usage: Fetch thread messages for failure analysis
 
 ### Adding analysis features
+
 1. **Create domain model** in `src-tauri/src/types.rs` (e.g., `Analysis` struct)
 2. **Add database tables** via migration in `src-tauri/src/db/migrations.rs`
 3. **Implement CRUD operations** in `src-tauri/src/db/store.rs`
@@ -627,6 +853,7 @@ For detailed guidance on specific topics, consult the domain-focused documentati
 8. **Integrate in parent page** to fetch and display data
 
 **Example**: Failure analysis (see `src-tauri/src/amp/`, `src-tauri/src/commands/analysis.rs`)
+
 - Domain: `Analysis` with type (execution/validation) and status
 - Tables: `analyses` + `analysis_executions` join table
 - Commands: `create_analysis`, `run_analysis`, `get_analyses_by_revision`, `delete_analysis`
@@ -635,21 +862,24 @@ For detailed guidance on specific topics, consult the domain-focused documentati
 - Management: Delete and re-run buttons in AnalysisResult component
 
 ### Creating a new UI component
+
 1. Use bits-ui primitives (Dialog, Checkbox, etc.) - never manual implementations
 2. Place in `src/lib/components/ui/` or `src/lib/components/`
 3. Import icons from `lucide-svelte`
 4. **ALWAYS** use semantic Tailwind tokens for styling - **NEVER** raw colors (see Status Icon/Color Mappings section above)
 
 ### Adding bulk operations
+
 1. **Add handler in parent component** that operates on array of items
 2. **Pass handler as prop** to child component with `onBulk*` naming convention
 3. **Show bulk action toolbar** when items are selected
 4. **Clear selection** after bulk operation completes
 
 **Example**: Bulk CI refresh (see `RevisionDetail.svelte`)
+
 ```typescript
 async function refreshAllCi() {
-  const committed = executions.filter(e => e.commitStatus === 'committed');
-  await Promise.all(committed.map(e => api.ci.refreshStatus(e.id)));
+  const committed = executions.filter((e) => e.commitStatus === "committed");
+  await Promise.all(committed.map((e) => api.ci.refreshStatus(e.id)));
 }
 ```

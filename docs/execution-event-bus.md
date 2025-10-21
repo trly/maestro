@@ -1,66 +1,12 @@
 # Execution Event Bus
 
-Centralized event system for real-time execution state updates across the UI.
+Detailed architecture of the real-time event system for execution state updates. **For common usage patterns, see AGENTS.md Event Bus section.**
 
-## Quick Start
+## When to Read This
 
-```typescript
-import { subscribeToExecutions, getExecutionWithUpdates } from '$lib/stores'
-
-// Initialize once at app startup (in +layout.svelte)
-await subscribeToExecutions()
-
-// In your component
-const executionStore = getExecutionWithUpdates(execution)
-$executionStore // Auto-updates with latest state
-```
-
-## Supported Events
-
-1. **session** - Session ID and Amp thread URL
-2. **status** - Execution status (pending, running, completed, failed, cancelled)
-3. **validation** - Validation status and thread URL
-4. **commit** - Commit status, SHA, and timestamp
-5. **progress** - Progress messages during execution
-
-## Usage Patterns
-
-### Reactive Execution State
-
-```typescript
-import { getExecutionWithUpdates } from '$lib/stores'
-
-const executionStore = getExecutionWithUpdates(execution)
-
-// Automatically reactive
-$: status = $executionStore.status
-$: sessionUrl = $executionStore.sessionUrl
-```
-
-### Manual Event Handling
-
-```typescript
-import { onExecutionUpdate } from '$lib/stores/executionBus'
-
-const unsubscribe = onExecutionUpdate(executionId, (data) => {
-  console.log('Status:', data.status)
-  console.log('Progress:', data.progress)
-})
-
-// Cleanup when done
-onDestroy(unsubscribe)
-```
-
-### Direct State Access
-
-```typescript
-import { getExecutionStatus } from '$lib/stores/executionBus'
-
-const currentState = getExecutionStatus(executionId)
-if (currentState?.status === 'running') {
-  // Handle running state
-}
-```
+- Understanding event bus implementation details
+- Debugging event subscription issues
+- Adding new event types to the system
 
 ## Architecture
 
@@ -126,6 +72,7 @@ emit_execution_session(app, execution_id, session_id, thread_url)
 emit_execution_status(app, execution_id, status)
 emit_execution_validation(app, execution_id, validation_status, validation_thread_url?)
 emit_execution_commit(app, execution_id, commit_status, commit_sha?, committed_at?)
+emit_execution_ci(app, execution_id, ci_status, ci_url?)
 ```
 
 All events include `executionId` for store keying.
@@ -137,25 +84,3 @@ All events include `executionId` for store keying.
 - **Reactive**: Svelte stores auto-update components
 - **Type Safe**: Strong TypeScript types for all events
 - **Easy Debugging**: Inspect all execution state in one place
-
-## Migration from Direct Listeners
-
-### Before
-
-```typescript
-// Multiple separate listeners
-await listen('execution:status', (event) => { ... })
-await listen('execution:commit', (event) => { ... })
-await listen('execution:validation', (event) => { ... })
-await listen('execution:session', (event) => { ... })
-```
-
-### After
-
-```typescript
-// Single subscription
-await subscribeToExecutions()
-
-// Automatic updates via derived stores
-const executionStore = getExecutionWithUpdates(execution)
-```

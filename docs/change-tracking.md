@@ -1,13 +1,12 @@
 # Change Tracking
 
-Unified system for tracking file changes (diffs) and statistics from both committed history and live worktrees.
+Unified system for tracking file changes (diffs) and statistics from both committed history and live worktrees. **For common usage patterns, see AGENTS.md Diff Architecture section.**
 
-## Overview
+## When to Read This
 
-Maestro's diff system supports:
-- **Committed diffs**: Regenerated from git history after worktree deletion
-- **Worktree diffs**: Live changes from active worktrees
-- **Frontend caching**: Reduces redundant backend calls
+- Understanding diff regeneration architecture
+- Debugging diff calculation issues
+- Understanding worktree vs committed diff differences
 
 ## Backend Module
 
@@ -108,36 +107,7 @@ interface ModifiedFilesResponse {
 }
 ```
 
-## Usage Examples
 
-### Display File List
-
-```typescript
-import { fetchDiff } from '$lib/stores/diffStore'
-
-const response = await fetchDiff(executionId)
-console.log(`${response.files.length} files changed`)
-console.log(`Source: ${response.source}`)
-```
-
-### Display File Diff
-
-```typescript
-import { fetchFileDiff } from '$lib/stores/diffStore'
-
-const diffText = await fetchFileDiff(executionId, 'src/main.ts')
-// Render unified diff format
-```
-
-### Invalidate After Commit
-
-```typescript
-import { invalidateDiff } from '$lib/stores/diffStore'
-
-await ipc.commitChanges(executionId)
-invalidateDiff(executionId) // Clear cache
-await fetchDiff(executionId) // Fetch fresh committed diff
-```
 
 ## Key Design Decisions
 

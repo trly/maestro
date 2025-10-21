@@ -1,6 +1,12 @@
 # Reactivity Guide
 
-Maestro uses **Svelte 5 runes mode** for reactive state management. This guide covers the patterns and best practices for building reactive components.
+Maestro uses **Svelte 5 runes mode** for reactive state management. **For common patterns and top footguns, see AGENTS.md Svelte 5 Runes Mode section.**
+
+## When to Read This
+
+- Advanced Svelte 5 patterns and edge cases
+- Deep understanding of Maestro-specific reactive patterns
+- Debugging complex reactivity issues
 
 ## Required Reading
 
@@ -10,15 +16,6 @@ Before working with Svelte or bits-ui components, **ALWAYS** consult:
 - **bits-ui Documentation**: https://bits-ui.com/docs/llms.txt
 
 These documents contain the authoritative patterns for Svelte 5 runes mode and bits-ui component usage.
-
-## Critical: Component Styling
-
-**ALWAYS use semantic tokens for all styling:**
-
-- ✅ `text-success`, `bg-primary`, `text-destructive`
-- ❌ `text-green-600`, `bg-blue-500`, `text-red-600`
-
-See [AGENTS.md Status Icon/Color Mappings](../AGENTS.md#status-iconcolor-mappings-use-these-everywhere) for complete color reference.
 
 ## Core Reactivity Primitives
 

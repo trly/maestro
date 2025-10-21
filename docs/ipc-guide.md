@@ -1,87 +1,14 @@
 # IPC Guide
 
-Maestro's centralized IPC layer provides type-safe Tauri command invocations with unified error handling.
+Complete API reference for Maestro's type-safe IPC layer. **For common usage patterns, see AGENTS.md IPC Layer section.**
 
-## Quick Start
+## When to Read This
 
-```typescript
-import * as ipc from '$lib/ipc'
+- You need the complete list of available IPC commands
+- You're adding a new command and want to understand the full pattern
+- You need detailed parameter documentation for a specific command
 
-// Get a resource
-const execution = await ipc.getExecution(executionId)
-
-// Create a resource
-const repo = await ipc.createRepository('github', 'owner/repo')
-
-// Execute operations
-await ipc.validateExecution(executionId)
-```
-
-## Error Handling
-
-All commands throw `TauriIPCError` on failure:
-
-```typescript
-import { TauriIPCError } from '$lib/ipc'
-
-try {
-  const execution = await ipc.getExecution(id)
-} catch (error) {
-  if (error instanceof TauriIPCError) {
-    console.error(`${error.command} failed:`, error.message)
-  }
-}
-```
-
-## Common Patterns
-
-### Nullable Returns
-
-Some commands return `null` when resources aren't found:
-
-```typescript
-const execution = await ipc.getExecution(id)
-if (!execution) {
-  throw new Error('Execution not found')
-}
-
-// Or with optional chaining
-const status = (await ipc.getExecution(id))?.status
-```
-
-### Batch Operations
-
-```typescript
-// Fetch all at once
-const [execution, files, promptSet] = await Promise.all([
-  ipc.getExecution(id),
-  ipc.getExecutionModifiedFiles(id),
-  ipc.getPromptSet(promptsetId)
-])
-```
-
-### Complex Workflows
-
-```typescript
-// Create and execute a prompt set
-const promptSet = await ipc.createPromptSet(
-  'My Prompt',
-  [repoId1, repoId2],
-  'Validation prompt'
-)
-
-const revision = await ipc.createPromptRevision(
-  promptSet.id,
-  'Main prompt text',
-  null // no parent
-)
-
-const executionIds = await ipc.executePromptSet(
-  promptSet.id,
-  revision.id,
-  [repoId1] // optional subset
-)
-```
+**Source of truth:** `src/lib/ipc.ts` - this document may lag behind the code.
 
 ## API Reference
 
