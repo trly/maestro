@@ -4,6 +4,7 @@
 	import ExecutionRow from './ExecutionRow.svelte'
 	import BulkActionBar from './BulkActionBar.svelte'
 	import { useSelection } from '$lib/composables/useSelection.svelte'
+	import { executionStore } from '$lib/stores/executionBus'
 	
 	let {
 		executions,
@@ -60,22 +61,44 @@
 	
 	const selection = useSelection()
 	
-	let executionIds = $derived(executions.map(e => e.id))
-	let selectedExecutions = $derived(selection.getSelected(executions))
+	// Merge event bus updates with static execution data
+	let executionsLive = $derived(
+		executions.map(e => {
+			const updates = $executionStore.get(e.id)
+			if (!updates) return e
+			return {
+				...e,
+				...(updates.sessionId && { sessionId: updates.sessionId }),
+				...(updates.threadUrl && { threadUrl: updates.threadUrl }),
+				...(updates.status && { status: updates.status }),
+				...(updates.validationStatus && { validationStatus: updates.validationStatus }),
+				...(updates.validationThreadUrl && { validationThreadUrl: updates.validationThreadUrl }),
+				...(updates.commitStatus && { commitStatus: updates.commitStatus }),
+				...(updates.commitSha && { commitSha: updates.commitSha }),
+				...(updates.committedAt && { committedAt: updates.committedAt }),
+				...(updates.ciStatus && { ciStatus: updates.ciStatus }),
+				...(updates.ciUrl && { ciUrl: updates.ciUrl }),
+				...(updates.progressMessage && { progressMessage: updates.progressMessage })
+			}
+		})
+	)
 	
-	let allSelected = $derived(executions.length > 0 && selection.selectedIds.size === executionIds.length)
+	let executionIds = $derived(executionsLive.map(e => e.id))
+	let selectedExecutions = $derived(selection.getSelected(executionsLive))
+	
+	let allSelected = $derived(executionsLive.length > 0 && selection.selectedIds.size === executionIds.length)
 	let someSelected = $derived(selection.selectedIds.size > 0 && !allSelected)
 	
-	let hasRunning = $derived(executions.some(e => e.status === 'running'))
-	let hasRunningValidations = $derived(executions.some(e => e.validationStatus === 'running'))
-	let hasFailedExecutions = $derived(executions.some(e => e.status === 'failed'))
-	let hasFailedValidations = $derived(executions.some(e => e.validationStatus === 'failed'))
-	let hasCommitted = $derived(executions.some(e => e.commitStatus === 'committed'))
+	let hasRunning = $derived(executionsLive.some(e => e.status === 'running'))
+	let hasRunningValidations = $derived(executionsLive.some(e => e.validationStatus === 'running'))
+	let hasFailedExecutions = $derived(executionsLive.some(e => e.status === 'failed'))
+	let hasFailedValidations = $derived(executionsLive.some(e => e.validationStatus === 'failed'))
+	let hasCommitted = $derived(executionsLive.some(e => e.commitStatus === 'committed'))
 	
 	let sortedExecutions = $derived.by(() => {
-		if (!sortColumn) return executions
+		if (!sortColumn) return executionsLive
 
-		return [...executions].sort((a, b) => {
+		return [...executionsLive].sort((a, b) => {
 			let aVal: any
 			let bVal: any
 
@@ -173,7 +196,7 @@
 		{hasFailedExecutions}
 		{hasFailedValidations}
 		{hasCommitted}
-		executionCount={executions.length}
+		executionCount={executionsLive.length}
 		onToggleSelectAll={handleToggleSelectAll}
 		onSort={handleSort}
 		{onExecuteAll}
