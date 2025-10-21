@@ -57,11 +57,21 @@ Use `$derived` for values that depend on other reactive state:
 
 ### `$props()` - Component Inputs
 
-Use `$props()` to define component props:
+Use `$props()` to define component props. **CRITICAL:** Never destructure props if they need to be reactive:
 
 ```svelte
 <script>
+  // ✅ DO: Keep props as object
+  const props: { execution: Execution; onDelete: () => void } = $props();
+  
+  // Access via props.X
+  let status = $derived(props.execution.status);
+</script>
+
+<!-- ❌ DON'T: Destructure (breaks reactivity) -->
+<script>
   let { execution, onDelete } = $props();
+  // Won't update when parent changes execution!
 </script>
 ```
 
@@ -206,6 +216,44 @@ let revisionStats = $derived(
 </script>
 ```
 
+### ❌ Manual Store Subscriptions
+
+**DON'T DO THIS:**
+
+```svelte
+<script>
+  import { onMount } from 'svelte';
+  import { settingsStore } from '$lib/stores/settingsStore';
+  
+  let localValue = $state('');
+  
+  onMount(() => {
+    settingsStore.subscribe(settings => {
+      localValue = settings.someValue;
+      // No unsubscribe = memory leak!
+    });
+  });
+</script>
+```
+
+**Problem:** Manual `subscribe()` without cleanup causes memory leaks.
+
+**DO THIS INSTEAD:**
+
+```svelte
+<script>
+  import { settingsStore } from '$lib/stores/settingsStore';
+  
+  let localValue = $state('');
+  
+  // Automatically subscribes and cleans up
+  $effect(() => {
+    const settings = $settingsStore;
+    localValue = settings.someValue;
+  });
+</script>
+```
+
 ### ❌ Traditional Stores for Component State
 
 **DON'T DO THIS:**
@@ -227,6 +275,52 @@ let revisionStats = $derived(
 </script>
 
 <button onclick={() => count++}>Count: {count}</button>
+```
+
+### ❌ Uncleaned Timers and Listeners
+
+**DON'T DO THIS:**
+
+```svelte
+<script>
+  let debounceTimer: number;
+  
+  function search(query: string) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => doSearch(query), 300);
+  }
+  // No cleanup - timer may run after component unmounts!
+</script>
+```
+
+**DO THIS INSTEAD:**
+
+```svelte
+<script>
+  import { onDestroy } from 'svelte';
+  
+  let debounceTimer: number;
+  
+  function search(query: string) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => doSearch(query), 300);
+  }
+  
+  onDestroy(() => {
+    clearTimeout(debounceTimer);
+  });
+</script>
+```
+
+**OR use `$effect` with cleanup:**
+
+```svelte
+<script>
+  $effect(() => {
+    const timer = setTimeout(() => doSomething(), 1000);
+    return () => clearTimeout(timer); // Cleanup function
+  });
+</script>
 ```
 
 ## Working with bits-ui Components

@@ -450,13 +450,16 @@ async fn prepare_execution_impl(
 
 	let admin_repo_path = ensure_admin_repo_and_fetch(&paths.admin_repo_dir, &owner, &repo).await?;
 
-	let default_branch = fetch_default_branch_from_github(&owner, &repo).await?;
-	
-	if repository.default_branch.as_deref() != Some(&default_branch) {
+	// Use cached default branch or fetch from GitHub if not cached
+	let default_branch = if let Some(cached_branch) = &repository.default_branch {
+		cached_branch.clone()
+	} else {
+		let branch = fetch_default_branch_from_github(&owner, &repo).await?;
 		let store_state = app.state::<Mutex<Store>>();
 		let store = store_state.lock().unwrap();
-		let _ = store.update_repository_default_branch(&repository.id, &default_branch);
-	}
+		let _ = store.update_repository_default_branch(&repository.id, &branch);
+		branch
+	};
 
 	let worktree_info = add_worktree(
 		&admin_repo_path,
@@ -556,17 +559,17 @@ pub(crate) async fn execute_prompt_impl(
 
 		let admin_repo_path = ensure_admin_repo_and_fetch(&paths.admin_repo_dir, &owner, &repo).await?;
 
-		// Fetch default branch from GitHub API
-		let default_branch = fetch_default_branch_from_github(&owner, &repo).await?;
-		log::info!("[execute_prompt] GitHub default branch for {}/{}: {}", owner, repo, default_branch);
-		
-		// Update stored value if different
-		if repository.default_branch.as_deref() != Some(&default_branch) {
-			log::info!("[execute_prompt] Updating repository {} default branch to {}", repository.id, default_branch);
+		// Use cached default branch or fetch from GitHub if not cached
+		let default_branch = if let Some(cached_branch) = &repository.default_branch {
+			cached_branch.clone()
+		} else {
+			let branch = fetch_default_branch_from_github(&owner, &repo).await?;
+			log::info!("[execute_prompt] Fetched GitHub default branch for {}/{}: {}", owner, repo, branch);
 			let store_state = app.state::<Mutex<Store>>();
 			let store = store_state.lock().unwrap();
-			let _ = store.update_repository_default_branch(&repository.id, &default_branch);
-		}
+			let _ = store.update_repository_default_branch(&repository.id, &branch);
+			branch
+		};
 
 		let worktree_info = add_worktree(
 			&admin_repo_path,

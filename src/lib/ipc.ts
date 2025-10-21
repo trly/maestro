@@ -615,6 +615,13 @@ export async function getCiStuckThresholdMinutes(): Promise<number> {
 	return invokeCommand<number>('get_ci_stuck_threshold_minutes', {})
 }
 
+/**
+ * Get the maximum number of concurrent executions allowed
+ */
+export async function getMaxConcurrentExecutions(): Promise<number> {
+	return invokeCommand<number>('get_max_concurrent_executions', {})
+}
+
 // ============================================================================
 // Application Check Commands
 // ============================================================================

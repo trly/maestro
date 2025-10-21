@@ -6,11 +6,7 @@
 	import { analysisStore } from '$lib/stores/executionBus'
 	import { getAnalysisStatusConfig } from '$lib/utils/statusConfig'
 	
-	let {
-		analyses,
-		onDelete,
-		onRerun
-	}: {
+	const props: {
 		analyses: Analysis[]
 		onDelete: (analysis: Analysis) => void
 		onRerun: (analysis: Analysis) => void
@@ -18,7 +14,7 @@
 	
 	// Merge analyses with live updates from event bus
 	let analysesWithUpdates = $derived(
-		analyses.map(analysis => {
+		props.analyses.map(analysis => {
 			const updates = $analysisStore.get(analysis.id)
 			if (!updates) return analysis
 			return {
@@ -55,7 +51,7 @@
 </script>
 
 <div class="flex flex-col gap-2 p-4">
-	{#if analyses.length === 0}
+	{#if props.analyses.length === 0}
 		<div class="flex flex-col items-center justify-center py-12 text-center">
 			<div class="text-muted-foreground mb-2">
 				<svg class="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,11 +103,11 @@
 				<AnalysisResult
 					analysis={selectedAnalysis}
 					onDelete={() => {
-						onDelete(selectedAnalysis!)
+						props.onDelete(selectedAnalysis!)
 						dialogOpen = false
 					}}
 					onRerun={() => {
-						onRerun(selectedAnalysis!)
+						props.onRerun(selectedAnalysis!)
 					}}
 				/>
 			</Dialog.Content>

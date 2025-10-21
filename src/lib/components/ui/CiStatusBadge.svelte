@@ -8,6 +8,7 @@
 		ciStatus: CiStatus | null;
 		ciUrl?: string | null;
 		onRefresh?: () => void;
+		isRefreshing?: boolean;
 	} = $props();
 
 	let icon = $derived.by(() => {
@@ -32,16 +33,17 @@
 </script>
 
 {#if icon}
-	<UiTooltip content={props.ciUrl ? `${icon.label} - Click to view` : (props.onRefresh && props.ciStatus !== 'skipped' && props.ciStatus !== 'not_configured') ? `${icon.label} - Click to refresh` : icon.label}>
+	<UiTooltip content={props.isRefreshing ? "Refreshing..." : props.ciUrl ? `${icon.label} - Click to view` : (props.onRefresh && props.ciStatus !== 'skipped' && props.ciStatus !== 'not_configured') ? `${icon.label} - Click to refresh` : icon.label}>
 		{#snippet children({ props: triggerProps })}
-			{@const Icon = icon.Icon}
+			{@const Icon = props.isRefreshing ? Loader2 : icon.Icon}
+			{@const iconClass = props.isRefreshing ? 'text-primary animate-spin' : icon.class}
 			<button
 				{...triggerProps}
 				onclick={handleClick}
 				class="flex items-center hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-				disabled={!props.ciUrl && !props.onRefresh}
+				disabled={props.isRefreshing || (!props.ciUrl && !props.onRefresh)}
 			>
-				<Icon class={`w-4 h-4 ${icon.class}`} />
+				<Icon class={`w-4 h-4 ${iconClass}`} />
 			</button>
 		{/snippet}
 	</UiTooltip>

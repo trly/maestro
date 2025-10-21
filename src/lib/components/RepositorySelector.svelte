@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Combobox } from 'bits-ui';
 	import { getConfiguredProviders, type Repository } from '../providers';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { Search, Check, Globe } from 'lucide-svelte';
 	import { tokenStore } from '$lib/tokenStore';
 	import * as ipc from '$lib/ipc';
@@ -32,6 +32,11 @@
 		providers = await getConfiguredProviders();
 		const tokens = await tokenStore.getAllTokens();
 		hasSgConfig = !!(tokens.sourcegraphEndpoint && tokens.sourcegraphToken);
+	});
+
+	onDestroy(() => {
+		clearTimeout(debounceTimer);
+		clearTimeout(sgDebounceTimer);
 	});
 
 	// Clear search when dropdown closes

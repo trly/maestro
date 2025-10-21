@@ -721,11 +721,16 @@ impl Store {
 	pub fn delete_prompt_revision(&mut self, id: &str) -> Result<bool> {
 		let tx = self.conn.transaction()?;
 
+		// Delete executions first (no CASCADE on revision_id foreign key)
+		tx.execute("DELETE FROM executions WHERE revision_id = ?1", [id])?;
+
+		// Clear parent references to this revision
 		tx.execute(
 			"UPDATE prompt_revisions SET parent_revision_id = NULL WHERE parent_revision_id = ?1",
 			[id],
 		)?;
 
+		// Delete the revision (analyses will cascade automatically)
 		let result = tx.execute("DELETE FROM prompt_revisions WHERE id = ?1", [id])?;
 		
 		tx.commit()?;

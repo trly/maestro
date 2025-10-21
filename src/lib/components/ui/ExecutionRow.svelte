@@ -29,26 +29,7 @@
 	import { executionStore } from '$lib/stores/executionBus';
 	import { getExecutionStatusConfig, getValidationStatusConfig, getCommitStatusConfig } from '$lib/utils/statusConfig';
 
-	let {
-		execution,
-		repoName,
-		hasValidationPrompt = false,
-		selected = false,
-		onToggleSelect,
-		onDelete,
-		onStart,
-		onValidate,
-		onStop,
-		onStopValidation,
-		onResume,
-		onReviewChanges,
-		onPush,
-		onRefreshCi,
-		fileCount = 0,
-		additions = 0,
-		deletions = 0,
-		progressMessage
-	}: {
+	const props: {
 		execution: Execution;
 		repoName: string;
 		hasValidationPrompt?: boolean;
@@ -67,14 +48,16 @@
 		additions?: number;
 		deletions?: number;
 		progressMessage?: string;
+		isPushing?: boolean;
+		isRefreshingCi?: boolean;
 	} = $props();
 
 	// Merge prop with live updates from event bus
 	let liveExecution = $derived.by(() => {
-		const updates = $executionStore.get(execution.id);
-		if (!updates) return execution;
+		const updates = $executionStore.get(props.execution.id);
+		if (!updates) return props.execution;
 		return {
-			...execution,
+			...props.execution,
 			...(updates.sessionId && { sessionId: updates.sessionId }),
 			...(updates.threadUrl && { threadUrl: updates.threadUrl }),
 			...(updates.status && { status: updates.status }),
@@ -100,19 +83,19 @@
 
 	// Execution action states
 	let canStart = $derived(
-		onStart &&
+		props.onStart &&
 		liveExecution.status === 'pending' &&
 		!liveExecution.sessionId &&
 		!liveExecution.threadUrl
 	);
 
 	let canStop = $derived(
-		onStop &&
+		props.onStop &&
 		liveExecution.status === 'running'
 	);
 
 	let canRestart = $derived(
-		onResume &&
+		props.onResume &&
 		(liveExecution.status === 'completed' || 
 		 liveExecution.status === 'failed' || 
 		 liveExecution.status === 'cancelled')
@@ -120,27 +103,27 @@
 
 	// Validation action states
 	let canValidate = $derived(
-		hasValidationPrompt && 
-		onValidate && 
+		props.hasValidationPrompt && 
+		props.onValidate && 
 		(liveExecution.status === 'completed' || liveExecution.status === 'cancelled') && 
 		!liveExecution.validationStatus
 	);
 
 	let canRevalidate = $derived(
-		hasValidationPrompt &&
-		onValidate &&
+		props.hasValidationPrompt &&
+		props.onValidate &&
 		liveExecution.validationStatus &&
 		liveExecution.validationStatus !== 'running'
 	);
 
 	let canStopValidation = $derived(
-		onStopValidation &&
+		props.onStopValidation &&
 		liveExecution.validationStatus === 'running'
 	);
 
 	// Other action states
 	let canPush = $derived(
-		onPush && 
+		props.onPush && 
 		liveExecution.commitStatus === 'committed' &&
 		liveExecution.commitSha
 	);
@@ -150,7 +133,7 @@
 	);
 
 	let rowClass = $derived.by(() => {
-		if (selected) return 'bg-primary/10 border-l-4 border-l-primary';
+		if (props.selected) return 'bg-primary/10 border-l-4 border-l-primary';
 		return '';
 	});
 
@@ -180,28 +163,28 @@
 	<!-- Checkbox -->
 	<button
 		type="button"
-		onclick={onToggleSelect}
+		onclick={props.onToggleSelect}
 		disabled={isRunning}
-		class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded border-2 {selected ? 'border-primary bg-primary' : 'border-muted-foreground/30 hover:border-primary/50'} transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-		aria-label={selected ? 'Deselect' : 'Select'}
+		class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded border-2 {props.selected ? 'border-primary bg-primary' : 'border-muted-foreground/30 hover:border-primary/50'} transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+		aria-label={props.selected ? 'Deselect' : 'Select'}
 	>
-		{#if selected}
+		{#if props.selected}
 			<CheckCircle2 class="w-4 h-4 text-primary-foreground" />
 		{/if}
 	</button>
 
 	<!-- Repository Name -->
 	<div class="overflow-hidden min-w-0">
-		<span class="text-sm font-medium text-foreground truncate block">{repoName}</span>
+		<span class="text-sm font-medium text-foreground truncate block">{props.repoName}</span>
 	</div>
 
 	<!-- Execution Status -->
 	<div class="flex flex-col gap-1">
 	<div class="flex items-center gap-2">
 	<UiTooltip content={liveExecution.progressMessage || `Execution: ${liveExecution.status}`}>
-	{#snippet children({ props })}
+	{#snippet children({ props: slotProps })}
 	{@const Icon = executionIcon.Icon}
-	<div {...props}>
+	<div {...slotProps}>
 	<Icon class={`w-4 h-4 ${executionIcon.class}`} />
 	</div>
 	{/snippet}
@@ -210,10 +193,10 @@
 	<!-- Start/Stop/Restart execution actions -->
 	{#if canStart}
 	<UiTooltip content="Start execution">
-	{#snippet children({ props })}
+	{#snippet children({ props: slotProps })}
 	<button
-	{...props}
-	onclick={() => onStart?.()}
+	{...slotProps}
+	onclick={() => props.onStart?.()}
 	class="text-success hover:text-success/90 transition-colors"
 	aria-label="Start execution"
 	>
@@ -223,10 +206,10 @@
 	</UiTooltip>
 	{:else if canStop}
 	<UiTooltip content="Stop execution">
-	{#snippet children({ props })}
+	{#snippet children({ props: slotProps })}
 	<button
-	{...props}
-	onclick={() => onStop?.()}
+	{...slotProps}
+	onclick={() => props.onStop?.()}
 	class="text-warning hover:text-warning/90 transition-colors"
 	aria-label="Stop execution"
 	>
@@ -236,10 +219,10 @@
 	</UiTooltip>
 	{:else if canRestart}
 	<UiTooltip content="Restart execution">
-	{#snippet children({ props })}
+	{#snippet children({ props: slotProps })}
 	<button
-	{...props}
-	onclick={() => onResume?.()}
+	{...slotProps}
+	onclick={() => props.onResume?.()}
 	class="text-primary hover:text-primary/90 transition-colors"
 	aria-label="Restart execution"
 	>
@@ -267,9 +250,9 @@
 	{#if validationIcon}
 	<div class="flex items-center gap-2">
 	<UiTooltip content={`Validation: ${liveExecution.validationStatus}`}>
-	{#snippet children({ props })}
+	{#snippet children({ props: slotProps })}
 	{@const Icon = validationIcon.Icon}
-	<div {...props}>
+	<div {...slotProps}>
 	<Icon class={`w-4 h-4 ${validationIcon.class}`} />
 	</div>
 	{/snippet}
@@ -278,10 +261,10 @@
 	<!-- Validation actions -->
 	{#if canStopValidation}
 	<UiTooltip content="Stop validation">
-	{#snippet children({ props })}
+	{#snippet children({ props: slotProps })}
 	<button
-	{...props}
-	onclick={() => onStopValidation?.()}
+	{...slotProps}
+	onclick={() => props.onStopValidation?.()}
 	class="text-warning hover:text-warning/90 transition-colors"
 	aria-label="Stop validation"
 	>
@@ -291,10 +274,10 @@
 	</UiTooltip>
 	{:else if canValidate}
 	<UiTooltip content="Start validation">
-	{#snippet children({ props })}
+	{#snippet children({ props: slotProps })}
 	<button
-	{...props}
-	onclick={() => onValidate?.()}
+	{...slotProps}
+	onclick={() => props.onValidate?.()}
 	class="text-success hover:text-success/90 transition-colors"
 	aria-label="Start validation"
 	>
@@ -304,10 +287,10 @@
 	</UiTooltip>
 	{:else if canRevalidate}
 	<UiTooltip content="Revalidate">
-	{#snippet children({ props })}
+	{#snippet children({ props: slotProps })}
 	<button
-	{...props}
-	onclick={() => onValidate?.()}
+	{...slotProps}
+	onclick={() => props.onValidate?.()}
 	class="text-primary hover:text-primary/90 transition-colors"
 	aria-label="Revalidate"
 	>
@@ -338,21 +321,21 @@
 		<!-- Changes Stats -->
 		<div class="flex items-center gap-2 text-xs">
 			<button
-			onclick={() => onReviewChanges?.()}
-			disabled={!onReviewChanges}
+			onclick={() => props.onReviewChanges?.()}
+			disabled={!props.onReviewChanges}
 			class="flex items-center gap-2 hover:text-primary transition-colors cursor-pointer disabled:cursor-default disabled:hover:text-current"
 			>
-				{#if fileCount > 0}
-					<UiTooltip content={`Click to view ${fileCount} file${fileCount !== 1 ? 's' : ''} changed`}>
-						{#snippet children({ props })}
-							<div {...props} class="flex items-center gap-1">
+				{#if (props.fileCount ?? 0) > 0}
+					<UiTooltip content={`Click to view ${props.fileCount} file${props.fileCount !== 1 ? 's' : ''} changed`}>
+						{#snippet children({ props: slotProps })}
+							<div {...slotProps} class="flex items-center gap-1">
 								<FileText class="w-3.5 h-3.5 text-muted-foreground" />
-								<span class="text-warning">{fileCount}</span>
+								<span class="text-warning">{props.fileCount}</span>
 							</div>
 						{/snippet}
 					</UiTooltip>
-					<span class="text-success">+{additions}</span>
-					<span class="text-destructive">-{deletions}</span>
+					<span class="text-success">+{props.additions ?? 0}</span>
+					<span class="text-destructive">-{props.deletions ?? 0}</span>
 				{:else}
 					<span class="text-muted-foreground">No changes</span>
 				{/if}
@@ -360,15 +343,20 @@
 			
 			<!-- Push action -->
 			{#if canPush}
-				<UiTooltip content="Push to remote">
-					{#snippet children({ props })}
+				<UiTooltip content={props.isPushing ? "Pushing..." : "Push to remote"}>
+					{#snippet children({ props: slotProps })}
 						<button
-						{...props}
-						onclick={() => onPush?.()}
-						class="text-accent hover:text-accent/90 transition-colors"
+						{...slotProps}
+						onclick={() => props.onPush?.()}
+						disabled={props.isPushing}
+						class="text-accent hover:text-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 						aria-label="Push to remote"
 						>
-						<Upload class="w-4 h-4" />
+						{#if props.isPushing}
+							<Loader2 class="w-4 h-4 animate-spin" />
+						{:else}
+							<Upload class="w-4 h-4" />
+						{/if}
 						</button>
 					{/snippet}
 				</UiTooltip>
@@ -379,9 +367,9 @@
 		{#if liveExecution.commitSha && commitIcon}
 			<div class="flex items-center gap-1">
 				<UiTooltip content={`Commit: ${liveExecution.commitSha.slice(0, 7)}`}>
-					{#snippet children({ props })}
+					{#snippet children({ props: slotProps })}
 						{@const Icon = commitIcon.Icon}
-						<div {...props}>
+						<div {...slotProps}>
 							<Icon class={`w-4 h-4 ${commitIcon.class}`} />
 						</div>
 					{/snippet}
@@ -397,14 +385,15 @@
 			<CiStatusBadge 
 				ciStatus={liveExecution.ciStatus} 
 				ciUrl={liveExecution.ciUrl}
-				onRefresh={onRefreshCi}
+				onRefresh={props.onRefreshCi}
+				isRefreshing={props.isRefreshingCi}
 			/>
-		{:else if liveExecution.commitStatus === 'committed' && onRefreshCi}
+		{:else if liveExecution.commitStatus === 'committed' && props.onRefreshCi}
 			<UiTooltip content="Check CI status">
-				{#snippet children({ props })}
+				{#snippet children({ props: slotProps })}
 					<button
-						{...props}
-						onclick={onRefreshCi}
+						{...slotProps}
+						onclick={props.onRefreshCi}
 						class="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
 					>
 						<RefreshCw class="w-3.5 h-3.5" />
@@ -421,9 +410,9 @@
 	<div class="flex items-center gap-1 justify-end">
 		<div class="hidden @md/table:flex items-center gap-1">
 			<UiTooltip content="Open in editor">
-				{#snippet children({ props })}
+				{#snippet children({ props: slotProps })}
 					<button
-					{...props}
+					{...slotProps}
 					onclick={handleOpenInEditor}
 					class="text-primary hover:text-primary/90 transition-colors"
 					aria-label="Open in editor"
@@ -434,9 +423,9 @@
 			</UiTooltip>
 			
 			<UiTooltip content="Copy worktree path">
-				{#snippet children({ props })}
+				{#snippet children({ props: slotProps })}
 					<button
-						{...props}
+						{...slotProps}
 						onclick={handleCopyPath}
 						class="text-gray-600 hover:text-gray-700 transition-colors"
 						aria-label="Copy worktree path"
@@ -447,10 +436,10 @@
 			</UiTooltip>
 			
 			<UiTooltip content="Delete execution">
-				{#snippet children({ props })}
+				{#snippet children({ props: slotProps })}
 					<button
-					{...props}
-					onclick={onDelete}
+					{...slotProps}
+					onclick={props.onDelete}
 					class="text-destructive hover:text-destructive/90 transition-colors"
 					aria-label="Delete execution"
 					>
@@ -479,7 +468,7 @@
 					<div class="@md/table:hidden">
 						{#if canStart}
 							<DropdownMenu.Item
-								onSelect={() => onStart?.()}
+								onSelect={() => props.onStart?.()}
 								class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
 							>
 								<PlayCircle class="w-4 h-4" />
@@ -489,7 +478,7 @@
 						
 						{#if canRestart}
 							<DropdownMenu.Item
-								onSelect={() => onResume?.()}
+								onSelect={() => props.onResume?.()}
 								class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
 							>
 								<RotateCw class="w-4 h-4" />
@@ -499,7 +488,7 @@
 						
 						{#if canStop}
 							<DropdownMenu.Item
-								onSelect={() => onStop?.()}
+								onSelect={() => props.onStop?.()}
 								class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
 							>
 								<Square class="w-4 h-4" />
@@ -509,7 +498,7 @@
 						
 						{#if canStopValidation}
 							<DropdownMenu.Item
-								onSelect={() => onStopValidation?.()}
+								onSelect={() => props.onStopValidation?.()}
 								class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
 							>
 								<X class="w-4 h-4" />
@@ -519,7 +508,7 @@
 						
 						{#if canValidate}
 							<DropdownMenu.Item
-								onSelect={() => onValidate?.()}
+								onSelect={() => props.onValidate?.()}
 								class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
 							>
 								<CheckCircle2 class="w-4 h-4" />
@@ -529,7 +518,7 @@
 						
 						{#if canRevalidate}
 							<DropdownMenu.Item
-								onSelect={() => onValidate?.()}
+								onSelect={() => props.onValidate?.()}
 								class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors cursor-pointer"
 							>
 								<RotateCw class="w-4 h-4" />
@@ -561,7 +550,7 @@
 					<DropdownMenu.Separator class="h-px bg-border/40 my-1" />
 					
 					<DropdownMenu.Item
-						onSelect={onDelete}
+						onSelect={props.onDelete}
 						class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-destructive hover:text-destructive-foreground rounded transition-colors cursor-pointer"
 					>
 						<Trash2 class="w-4 h-4" />

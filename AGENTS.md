@@ -216,23 +216,119 @@ await themeStore.init()
 - Use `$state` for reactive component state (NOT traditional stores)
 - Use `$derived` for computed values
 - Use `$props()` for component inputs
+- Use `$effect` for side effects with automatic cleanup
 - **Components are dynamic by default** - use `<Component />` directly instead of `<svelte:component this={Component} />`
 - **NEVER** destructure props if they need to be reactive - keep as single object and access via `props.fieldName`
 - **NEVER** create stores inside `{#each}` loops - use `$derived` instead
 - **NEVER** subscribe to stores in scoped blocks - make data reactive at component top level
+- **NEVER** use manual `store.subscribe()` - use `$effect` with `$store` auto-subscription instead
 
-**Props Pattern:**
+**Props Pattern (CRITICAL - Most Common Reactivity Bug):**
 ```svelte
 <!-- ✅ DO: Keep props as object for reactivity -->
 <script lang="ts">
-  let props: { status: string; count: number } = $props();
-  let doubled = $derived(props.count * 2);
+  const props: { 
+    executions: Execution[];
+    onDelete: (e: Execution) => void;
+  } = $props();
+  
+  // Reference via props.X everywhere
+  let filtered = $derived(props.executions.filter(e => e.status === 'completed'));
+  
+  function handleClick() {
+    props.onDelete(props.executions[0]);
+  }
 </script>
 
-<!-- ❌ DON'T: Destructure props (breaks reactivity) -->
+<div>
+  {#each filtered as execution}
+    <button onclick={() => props.onDelete(execution)}>Delete</button>
+  {/each}
+</div>
+
+<!-- ❌ DON'T: Destructure props (breaks reactivity when parent updates) -->
 <script lang="ts">
-  let { status, count } = $props();
-  let doubled = $derived(count * 2); // Won't update when count changes!
+  let { executions, onDelete } = $props();
+  let filtered = $derived(executions.filter(e => e.status === 'completed'));
+  // ^^ This won't update when parent changes executions array!
+</script>
+```
+
+**Store Subscription Pattern:**
+```svelte
+<!-- ✅ DO: Use $effect with $store auto-subscription -->
+<script lang="ts">
+  import { settingsStore } from '$lib/stores/settingsStore';
+  
+  let localValue = $state('');
+  
+  // Automatically subscribes and cleans up
+  $effect(() => {
+    const settings = $settingsStore;
+    localValue = settings.someValue;
+  });
+</script>
+
+<!-- ❌ DON'T: Manual subscribe (causes memory leak) -->
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { settingsStore } from '$lib/stores/settingsStore';
+  
+  onMount(() => {
+    settingsStore.subscribe(settings => {
+      // No unsubscribe = memory leak!
+    });
+  });
+</script>
+```
+
+**bits-ui Snippet Parameter Naming:**
+```svelte
+<!-- ✅ DO: Rename snippet params to avoid shadowing props -->
+<script lang="ts">
+  const props = $props(); // Top-level props object
+</script>
+
+<UiTooltip>
+  {#snippet children({ props: slotProps })}
+    <button {...slotProps}>Click {props.label}</button>
+    <!-- Can access both slotProps AND top-level props -->
+  {/snippet}
+</UiTooltip>
+
+<!-- ❌ DON'T: Use 'props' as snippet param name (shadows top-level props) -->
+<UiTooltip>
+  {#snippet children({ props })}
+    <button {...props}>Click {props.label}</button>
+    <!-- Which props? Snippet or component? Confusing and breaks! -->
+  {/snippet}
+</UiTooltip>
+```
+
+**Side Effect Cleanup:**
+```svelte
+<!-- ✅ DO: Clean up timers and listeners in onDestroy -->
+<script lang="ts">
+  import { onDestroy } from 'svelte';
+  
+  let debounceTimer: number;
+  
+  function search(query: string) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => doSearch(query), 300);
+  }
+  
+  onDestroy(() => {
+    clearTimeout(debounceTimer);
+  });
+</script>
+
+<!-- ✅ ALSO OK: Use $effect with cleanup return -->
+<script lang="ts">
+  $effect(() => {
+    const timer = setTimeout(() => console.log('Hello'), 1000);
+    return () => clearTimeout(timer);
+  });
 </script>
 ```
 

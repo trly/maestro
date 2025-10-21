@@ -29,6 +29,19 @@
 	let liveStats = $state<Map<string, ExecutionStats>>(new Map());
 	let analyses = $state<Analysis[]>([]); // Analyses for current revision
 	
+	// Loading states for async operations
+	let pushingExecutions = $state<Set<string>>(new Set());
+	let refreshingCi = $state<Set<string>>(new Set());
+	let analyzingExecutions = $state(false);
+	let analyzingValidations = $state(false);
+	
+	// Bulk operation loading states
+	let bulkStarting = $state(false);
+	let bulkRestarting = $state(false);
+	let bulkValidating = $state(false);
+	let bulkRevalidating = $state(false);
+	let bulkDeleting = $state(false);
+	
 	// Merge executions with live updates from the event bus and live stats
 	let executionsWithUpdates = $derived(
 		executions.map(execution => {
@@ -276,47 +289,77 @@
 
 		currentRevision = revision;
 		
-		// Optimistic update - create pending executions for each repo
-		const newExecutions = currentPromptSet.repositoryIds.map(repoId => ({
-		id: crypto.randomUUID(), // Temporary ID
-		promptsetId: currentPromptSet!.id,
-		revisionId: revision.id,
-		repositoryId: repoId,
-		status: 'pending' as const,
-		promptStatus: null,
-		promptResult: null,
-		validationStatus: null,
-		validationThreadUrl: null,
-		validationResult: null,
-		filesAdded: 0,
-		filesRemoved: 0,
-		filesModified: 0,
-		linesAdded: 0,
-		linesRemoved: 0,
-		commitStatus: 'none' as const,
-		sessionId: null,
-		threadUrl: null,
-		commitSha: null,
-		committedAt: null,
-		parentSha: null,
-		branch: null,
-		ciStatus: null,
-		ciCheckedAt: null,
-		ciUrl: null,
-		createdAt: Date.now(),
-		completedAt: null,
-	}));
-		executions = [...executions, ...newExecutions];
+		// Check if executions already exist for this revision
+		const existingExecutions = executions.filter(e => e.revisionId === revision.id);
+		const existingRepoIds = new Set(existingExecutions.map(e => e.repositoryId));
+		
+		// Separate existing executions by state
+		// Start: pending with no session_id (never executed, but worktree exists from prepare)
+		const toStart = existingExecutions.filter(e => 
+			e.status === 'pending' && !e.sessionId
+		);
+		// Resume: cancelled/failed, or pending with session_id (was started before)
+		const toResume = existingExecutions.filter(e => 
+			e.status === 'cancelled' || e.status === 'failed' || 
+			(e.status === 'pending' && e.sessionId)
+		);
+		
+		// Skip repos with running or completed executions
+		const reposWithActiveExecution = new Set(
+			existingExecutions
+				.filter(e => e.status === 'running' || e.status === 'completed')
+				.map(e => e.repositoryId)
+		);
+		
+		// Only create new executions for repos that don't have any execution yet
+		const reposNeedingNewExecution = currentPromptSet.repositoryIds.filter(
+			repoId => !existingRepoIds.has(repoId)
+		);
 		
 		try {
-			await api.revisions.execute(revision.id);
-			// Reload to get real execution IDs from backend
+			let startedCount = 0;
+			let resumedCount = 0;
+			
+			// Start existing pending executions (no worktree yet)
+			if (toStart.length > 0) {
+				const results = await Promise.allSettled(
+					toStart.map(execution => api.executions.start(execution.id))
+				);
+				startedCount = results.filter(r => r.status === 'fulfilled').length;
+			}
+			
+			// Resume existing failed/cancelled executions (worktree exists)
+			if (toResume.length > 0) {
+				const results = await Promise.allSettled(
+					toResume.map(execution => api.executions.resume(execution.id))
+				);
+				resumedCount = results.filter(r => r.status === 'fulfilled').length;
+			}
+			
+			// Create new executions only for repos without any execution
+			if (reposNeedingNewExecution.length > 0) {
+				await api.revisions.execute(revision.id, reposNeedingNewExecution);
+			}
+			
+			// Reload to get updated state
 			executions = await api.promptSets.getExecutions(currentPromptSet.id);
 			startPolling(revision.id);
-			showToast('Execution started', 'info');
+			
+			// Show appropriate message
+			const totalStarted = startedCount + reposNeedingNewExecution.length;
+			const skippedCount = reposWithActiveExecution.size;
+			
+			const parts = [];
+			if (totalStarted > 0) parts.push(`Started ${totalStarted}`);
+			if (resumedCount > 0) parts.push(`resumed ${resumedCount}`);
+			if (skippedCount > 0) parts.push(`skipped ${skippedCount} active`);
+			
+			if (parts.length > 0) {
+				showToast(parts.join(', '), 'info');
+			} else {
+				showToast('All executions already running or completed', 'info');
+			}
 		} catch (err) {
-			// Revert optimistic update on error
-			executions = executions.filter(e => !newExecutions.some(ne => ne.id === e.id));
 			showToast('Failed to execute revision: ' + err, 'error');
 		}
 	}
@@ -516,23 +559,34 @@
 
 	async function pushExecutionManually(execution: Execution) {
 		try {
+			pushingExecutions.add(execution.id);
+			pushingExecutions = new Set(pushingExecutions); // Trigger reactivity
+			
 			showToast('Pushing commit to remote...', 'info');
 			await api.executions.push(execution.id, false); // false = not force push
 			showToast('Push completed successfully', 'success');
 			// CI status will update via event bus after push
 		} catch (err) {
 			showToast('Failed to push: ' + err, 'error');
+		} finally {
+			pushingExecutions.delete(execution.id);
+			pushingExecutions = new Set(pushingExecutions); // Trigger reactivity
 		}
 	}
 
 	async function refreshCiManually(execution: Execution) {
 		try {
-			showToast('Refreshing CI status...', 'info');
+			refreshingCi.add(execution.id);
+			refreshingCi = new Set(refreshingCi); // Trigger reactivity
+			
 			await api.ci.refreshStatus(execution.id);
 			// CI status will update via event bus
 			showToast('CI status refreshed', 'success');
 		} catch (err) {
 			showToast('Failed to refresh CI: ' + err, 'error');
+		} finally {
+			refreshingCi.delete(execution.id);
+			refreshingCi = new Set(refreshingCi); // Trigger reactivity
 		}
 	}
 
@@ -569,177 +623,202 @@
 		
 		if (!confirmed) return;
 		
-		let successCount = 0;
-		let failCount = 0;
-		const deletedIds: string[] = [];
-		
-		for (const execution of selectedExecutions) {
-			try {
-				await api.executions.delete(execution.id);
-				executions = executions.filter(e => e.id !== execution.id);
-				deletedIds.push(execution.id);
-				successCount++;
-			} catch (err) {
-				failCount++;
+		try {
+			bulkDeleting = true;
+			let successCount = 0;
+			let failCount = 0;
+			const deletedIds: string[] = [];
+			
+			for (const execution of selectedExecutions) {
+				try {
+					await api.executions.delete(execution.id);
+					executions = executions.filter(e => e.id !== execution.id);
+					deletedIds.push(execution.id);
+					successCount++;
+				} catch (err) {
+					failCount++;
+				}
 			}
-		}
-		
-		// Clean up event bus and stats for deleted executions
-		if (deletedIds.length > 0) {
-			executionStore.update(map => {
-				deletedIds.forEach(id => {
-					map.delete(id);
-					liveStats.delete(id);
+			
+			// Clean up event bus and stats for deleted executions
+			if (deletedIds.length > 0) {
+				executionStore.update(map => {
+					deletedIds.forEach(id => {
+						map.delete(id);
+						liveStats.delete(id);
+					});
+					return new Map(map);
 				});
-				return new Map(map);
-			});
-		}
-		
-		if (successCount > 0) {
-			showToast(`${successCount} execution${successCount > 1 ? 's' : ''} deleted successfully`, 'success');
-		}
-		if (failCount > 0) {
-			showToast(`Failed to delete ${failCount} execution${failCount > 1 ? 's' : ''}`, 'error');
+			}
+			
+			if (successCount > 0) {
+				showToast(`${successCount} execution${successCount > 1 ? 's' : ''} deleted successfully`, 'success');
+			}
+			if (failCount > 0) {
+				showToast(`Failed to delete ${failCount} execution${failCount > 1 ? 's' : ''}`, 'error');
+			}
+		} finally {
+			bulkDeleting = false;
 		}
 	}
 
 	async function bulkStartExecutions(selectedExecutions: Execution[]) {
-		let successCount = 0;
-		let failCount = 0;
-		
-		for (const execution of selectedExecutions) {
-			try {
-				executions = executions.map(e => 
-					e.id === execution.id 
-						? { ...e, status: 'running' as const }
-						: e
-				);
-				await api.executions.start(execution.id);
-				successCount++;
-			} catch (err) {
-				executions = executions.map(e => 
-					e.id === execution.id 
-						? { ...e, status: execution.status }
-						: e
-				);
-				failCount++;
+		try {
+			bulkStarting = true;
+			let successCount = 0;
+			let failCount = 0;
+			
+			for (const execution of selectedExecutions) {
+				try {
+					executions = executions.map(e => 
+						e.id === execution.id 
+							? { ...e, status: 'running' as const }
+							: e
+					);
+					await api.executions.start(execution.id);
+					successCount++;
+				} catch (err) {
+					executions = executions.map(e => 
+						e.id === execution.id 
+							? { ...e, status: execution.status }
+							: e
+					);
+					failCount++;
+				}
 			}
-		}
-		
-		if (currentRevision) {
-			startPolling(currentRevision.id);
-		}
-		
-		if (successCount > 0) {
-			showToast(`${successCount} execution${successCount > 1 ? 's' : ''} started`, 'info');
-		}
-		if (failCount > 0) {
-			showToast(`Failed to start ${failCount} execution${failCount > 1 ? 's' : ''}`, 'error');
+			
+			if (currentRevision) {
+				startPolling(currentRevision.id);
+			}
+			
+			if (successCount > 0) {
+				showToast(`${successCount} execution${successCount > 1 ? 's' : ''} started`, 'info');
+			}
+			if (failCount > 0) {
+				showToast(`Failed to start ${failCount} execution${failCount > 1 ? 's' : ''}`, 'error');
+			}
+		} finally {
+			bulkStarting = false;
 		}
 	}
 
 	async function bulkRestartExecutions(selectedExecutions: Execution[]) {
-		let successCount = 0;
-		let failCount = 0;
-		
-		for (const execution of selectedExecutions) {
-			try {
-				executions = executions.map(e => 
-					e.id === execution.id 
-						? { ...e, status: 'running' as const }
-						: e
-				);
-				await api.executions.resume(execution.id);
-				successCount++;
-			} catch (err) {
-				executions = executions.map(e => 
-					e.id === execution.id 
-						? { ...e, status: execution.status }
-						: e
-				);
-				failCount++;
+		try {
+			bulkRestarting = true;
+			let successCount = 0;
+			let failCount = 0;
+			
+			for (const execution of selectedExecutions) {
+				try {
+					executions = executions.map(e => 
+						e.id === execution.id 
+							? { ...e, status: 'running' as const }
+							: e
+					);
+					await api.executions.resume(execution.id);
+					successCount++;
+				} catch (err) {
+					executions = executions.map(e => 
+						e.id === execution.id 
+							? { ...e, status: execution.status }
+							: e
+					);
+					failCount++;
+				}
 			}
-		}
-		
-		if (currentRevision) {
-			startPolling(currentRevision.id);
-		}
-		
-		if (successCount > 0) {
-			showToast(`${successCount} execution${successCount > 1 ? 's' : ''} restarted`, 'info');
-		}
-		if (failCount > 0) {
-			showToast(`Failed to restart ${failCount} execution${failCount > 1 ? 's' : ''}`, 'error');
+			
+			if (currentRevision) {
+				startPolling(currentRevision.id);
+			}
+			
+			if (successCount > 0) {
+				showToast(`${successCount} execution${successCount > 1 ? 's' : ''} restarted`, 'info');
+			}
+			if (failCount > 0) {
+				showToast(`Failed to restart ${failCount} execution${failCount > 1 ? 's' : ''}`, 'error');
+			}
+		} finally {
+			bulkRestarting = false;
 		}
 	}
 
 	async function bulkStartValidations(selectedExecutions: Execution[]) {
-		let successCount = 0;
-		let failCount = 0;
-		
-		for (const execution of selectedExecutions) {
-			try {
-				executions = executions.map(e => 
-					e.id === execution.id 
-						? { ...e, validationStatus: 'running' as const }
-						: e
-				);
-				await api.executions.validate(execution.id);
-				successCount++;
-			} catch (err) {
-				executions = executions.map(e => 
-					e.id === execution.id 
-						? { ...e, validationStatus: execution.validationStatus }
-						: e
-				);
-				failCount++;
+		try {
+			bulkValidating = true;
+			let successCount = 0;
+			let failCount = 0;
+			
+			for (const execution of selectedExecutions) {
+				try {
+					executions = executions.map(e => 
+						e.id === execution.id 
+							? { ...e, validationStatus: 'running' as const }
+							: e
+					);
+					await api.executions.validate(execution.id);
+					successCount++;
+				} catch (err) {
+					executions = executions.map(e => 
+						e.id === execution.id 
+							? { ...e, validationStatus: execution.validationStatus }
+							: e
+					);
+					failCount++;
+				}
 			}
-		}
-		
-		if (currentRevision) {
-			startPolling(currentRevision.id);
-		}
-		
-		if (successCount > 0) {
-			showToast(`${successCount} validation${successCount > 1 ? 's' : ''} started`, 'info');
-		}
-		if (failCount > 0) {
-			showToast(`Failed to start ${failCount} validation${failCount > 1 ? 's' : ''}`, 'error');
+			
+			if (currentRevision) {
+				startPolling(currentRevision.id);
+			}
+			
+			if (successCount > 0) {
+				showToast(`${successCount} validation${successCount > 1 ? 's' : ''} started`, 'info');
+			}
+			if (failCount > 0) {
+				showToast(`Failed to start ${failCount} validation${failCount > 1 ? 's' : ''}`, 'error');
+			}
+		} finally {
+			bulkValidating = false;
 		}
 	}
 
 	async function bulkRevalidateExecutions(selectedExecutions: Execution[]) {
-		let successCount = 0;
-		let failCount = 0;
-		
-		for (const execution of selectedExecutions) {
-			try {
-				executions = executions.map(e => 
-					e.id === execution.id 
-						? { ...e, validationStatus: 'running' as const }
-						: e
-				);
-				await api.executions.validate(execution.id);
-				successCount++;
-			} catch (err) {
-				executions = executions.map(e => 
-					e.id === execution.id 
-						? { ...e, validationStatus: execution.validationStatus }
-						: e
-				);
-				failCount++;
+		try {
+			bulkRevalidating = true;
+			let successCount = 0;
+			let failCount = 0;
+			
+			for (const execution of selectedExecutions) {
+				try {
+					executions = executions.map(e => 
+						e.id === execution.id 
+							? { ...e, validationStatus: 'running' as const }
+							: e
+					);
+					await api.executions.validate(execution.id);
+					successCount++;
+				} catch (err) {
+					executions = executions.map(e => 
+						e.id === execution.id 
+							? { ...e, validationStatus: execution.validationStatus }
+							: e
+					);
+					failCount++;
+				}
 			}
-		}
-		
-		if (currentRevision) {
-			startPolling(currentRevision.id);
-		}
-		
-		if (successCount > 0) {
-			showToast(`${successCount} validation${successCount > 1 ? 's' : ''} revalidated`, 'info');
-		}
-		if (failCount > 0) {
-			showToast(`Failed to revalidate ${failCount} validation${failCount > 1 ? 's' : ''}`, 'error');
+			
+			if (currentRevision) {
+				startPolling(currentRevision.id);
+			}
+			
+			if (successCount > 0) {
+				showToast(`${successCount} validation${successCount > 1 ? 's' : ''} revalidated`, 'info');
+			}
+			if (failCount > 0) {
+				showToast(`Failed to revalidate ${failCount} validation${failCount > 1 ? 's' : ''}`, 'error');
+			}
+		} finally {
+			bulkRevalidating = false;
 		}
 	}
 
@@ -913,19 +992,24 @@
 		}
 		
 		try {
+			analyzingExecutions = true;
+			showToast(`Analyzing ${failedExecutions.length} failed execution${failedExecutions.length > 1 ? 's' : ''}...`, 'info');
+			
 			const analysisId = await ipc.createAnalysis(
 				revision.id,
 				'execution',
 				failedExecutions.map(e => e.id)
 			);
 			await ipc.runAnalysis(analysisId);
-			showToast(`Started analyzing ${failedExecutions.length} failed execution${failedExecutions.length > 1 ? 's' : ''}`, 'info');
 			
 			// Refresh analyses to include the new one
 			analyses = await ipc.getAnalysesByRevision(revision.id);
+			showToast('Analysis started', 'success');
 		} catch (err) {
 			showToast('Failed to start analysis', 'error');
 			console.error('Analysis error:', err);
+		} finally {
+			analyzingExecutions = false;
 		}
 	}
 
@@ -940,19 +1024,24 @@
 		}
 		
 		try {
+			analyzingValidations = true;
+			showToast(`Analyzing ${failedValidations.length} failed validation${failedValidations.length > 1 ? 's' : ''}...`, 'info');
+			
 			const analysisId = await ipc.createAnalysis(
 				revision.id,
 				'validation',
 				failedValidations.map(e => e.id)
 			);
 			await ipc.runAnalysis(analysisId);
-			showToast(`Started analyzing ${failedValidations.length} failed validation${failedValidations.length > 1 ? 's' : ''}`, 'info');
 			
 			// Refresh analyses to include the new one
 			analyses = await ipc.getAnalysesByRevision(revision.id);
+			showToast('Analysis started', 'success');
 		} catch (err) {
 			showToast('Failed to start analysis', 'error');
 			console.error('Analysis error:', err);
+		} finally {
+			analyzingValidations = false;
 		}
 	}
 
@@ -1137,6 +1226,15 @@
 								onRefreshAllCi={refreshAllCiManually}
 								onAnalyzeExecutions={() => handleAnalyzeExecutions(currentRevision!)}
 								onAnalyzeValidations={() => handleAnalyzeValidations(currentRevision!)}
+								{pushingExecutions}
+								{refreshingCi}
+								{analyzingExecutions}
+								{analyzingValidations}
+								{bulkStarting}
+								{bulkRestarting}
+								{bulkValidating}
+								{bulkRevalidating}
+								{bulkDeleting}
 							/>
 						</Tabs.Content>
 						

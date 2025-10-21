@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { CheckSquare, Square as SquareIcon, ChevronDown, ChevronUp, Play, Square, RotateCw, ScanSearch } from 'lucide-svelte'
+	import { CheckSquare, Square as SquareIcon, ChevronDown, ChevronUp, Play, Square, RotateCw, ScanSearch, Loader2 } from 'lucide-svelte'
 	import UiTooltip from './UiTooltip.svelte'
 	
 	let {
@@ -20,7 +20,9 @@
 		onStopAllValidations,
 		onRefreshAllCi,
 		onAnalyzeExecutions,
-		onAnalyzeValidations
+		onAnalyzeValidations,
+		analyzingExecutions = false,
+		analyzingValidations = false
 	}: {
 		allSelected?: boolean
 		someSelected?: boolean
@@ -40,6 +42,8 @@
 		onRefreshAllCi?: () => void
 		onAnalyzeExecutions?: () => void
 		onAnalyzeValidations?: () => void
+		analyzingExecutions?: boolean
+		analyzingValidations?: boolean
 	} = $props()
 	
 	function getSortIcon(column: string) {
@@ -126,15 +130,20 @@
 			</UiTooltip>
 		{/if}
 		{#if hasFailedExecutions && onAnalyzeExecutions}
-			<UiTooltip content="Analyze failed executions">
+			<UiTooltip content={analyzingExecutions ? "Analyzing..." : "Analyze failed executions"}>
 				{#snippet children({ props })}
 					<button
 					{...props}
 					onclick={onAnalyzeExecutions}
-					class="text-accent hover:text-accent/90 transition-colors"
+					disabled={analyzingExecutions}
+					class="text-accent hover:text-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 					aria-label="Analyze failed executions"
 					>
-					<ScanSearch class="w-3.5 h-3.5" />
+					{#if analyzingExecutions}
+						<Loader2 class="w-3.5 h-3.5 animate-spin" />
+					{:else}
+						<ScanSearch class="w-3.5 h-3.5" />
+					{/if}
 					</button>
 				{/snippet}
 			</UiTooltip>
@@ -170,15 +179,20 @@
 			</UiTooltip>
 		{/if}
 		{#if hasFailedValidations && onAnalyzeValidations}
-			<UiTooltip content="Analyze failed validations">
+			<UiTooltip content={analyzingValidations ? "Analyzing..." : "Analyze failed validations"}>
 				{#snippet children({ props })}
 					<button
 					{...props}
 					onclick={onAnalyzeValidations}
-					class="text-accent hover:text-accent/90 transition-colors"
+					disabled={analyzingValidations}
+					class="text-accent hover:text-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 					aria-label="Analyze failed validations"
 					>
-					<ScanSearch class="w-3.5 h-3.5" />
+					{#if analyzingValidations}
+						<Loader2 class="w-3.5 h-3.5 animate-spin" />
+					{:else}
+						<ScanSearch class="w-3.5 h-3.5" />
+					{/if}
 					</button>
 				{/snippet}
 			</UiTooltip>

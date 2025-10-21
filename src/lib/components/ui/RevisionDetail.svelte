@@ -5,39 +5,7 @@
 	import AnalysisList from './AnalysisList.svelte';
 	import type { PromptRevision, Execution, Repository, Analysis } from '$lib/types';
 
-	let {
-		revision,
-		executions,
-		analyses = [],
-		repositories,
-		repositoryIds = [],
-		hasValidationPrompt = false,
-		validationPrompt = null,
-		autoValidate = false,
-		onDeleteExecution,
-		onStartExecution,
-		onValidateExecution,
-		onStopExecution,
-		onStopValidation,
-		onResumeExecution,
-		onReviewChanges,
-		onPushExecution,
-		onRefreshCi,
-		onBulkDelete,
-		onBulkStart,
-		onBulkRestart,
-		onBulkStartValidations,
-		onBulkRevalidate,
-		onSaveValidation,
-		onExecuteAll,
-		onStopAll,
-		onStopAllValidations,
-		onRefreshAllCi,
-		onAnalyzeExecutions,
-		onAnalyzeValidations,
-		onDeleteAnalysis,
-		onRerunAnalysis
-	}: {
+	const props: {
 		revision: PromptRevision;
 		executions: Execution[];
 		analyses?: Analysis[];
@@ -69,6 +37,16 @@
 		onAnalyzeValidations: () => void;
 		onDeleteAnalysis: (analysis: Analysis) => void;
 		onRerunAnalysis: (analysis: Analysis) => void;
+		// State props for ExecutionTable
+		pushingExecutions?: Set<string>;
+		refreshingCi?: Set<string>;
+		analyzingExecutions?: boolean;
+		analyzingValidations?: boolean;
+		bulkStarting?: boolean;
+		bulkRestarting?: boolean;
+		bulkValidating?: boolean;
+		bulkRevalidating?: boolean;
+		bulkDeleting?: boolean;
 	} = $props();
 
 	let selectedTab = $state('executions');
@@ -77,10 +55,10 @@
 <div class="flex-1 min-h-0 flex flex-col overflow-hidden bg-background">
 	<!-- Prompt Console -->
 	<PromptConsole
-		{revision}
-		{validationPrompt}
-		{autoValidate}
-		{onSaveValidation}
+		revision={props.revision}
+		validationPrompt={props.validationPrompt}
+		autoValidate={props.autoValidate}
+		onSaveValidation={props.onSaveValidation}
 	/>
 
 	<!-- Tabs for Executions and Analysis -->
@@ -92,7 +70,7 @@
 					data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm
 					data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground"
 			>
-				Executions {#if executions.length > 0}({executions.length}){/if}
+				Executions {#if props.executions.length > 0}({props.executions.length}){/if}
 			</Tabs.Trigger>
 			<Tabs.Trigger
 				value="analyses"
@@ -100,43 +78,52 @@
 					data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm
 					data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground"
 			>
-				Analyses {#if analyses.length > 0}({analyses.length}){/if}
+				Analyses {#if (props.analyses ?? []).length > 0}({(props.analyses ?? []).length}){/if}
 			</Tabs.Trigger>
 		</Tabs.List>
 		
 		<Tabs.Content value="executions" class="flex-1 flex flex-col overflow-auto @container/table">
 			<ExecutionTable
-				{executions}
-				{repositories}
-				{hasValidationPrompt}
-				{onDeleteExecution}
-				{onStartExecution}
-				{onValidateExecution}
-				{onStopExecution}
-				{onStopValidation}
-				{onResumeExecution}
-				{onReviewChanges}
-				{onPushExecution}
-				{onRefreshCi}
-				{onBulkDelete}
-				{onBulkStart}
-				{onBulkRestart}
-				{onBulkStartValidations}
-				{onBulkRevalidate}
-				{onExecuteAll}
-				{onStopAll}
-				{onStopAllValidations}
-				{onRefreshAllCi}
-				{onAnalyzeExecutions}
-				{onAnalyzeValidations}
+				executions={props.executions}
+				repositories={props.repositories}
+				hasValidationPrompt={props.hasValidationPrompt}
+				onDeleteExecution={props.onDeleteExecution}
+				onStartExecution={props.onStartExecution}
+				onValidateExecution={props.onValidateExecution}
+				onStopExecution={props.onStopExecution}
+				onStopValidation={props.onStopValidation}
+				onResumeExecution={props.onResumeExecution}
+				onReviewChanges={props.onReviewChanges}
+				onPushExecution={props.onPushExecution}
+				onRefreshCi={props.onRefreshCi}
+				onBulkDelete={props.onBulkDelete}
+				onBulkStart={props.onBulkStart}
+				onBulkRestart={props.onBulkRestart}
+				onBulkStartValidations={props.onBulkStartValidations}
+				onBulkRevalidate={props.onBulkRevalidate}
+				onExecuteAll={props.onExecuteAll}
+				onStopAll={props.onStopAll}
+				onStopAllValidations={props.onStopAllValidations}
+				onRefreshAllCi={props.onRefreshAllCi}
+				onAnalyzeExecutions={props.onAnalyzeExecutions}
+				onAnalyzeValidations={props.onAnalyzeValidations}
+				pushingExecutions={props.pushingExecutions ?? new Set()}
+				refreshingCi={props.refreshingCi ?? new Set()}
+				analyzingExecutions={props.analyzingExecutions ?? false}
+				analyzingValidations={props.analyzingValidations ?? false}
+				bulkStarting={props.bulkStarting ?? false}
+				bulkRestarting={props.bulkRestarting ?? false}
+				bulkValidating={props.bulkValidating ?? false}
+				bulkRevalidating={props.bulkRevalidating ?? false}
+				bulkDeleting={props.bulkDeleting ?? false}
 			/>
 		</Tabs.Content>
 		
 		<Tabs.Content value="analyses" class="flex-1 min-h-0 overflow-auto">
 			<AnalysisList
-				{analyses}
-				onDelete={onDeleteAnalysis}
-				onRerun={onRerunAnalysis}
+				analyses={props.analyses ?? []}
+				onDelete={props.onDeleteAnalysis}
+				onRerun={props.onRerunAnalysis}
 			/>
 		</Tabs.Content>
 	</Tabs.Root>

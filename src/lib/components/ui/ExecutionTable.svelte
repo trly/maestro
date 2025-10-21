@@ -6,31 +6,7 @@
 	import { useSelection } from '$lib/composables/useSelection.svelte'
 	import { executionStore } from '$lib/stores/executionBus'
 	
-	let {
-		executions,
-		repositories,
-		hasValidationPrompt = false,
-		onDeleteExecution,
-		onStartExecution,
-		onValidateExecution,
-		onStopExecution,
-		onStopValidation,
-		onResumeExecution,
-		onReviewChanges,
-		onPushExecution,
-		onRefreshCi,
-		onBulkDelete,
-		onBulkStart,
-		onBulkRestart,
-		onBulkStartValidations,
-		onBulkRevalidate,
-		onExecuteAll,
-		onStopAll,
-		onStopAllValidations,
-		onRefreshAllCi,
-		onAnalyzeExecutions,
-		onAnalyzeValidations
-	}: {
+	const props: {
 		executions: Execution[]
 		repositories: Map<string, Repository>
 		hasValidationPrompt?: boolean
@@ -54,6 +30,15 @@
 		onRefreshAllCi?: () => void
 		onAnalyzeExecutions?: () => void
 		onAnalyzeValidations?: () => void
+		pushingExecutions: Set<string>
+		refreshingCi: Set<string>
+		analyzingExecutions: boolean
+		analyzingValidations: boolean
+		bulkStarting: boolean
+		bulkRestarting: boolean
+		bulkValidating: boolean
+		bulkRevalidating: boolean
+		bulkDeleting: boolean
 	} = $props()
 	
 	let sortColumn = $state<string | null>(null)
@@ -63,7 +48,7 @@
 	
 	// Merge event bus updates with static execution data
 	let executionsLive = $derived(
-		executions.map(e => {
+		props.executions.map(e => {
 			const updates = $executionStore.get(e.id)
 			if (!updates) return e
 			return {
@@ -130,7 +115,7 @@
 	})
 	
 	function getRepoName(repoId: string): string {
-		return repositories.get(repoId)?.providerId || repoId
+		return props.repositories.get(repoId)?.providerId || repoId
 	}
 	
 	function handleSort(column: string) {
@@ -147,27 +132,27 @@
 	}
 	
 	function handleBulkDelete() {
-		onBulkDelete(selectedExecutions)
+		props.onBulkDelete(selectedExecutions)
 		selection.clear()
 	}
 	
 	function handleBulkStart() {
-		onBulkStart(selectedExecutions)
+		props.onBulkStart(selectedExecutions)
 		selection.clear()
 	}
 	
 	function handleBulkRestart() {
-		onBulkRestart(selectedExecutions)
+		props.onBulkRestart(selectedExecutions)
 		selection.clear()
 	}
 	
 	function handleBulkStartValidations() {
-		onBulkStartValidations(selectedExecutions)
+		props.onBulkStartValidations(selectedExecutions)
 		selection.clear()
 	}
 	
 	function handleBulkRevalidate() {
-		onBulkRevalidate(selectedExecutions)
+		props.onBulkRevalidate(selectedExecutions)
 		selection.clear()
 	}
 </script>
@@ -175,13 +160,18 @@
 {#if selection.selectedIds.size > 0}
 	<BulkActionBar
 		selectedCount={selection.selectedIds.size}
-		{hasValidationPrompt}
+		hasValidationPrompt={props.hasValidationPrompt}
 		onBulkDelete={handleBulkDelete}
 		onBulkStart={handleBulkStart}
 		onBulkRestart={handleBulkRestart}
-		onBulkStartValidations={hasValidationPrompt ? handleBulkStartValidations : undefined}
-		onBulkRevalidate={hasValidationPrompt ? handleBulkRevalidate : undefined}
+		onBulkStartValidations={props.hasValidationPrompt ? handleBulkStartValidations : undefined}
+		onBulkRevalidate={props.hasValidationPrompt ? handleBulkRevalidate : undefined}
 		onClear={selection.clear}
+		isStarting={props.bulkStarting}
+		isRestarting={props.bulkRestarting}
+		isValidating={props.bulkValidating}
+		isRevalidating={props.bulkRevalidating}
+		isDeleting={props.bulkDeleting}
 	/>
 {/if}
 
@@ -199,12 +189,14 @@
 		executionCount={executionsLive.length}
 		onToggleSelectAll={handleToggleSelectAll}
 		onSort={handleSort}
-		{onExecuteAll}
-		{onStopAll}
-		{onStopAllValidations}
-		{onRefreshAllCi}
-		{onAnalyzeExecutions}
-		{onAnalyzeValidations}
+		onExecuteAll={props.onExecuteAll}
+		onStopAll={props.onStopAll}
+		onStopAllValidations={props.onStopAllValidations}
+		onRefreshAllCi={props.onRefreshAllCi}
+		onAnalyzeExecutions={props.onAnalyzeExecutions}
+		onAnalyzeValidations={props.onAnalyzeValidations}
+		analyzingExecutions={props.analyzingExecutions}
+		analyzingValidations={props.analyzingValidations}
 	/>
 	
 	<div class="divide-y divide-border/40">
@@ -212,22 +204,24 @@
 			<ExecutionRow
 				{execution}
 				repoName={getRepoName(execution.repositoryId)}
-				{hasValidationPrompt}
+				hasValidationPrompt={props.hasValidationPrompt}
 				selected={selection.selectedIds.has(execution.id)}
 				onToggleSelect={() => selection.toggle(execution.id)}
-				onDelete={() => onDeleteExecution(execution, getRepoName(execution.repositoryId))}
-				onStart={() => onStartExecution(execution)}
-				onValidate={() => onValidateExecution(execution)}
-				onStop={() => onStopExecution(execution)}
-				onStopValidation={() => onStopValidation(execution)}
-				onResume={() => onResumeExecution(execution)}
-				onReviewChanges={() => onReviewChanges(execution.id)}
-				onPush={() => onPushExecution(execution)}
-				onRefreshCi={() => onRefreshCi(execution)}
+				onDelete={() => props.onDeleteExecution(execution, getRepoName(execution.repositoryId))}
+				onStart={() => props.onStartExecution(execution)}
+				onValidate={() => props.onValidateExecution(execution)}
+				onStop={() => props.onStopExecution(execution)}
+				onStopValidation={() => props.onStopValidation(execution)}
+				onResume={() => props.onResumeExecution(execution)}
+				onReviewChanges={() => props.onReviewChanges(execution.id)}
+				onPush={() => props.onPushExecution(execution)}
+				onRefreshCi={() => props.onRefreshCi(execution)}
 				fileCount={(execution.filesAdded || 0) + (execution.filesRemoved || 0) + (execution.filesModified || 0)}
 				additions={execution.linesAdded || 0}
 				deletions={execution.linesRemoved || 0}
 				progressMessage={execution.progressMessage}
+				isPushing={props.pushingExecutions.has(execution.id)}
+				isRefreshingCi={props.refreshingCi.has(execution.id)}
 			/>
 		{/each}
 	</div>
