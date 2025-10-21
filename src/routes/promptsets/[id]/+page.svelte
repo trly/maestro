@@ -4,8 +4,9 @@
 	import { onMount, onDestroy } from 'svelte';
 	import DiffViewer from '$lib/components/DiffViewer.svelte';
 	import RevisionHeader from '$lib/components/ui/RevisionHeader.svelte';
-	import RevisionDetail from '$lib/components/ui/RevisionDetail.svelte';
-	import AnalysisResult from '$lib/components/ui/AnalysisResult.svelte';
+	import PromptConsole from '$lib/components/ui/PromptConsole.svelte';
+	import ExecutionTable from '$lib/components/ui/ExecutionTable.svelte';
+	import AnalysisList from '$lib/components/ui/AnalysisList.svelte';
 	import { Tabs } from 'bits-ui';
 	import EditRepositoriesDialog from '$lib/components/ui/EditRepositoriesDialog.svelte';
 	import { api } from '$lib/api';
@@ -107,6 +108,8 @@
 	let diffViewerExecutionId = $state<string | null>(null);
 	let stopPolling = $state<(() => void) | null>(null);
 	let activeTab = $state<string>('executions');
+	let tabsHeight = $state(400);
+	let isResizingTabs = $state(false);
 
 	const promptsetId = $derived($page.params.id);
 	const revisionParam = $derived($page.url.searchParams.get('revision'));
@@ -972,6 +975,33 @@
 		}
 	}
 
+	function handleTabsResizeStart(e: MouseEvent) {
+		isResizingTabs = true;
+		e.preventDefault();
+	}
+
+	function handleTabsResizeMove(e: MouseEvent) {
+		if (!isResizingTabs) return;
+		const maxHeight = window.innerHeight * 0.7;
+		const newHeight = window.innerHeight - e.clientY;
+		tabsHeight = Math.max(200, Math.min(maxHeight, newHeight));
+	}
+
+	function handleTabsResizeEnd() {
+		isResizingTabs = false;
+	}
+
+	$effect(() => {
+		if (isResizingTabs) {
+			document.addEventListener('mousemove', handleTabsResizeMove);
+			document.addEventListener('mouseup', handleTabsResizeEnd);
+			return () => {
+				document.removeEventListener('mousemove', handleTabsResizeMove);
+				document.removeEventListener('mouseup', handleTabsResizeEnd);
+			};
+		}
+	});
+
 	let unlistenCommit: (() => void) | null = null;
 
 	onMount(async () => {
@@ -1026,45 +1056,90 @@
 			</div>
 		{/if}
 
-		<!-- Main Content Area: RevisionDetail with Tabs -->
-		<div class="flex-1 min-h-0">
+		<!-- Main Content Area: PromptConsole + Tabs with resizable divider -->
+		<div class="flex-1 min-h-0 flex flex-col overflow-hidden">
 			{#if currentRevision}
-				<RevisionDetail
-					revision={currentRevision}
-					executions={executionsWithUpdates.filter(e => e.revisionId === currentRevision!.id)}
-					analyses={analyses}
-					{repositories}
-					repositoryIds={currentPromptSet.repositoryIds}
-					hasValidationPrompt={!!currentPromptSet.validationPrompt}
-					validationPrompt={currentPromptSet.validationPrompt}
-					autoValidate={currentPromptSet.autoValidate}
-					onSaveValidation={saveValidationPrompt}
-					onDeleteExecution={deleteExecutionWithConfirm}
-					onStartExecution={startExecutionManually}
-					onValidateExecution={validateExecutionManually}
-					onStopExecution={stopExecutionManually}
-					onStopValidation={stopValidationManually}
-					onResumeExecution={resumeExecutionManually}
-					onReviewChanges={(executionId) => {
-						diffViewerExecutionId = executionId;
-						diffViewerOpen = true;
-					}}
-					onPushExecution={pushExecutionManually}
-					onRefreshCi={refreshCiManually}
-					onBulkDelete={bulkDeleteExecutions}
-					onBulkStart={bulkStartExecutions}
-					onBulkRestart={bulkRestartExecutions}
-					onBulkStartValidations={bulkStartValidations}
-					onBulkRevalidate={bulkRevalidateExecutions}
-					onExecuteAll={() => executeRevision(currentRevision!)}
-					onStopAll={stopAllExecutions}
-					onStopAllValidations={stopAllValidations}
-					onRefreshAllCi={refreshAllCiManually}
-					onAnalyzeExecutions={() => handleAnalyzeExecutions(currentRevision!)}
-					onAnalyzeValidations={() => handleAnalyzeValidations(currentRevision!)}
-					onDeleteAnalysis={(analysis) => handleDeleteAnalysis(analysis.id)}
-					onRerunAnalysis={handleRerunAnalysis}
-				/>
+				<!-- Prompt Console (top, flexible) -->
+				<div class="flex-1 min-h-0 overflow-hidden">
+					<PromptConsole
+						revision={currentRevision}
+						validationPrompt={currentPromptSet.validationPrompt}
+						autoValidate={currentPromptSet.autoValidate}
+						onSaveValidation={saveValidationPrompt}
+					/>
+				</div>
+
+				<!-- Resize Handle -->
+				<button
+					onmousedown={handleTabsResizeStart}
+					class="flex-shrink-0 h-1.5 bg-border/40 hover:bg-primary/40 transition-colors cursor-ns-resize group relative"
+					aria-label="Resize tabs area"
+				>
+					<div class="absolute inset-x-0 -top-1 -bottom-1"></div>
+				</button>
+
+				<!-- Tabs Area (bottom, fixed height) -->
+				<div class="flex-shrink-0 flex flex-col overflow-hidden bg-background" style="height: {tabsHeight}px;">
+					<Tabs.Root bind:value={activeTab} class="flex flex-col flex-1 min-h-0 overflow-hidden">
+						<Tabs.List class="flex-shrink-0 flex items-center gap-1 px-4 py-2 bg-muted/5 border-b border-border/10">
+							<Tabs.Trigger
+								value="executions"
+								class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors
+									data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm
+									data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground"
+							>
+								Executions {#if executionsWithUpdates.filter(e => e.revisionId === currentRevision!.id).length > 0}({executionsWithUpdates.filter(e => e.revisionId === currentRevision!.id).length}){/if}
+							</Tabs.Trigger>
+							<Tabs.Trigger
+								value="analyses"
+								class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors
+									data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm
+									data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground"
+							>
+								Analyses {#if analyses.length > 0}({analyses.length}){/if}
+							</Tabs.Trigger>
+						</Tabs.List>
+						
+						<Tabs.Content value="executions" class="flex-1 flex flex-col overflow-auto @container/table">
+							<ExecutionTable
+								executions={executionsWithUpdates.filter(e => e.revisionId === currentRevision!.id)}
+								{repositories}
+								hasValidationPrompt={!!currentPromptSet.validationPrompt}
+								onDeleteExecution={deleteExecutionWithConfirm}
+								onStartExecution={startExecutionManually}
+								onValidateExecution={validateExecutionManually}
+								onStopExecution={stopExecutionManually}
+								onStopValidation={stopValidationManually}
+								onResumeExecution={resumeExecutionManually}
+								onReviewChanges={(executionId) => {
+									diffViewerExecutionId = executionId;
+									diffViewerOpen = true;
+								}}
+								onPushExecution={pushExecutionManually}
+								onRefreshCi={refreshCiManually}
+								onBulkDelete={bulkDeleteExecutions}
+								onBulkStart={bulkStartExecutions}
+								onBulkRestart={bulkRestartExecutions}
+								onBulkStartValidations={bulkStartValidations}
+								onBulkRevalidate={bulkRevalidateExecutions}
+								onExecuteAll={() => executeRevision(currentRevision!)}
+								onStopAll={stopAllExecutions}
+								onStopAllValidations={stopAllValidations}
+								onRefreshAllCi={refreshAllCiManually}
+								onAnalyzeExecutions={() => handleAnalyzeExecutions(currentRevision!)}
+								onAnalyzeValidations={() => handleAnalyzeValidations(currentRevision!)}
+							/>
+						</Tabs.Content>
+						
+						<Tabs.Content value="analyses" class="flex-1 min-h-0 overflow-auto">
+							<AnalysisList
+								{analyses}
+								onDelete={(analysis) => handleDeleteAnalysis(analysis.id)}
+								onRerun={handleRerunAnalysis}
+							/>
+						</Tabs.Content>
+					</Tabs.Root>
+				</div>
 			{:else}
 				<div class="flex items-center justify-center h-full">
 					<div class="text-center text-muted-foreground max-w-md">
