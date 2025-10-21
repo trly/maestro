@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Trash2, Play, RotateCw, CheckCircle2, Loader2 } from 'lucide-svelte'
+	import { Trash2, Play, RotateCw, Check, CheckCheck } from 'lucide-svelte'
+	import IconButton from './IconButton.svelte'
 	
 	let {
 		selectedCount,
@@ -40,61 +41,51 @@
 		{selectedCount} selected
 	</span>
 	
-	<div class="flex items-center gap-2">
-		<button
+	<div class="flex items-center gap-2 ml-12">
+		<IconButton
+			icon={Play}
+			tooltip="Start"
 			onclick={onBulkStart}
+			variant="success"
 			disabled={anyOperationRunning}
-			class="px-3 py-1.5 text-xs font-medium rounded-md bg-success text-success-foreground hover:bg-success/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-		>
-			{#if isStarting}
-				<Loader2 class="w-3 h-3 animate-spin" />
-			{/if}
-			<span>Start</span>
-		</button>
-		<button
+			loading={isStarting}
+		/>
+		<IconButton
+			icon={RotateCw}
+			tooltip="Restart"
 			onclick={onBulkRestart}
+			variant="primary"
 			disabled={anyOperationRunning}
-			class="px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-		>
-			{#if isRestarting}
-				<Loader2 class="w-3 h-3 animate-spin" />
-			{/if}
-			<span>Restart</span>
-		</button>
+			loading={isRestarting}
+		/>
 		{#if hasValidationPrompt && onBulkStartValidations}
-			<button
+			<IconButton
+				icon={Check}
+				tooltip="Start validation"
 				onclick={onBulkStartValidations}
+				variant="success"
 				disabled={anyOperationRunning}
-				class="px-3 py-1.5 text-xs font-medium rounded-md bg-success text-success-foreground hover:bg-success/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-			>
-				{#if isValidating}
-					<Loader2 class="w-3 h-3 animate-spin" />
-				{/if}
-				<span>Start validation</span>
-			</button>
+				loading={isValidating}
+			/>
 		{/if}
 		{#if hasValidationPrompt && onBulkRevalidate}
-			<button
+			<IconButton
+				icon={CheckCheck}
+				tooltip="Revalidate"
 				onclick={onBulkRevalidate}
+				variant="primary"
 				disabled={anyOperationRunning}
-				class="px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-			>
-				{#if isRevalidating}
-					<Loader2 class="w-3 h-3 animate-spin" />
-				{/if}
-				<span>Revalidate</span>
-			</button>
+				loading={isRevalidating}
+			/>
 		{/if}
-		<button
+		<IconButton
+			icon={Trash2}
+			tooltip="Delete"
 			onclick={onBulkDelete}
+			variant="destructive"
 			disabled={anyOperationRunning}
-			class="px-3 py-1.5 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-		>
-			{#if isDeleting}
-				<Loader2 class="w-3 h-3 animate-spin" />
-			{/if}
-			<span>Delete</span>
-		</button>
+			loading={isDeleting}
+		/>
 	</div>
 	
 	<button

@@ -25,6 +25,7 @@
 		Copy
 	} from 'lucide-svelte';
 	import CiStatusBadge from './CiStatusBadge.svelte';
+	import IconButton from './IconButton.svelte';
 	import { openInEditor, copyWorktreePath } from '$lib/utils/worktree';
 	import { executionStore } from '$lib/stores/executionBus';
 	import { getExecutionStatusConfig, getValidationStatusConfig, getCommitStatusConfig } from '$lib/utils/statusConfig';
@@ -193,44 +194,11 @@
 	
 	<!-- Start/Stop/Restart execution actions -->
 	{#if canStart}
-	<UiTooltip content="Start execution">
-	{#snippet children({ props: slotProps })}
-	<button
-	{...slotProps}
-	onclick={() => props.onStart?.()}
-	class="text-success hover:text-success/90 transition-colors"
-	aria-label="Start execution"
-	>
-	<PlayCircle class="w-4 h-4" />
-	</button>
-	{/snippet}
-	</UiTooltip>
+	<IconButton icon={PlayCircle} tooltip="Start execution" onclick={() => props.onStart?.()} variant="success" />
 	{:else if canStop}
-	<UiTooltip content="Stop execution">
-	{#snippet children({ props: slotProps })}
-	<button
-	{...slotProps}
-	onclick={() => props.onStop?.()}
-	class="text-warning hover:text-warning/90 transition-colors"
-	aria-label="Stop execution"
-	>
-	<Square class="w-4 h-4 fill-current" />
-	</button>
-	{/snippet}
-	</UiTooltip>
+	<IconButton icon={Square} tooltip="Stop execution" onclick={() => props.onStop?.()} variant="warning" />
 	{:else if canRestart}
-	<UiTooltip content="Restart execution">
-	{#snippet children({ props: slotProps })}
-	<button
-	{...slotProps}
-	onclick={() => props.onResume?.()}
-	class="text-primary hover:text-primary/90 transition-colors"
-	aria-label="Restart execution"
-	>
-	<RotateCw class="w-4 h-4" />
-	</button>
-	{/snippet}
-	</UiTooltip>
+	<IconButton icon={RotateCw} tooltip="Restart execution" onclick={() => props.onResume?.()} variant="primary" />
 	{/if}
 	</div>
 	
@@ -344,23 +312,7 @@
 			
 			<!-- Push action -->
 			{#if canPush}
-				<UiTooltip content={props.isPushing ? "Pushing..." : "Push to remote"}>
-					{#snippet children({ props: slotProps })}
-						<button
-						{...slotProps}
-						onclick={() => props.onPush?.()}
-						disabled={props.isPushing}
-						class="text-accent hover:text-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-						aria-label="Push to remote"
-						>
-						{#if props.isPushing}
-							<Loader2 class="w-4 h-4 animate-spin" />
-						{:else}
-							<Upload class="w-4 h-4" />
-						{/if}
-						</button>
-					{/snippet}
-				</UiTooltip>
+				<IconButton icon={Upload} tooltip={props.isPushing ? "Pushing..." : "Push to remote"} onclick={() => props.onPush?.()} variant="accent" disabled={props.isPushing} loading={props.isPushing} />
 			{/if}
 		</div>
 		
@@ -410,44 +362,9 @@
 	<!-- Actions -->
 	<div class="flex items-center gap-1 justify-end">
 		<div class="hidden @md/table:flex items-center gap-1">
-			<UiTooltip content="Open in editor">
-				{#snippet children({ props: slotProps })}
-					<button
-					{...slotProps}
-					onclick={handleOpenInEditor}
-					class="text-primary hover:text-primary/90 transition-colors"
-					aria-label="Open in editor"
-					>
-					<Code class="w-4 h-4" />
-					</button>
-				{/snippet}
-			</UiTooltip>
-			
-			<UiTooltip content="Copy worktree path">
-				{#snippet children({ props: slotProps })}
-					<button
-						{...slotProps}
-						onclick={handleCopyPath}
-						class="text-gray-600 hover:text-gray-700 transition-colors"
-						aria-label="Copy worktree path"
-					>
-						<Copy class="w-4 h-4" />
-					</button>
-				{/snippet}
-			</UiTooltip>
-			
-			<UiTooltip content="Delete execution">
-				{#snippet children({ props: slotProps })}
-					<button
-					{...slotProps}
-					onclick={props.onDelete}
-					class="text-destructive hover:text-destructive/90 transition-colors"
-					aria-label="Delete execution"
-					>
-					<Trash2 class="w-4 h-4" />
-					</button>
-				{/snippet}
-			</UiTooltip>
+			<IconButton icon={Code} tooltip="Open in editor" onclick={handleOpenInEditor} variant="primary" />
+			<IconButton icon={Copy} tooltip="Copy worktree path" onclick={handleCopyPath} variant="ghost" />
+			<IconButton icon={Trash2} tooltip="Delete execution" onclick={props.onDelete} variant="destructive" />
 		</div>
 
 		<!-- Compact dropdown menu -->

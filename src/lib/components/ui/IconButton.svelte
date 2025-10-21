@@ -2,22 +2,26 @@
 	import type { ComponentType } from 'svelte'
 	import UiTooltip from './UiTooltip.svelte'
 
+	import { Loader2 } from 'lucide-svelte'
+
 	let {
-		icon,
-		tooltip,
-		onclick,
-		variant = 'default',
-		disabled = false,
-		size = 'default',
-		class: className = '',
-		...props
+	icon,
+	tooltip,
+	onclick,
+	variant = 'default',
+	disabled = false,
+	size = 'default',
+	 loading = false,
+	class: className = '',
+	...props
 	}: {
-		icon: ComponentType
-		tooltip: string
-		onclick?: () => void
-		variant?: 'default' | 'success' | 'destructive' | 'warning' | 'primary' | 'accent' | 'ghost'
-		disabled?: boolean
-		size?: 'sm' | 'default' | 'lg'
+	icon: ComponentType
+	tooltip: string
+	onclick?: () => void
+	variant?: 'default' | 'success' | 'destructive' | 'warning' | 'primary' | 'accent' | 'ghost'
+	disabled?: boolean
+	 size?: 'sm' | 'default' | 'lg'
+		loading?: boolean
 		class?: string
 		[key: string]: any
 	} = $props()
@@ -55,7 +59,11 @@
 			class={buttonClass}
 			aria-label={tooltip}
 		>
-			<Icon class={sizeClasses[size]} />
+			{#if loading}
+				<Loader2 class={sizeClasses[size]} />
+			{:else}
+				<Icon class={sizeClasses[size]} />
+			{/if}
 		</button>
 	{/snippet}
 </UiTooltip>

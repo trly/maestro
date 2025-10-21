@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Trash2, Loader2, Edit, FolderGit2 } from 'lucide-svelte';
 	import UiTooltip from './UiTooltip.svelte';
+	import IconButton from './IconButton.svelte';
 	import { toShortHash } from '$lib/utils';
 	import type { PromptRevision, Analysis } from '$lib/types';
 
@@ -46,18 +47,7 @@
 				</UiTooltip>
 			{/if}
 			{#if onEditRepositories}
-				<UiTooltip content="Edit repositories">
-					{#snippet children({ props })}
-						<button
-						{...props}
-						onclick={onEditRepositories}
-						class="text-primary hover:text-primary/90 transition-colors"
-						aria-label="Edit repositories"
-						>
-						<Edit class="w-3.5 h-3.5" />
-						</button>
-					{/snippet}
-				</UiTooltip>
+				<IconButton icon={Edit} tooltip="Edit repositories" onclick={onEditRepositories} variant="primary" size="sm" />
 			{/if}
 			{#if hasActiveAnalysis}
 				<UiTooltip content="{activeAnalysisCount} analysis {activeAnalysisCount === 1 ? 'running' : 'running'}">
@@ -69,18 +59,7 @@
 					{/snippet}
 				</UiTooltip>
 			{/if}
-			<UiTooltip content="Delete this revision">
-				{#snippet children({ props })}
-					<button
-					{...props}
-					onclick={onDelete}
-					class="text-destructive hover:text-destructive/90 transition-colors"
-					aria-label="Delete revision"
-					>
-					<Trash2 class="w-4 h-4" />
-					</button>
-				{/snippet}
-			</UiTooltip>
+			<IconButton icon={Trash2} tooltip="Delete this revision" onclick={onDelete} variant="destructive" />
 		</div>
 		
 		{#if stats && stats.total > 0}

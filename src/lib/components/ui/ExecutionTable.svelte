@@ -4,6 +4,7 @@
 	import ExecutionRow from './ExecutionRow.svelte'
 	import BulkActionBar from './BulkActionBar.svelte'
 	import { useSelection } from '$lib/composables/useSelection.svelte'
+	import { useExecutionFilters } from '$lib/composables/useExecutionFilters.svelte'
 	import { executionStore } from '$lib/stores/executionBus'
 	
 	const props: {
@@ -69,10 +70,16 @@
 		})
 	})
 	
-	let executionIds = $derived(executionsLive.map(e => e.id))
+	// Use filter composable
+	const executionFilters = useExecutionFilters({
+		executions: () => executionsLive,
+		repositories: () => props.repositories
+	})
+	
+	let executionIds = $derived(executionFilters.filteredExecutions.map(e => e.id))
 	let selectedExecutions = $derived(selection.getSelected(executionsLive))
 	
-	let allSelected = $derived(executionsLive.length > 0 && selection.selectedIds.size === executionIds.length)
+	let allSelected = $derived(executionFilters.filteredExecutions.length > 0 && selection.selectedIds.size === executionIds.length)
 	let someSelected = $derived(selection.selectedIds.size > 0 && !allSelected)
 	
 	let hasRunning = $derived(executionsLive.some(e => e.status === 'running'))
@@ -82,9 +89,9 @@
 	let hasCommitted = $derived(executionsLive.some(e => e.commitStatus === 'committed'))
 	
 	let sortedExecutions = $derived.by(() => {
-		if (!sortColumn) return executionsLive
+		if (!sortColumn) return executionFilters.filteredExecutions
 
-		return [...executionsLive].sort((a, b) => {
+		return [...executionFilters.filteredExecutions].sort((a, b) => {
 			let aVal: any
 			let bVal: any
 
@@ -188,9 +195,12 @@
 		{hasFailedExecutions}
 		{hasFailedValidations}
 		{hasCommitted}
+		filters={executionFilters.filters}
+		executions={executionsLive}
 		executionCount={executionsLive.length}
 		onToggleSelectAll={handleToggleSelectAll}
 		onSort={handleSort}
+		onFilterChange={executionFilters.setFilters}
 		onExecuteAll={props.onExecuteAll}
 		onStopAll={props.onStopAll}
 		onStopAllValidations={props.onStopAllValidations}
