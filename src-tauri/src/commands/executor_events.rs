@@ -71,3 +71,43 @@ pub(crate) fn emit_execution_ci(app: &tauri::AppHandle, execution_id: &str, ci_s
 	};
 	let _ = app.emit("execution:ci", payload);
 }
+
+pub(crate) fn emit_analysis_status(app: &tauri::AppHandle, analysis_id: &str, status: &str, error_message: Option<&str>) {
+	let payload = if let Some(msg) = error_message {
+		json!({
+			"analysisId": analysis_id,
+			"status": status,
+			"errorMessage": msg
+		})
+	} else {
+		json!({
+			"analysisId": analysis_id,
+			"status": status
+		})
+	};
+	let _ = app.emit("analysis:status", payload);
+}
+
+pub(crate) fn emit_analysis_result(
+	app: &tauri::AppHandle, 
+	analysis_id: &str, 
+	result: &str, 
+	amp_thread_url: Option<&str>,
+	completed_at: i64,
+) {
+	let payload = if let Some(url) = amp_thread_url {
+		json!({
+			"analysisId": analysis_id,
+			"analysisResult": result,
+			"ampThreadUrl": url,
+			"completedAt": completed_at
+		})
+	} else {
+		json!({
+			"analysisId": analysis_id,
+			"analysisResult": result,
+			"completedAt": completed_at
+		})
+	};
+	let _ = app.emit("analysis:result", payload);
+}

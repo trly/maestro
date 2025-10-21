@@ -5,7 +5,7 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use super::migrations::run_migrations;
-use crate::types::{ExecutionStatus, ValidationStatus, PromptStatus, CommitStatus, CiStatus};
+use crate::types::{ExecutionStatus, ValidationStatus, PromptStatus, CommitStatus, CiStatus, Analysis, AnalysisType, AnalysisStatus};
 
 fn now_ms() -> i64 {
 	chrono::Utc::now().timestamp_millis()
@@ -114,6 +114,13 @@ SELECT
 	created_at, completed_at
 FROM executions";
 
+const SELECT_ANALYSIS: &str = "
+SELECT 
+	id, revision_id, type, status, analysis_prompt, analysis_result,
+	amp_thread_url, amp_session_id, error_message,
+	created_at, updated_at, completed_at
+FROM analyses";
+
 fn map_repository(row: &Row) -> rusqlite::Result<Repository> {
 	Ok(Repository {
 		id: row.get("id")?,
@@ -154,6 +161,23 @@ fn map_execution(row: &Row) -> rusqlite::Result<Execution> {
 		ci_checked_at: row.get("ci_checked_at")?,
 		ci_url: row.get("ci_url")?,
 		created_at: row.get("created_at")?,
+		completed_at: row.get("completed_at")?,
+	})
+}
+
+fn map_analysis(row: &Row) -> rusqlite::Result<Analysis> {
+	Ok(Analysis {
+		id: row.get("id")?,
+		revision_id: row.get("revision_id")?,
+		analysis_type: row.get("type")?,
+		status: row.get("status")?,
+		analysis_prompt: row.get("analysis_prompt")?,
+		analysis_result: row.get("analysis_result")?,
+		amp_thread_url: row.get("amp_thread_url")?,
+		amp_session_id: row.get("amp_session_id")?,
+		error_message: row.get("error_message")?,
+		created_at: row.get("created_at")?,
+		updated_at: row.get("updated_at")?,
 		completed_at: row.get("completed_at")?,
 	})
 }
@@ -737,6 +761,141 @@ impl Store {
 		let value = self.get_setting("max_concurrent_executions")?
 			.unwrap_or_else(|| "10".to_string());
 		value.parse::<i64>().map_err(|e| anyhow::anyhow!("Invalid max concurrent executions: {}", e))
+	}
+
+	// Analysis operations
+	pub fn create_analysis(
+		&self,
+		id: &str,
+		revision_id: &str,
+		analysis_type: AnalysisType,
+		analysis_prompt: &str,
+	) -> Result<Analysis> {
+		let now = now_ms();
+
+		self.conn.execute(
+			"INSERT INTO analyses (id, revision_id, type, status, analysis_prompt, analysis_result, amp_thread_url, amp_session_id, error_message, created_at, updated_at, completed_at)
+			 VALUES (?1, ?2, ?3, 'pending', ?4, NULL, NULL, NULL, NULL, ?5, ?5, NULL)",
+			params![id, revision_id, analysis_type, analysis_prompt, now],
+		)?;
+
+		Ok(Analysis {
+			id: id.to_string(),
+			revision_id: revision_id.to_string(),
+			analysis_type,
+			status: AnalysisStatus::Pending,
+			analysis_prompt: analysis_prompt.to_string(),
+			analysis_result: None,
+			amp_thread_url: None,
+			amp_session_id: None,
+			error_message: None,
+			created_at: now,
+			updated_at: now,
+			completed_at: None,
+		})
+	}
+
+	pub fn get_analysis(&self, id: &str) -> Result<Option<Analysis>> {
+		let mut stmt = self.conn.prepare_cached(&format!("{SELECT_ANALYSIS} WHERE id = ?1"))?;
+		stmt.query_row([id], map_analysis)
+			.optional()
+			.map_err(Into::into)
+	}
+
+	pub fn get_analyses_by_revision(
+		&self,
+		revision_id: &str,
+		analysis_type: Option<AnalysisType>,
+	) -> Result<Vec<Analysis>> {
+		let query = match analysis_type {
+			Some(_) => format!("{SELECT_ANALYSIS} WHERE revision_id = ?1 AND type = ?2 ORDER BY created_at DESC"),
+			None => format!("{SELECT_ANALYSIS} WHERE revision_id = ?1 ORDER BY created_at DESC"),
+		};
+
+		let mut stmt = self.conn.prepare(&query)?;
+		
+		let analyses = if let Some(atype) = analysis_type {
+			stmt.query_map(params![revision_id, atype], map_analysis)?
+				.collect::<rusqlite::Result<Vec<_>>>()?
+		} else {
+			stmt.query_map([revision_id], map_analysis)?
+				.collect::<rusqlite::Result<Vec<_>>>()?
+		};
+
+		Ok(analyses)
+	}
+
+	pub fn update_analysis_status(
+		&self,
+		id: &str,
+		status: AnalysisStatus,
+		error_message: Option<String>,
+	) -> Result<()> {
+		let now = now_ms();
+		self.conn.execute(
+			"UPDATE analyses SET status = ?1, error_message = ?2, updated_at = ?3 WHERE id = ?4",
+			params![status, error_message, now, id],
+		)?;
+		Ok(())
+	}
+
+	pub fn update_analysis_result(
+		&self,
+		id: &str,
+		result: &str,
+		amp_thread_url: Option<String>,
+		amp_session_id: Option<String>,
+		completed_at: i64,
+	) -> Result<()> {
+		let now = now_ms();
+		self.conn.execute(
+			"UPDATE analyses SET 
+				analysis_result = ?1,
+				amp_thread_url = ?2,
+				amp_session_id = ?3,
+				completed_at = ?4,
+				updated_at = ?5
+			WHERE id = ?6",
+			params![result, amp_thread_url, amp_session_id, completed_at, now, id],
+		)?;
+		Ok(())
+	}
+
+	// Analysis-Execution join table operations
+	pub fn add_analysis_executions(
+		&mut self,
+		analysis_id: &str,
+		execution_ids: Vec<String>,
+	) -> Result<()> {
+		let tx = self.conn.transaction()?;
+
+		{
+			let mut stmt = tx.prepare(
+				"INSERT INTO analysis_executions (analysis_id, execution_id) VALUES (?1, ?2)",
+			)?;
+			for execution_id in execution_ids {
+				stmt.execute(params![analysis_id, execution_id])?;
+			}
+		}
+
+		tx.commit()?;
+		Ok(())
+	}
+
+	pub fn get_analysis_executions(&self, analysis_id: &str) -> Result<Vec<Execution>> {
+		let mut stmt = self.conn.prepare(&format!(
+			"{SELECT_EXECUTION} 
+			WHERE id IN (SELECT execution_id FROM analysis_executions WHERE analysis_id = ?1)
+			ORDER BY created_at DESC"
+		))?;
+		let executions = stmt.query_map([analysis_id], map_execution)?
+			.collect::<rusqlite::Result<Vec<_>>>()?;
+		Ok(executions)
+	}
+
+	pub fn delete_analysis(&self, id: &str) -> Result<bool> {
+		let rows_affected = self.conn.execute("DELETE FROM analyses WHERE id = ?1", params![id])?;
+		Ok(rows_affected > 0)
 	}
 }
 

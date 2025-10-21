@@ -10,6 +10,8 @@ pub struct AllTokens {
     pub github_token: Option<String>,
     pub sourcegraph_endpoint: Option<String>,
     pub sourcegraph_token: Option<String>,
+    pub amp_client_id: Option<String>,
+    pub amp_client_secret: Option<String>,
 }
 
 fn get_entry(key: &str) -> Result<Entry, String> {
@@ -50,6 +52,8 @@ pub fn get_all_tokens() -> Result<AllTokens, String> {
         github_token: get_token_value("github_token")?,
         sourcegraph_endpoint: get_token_value("sourcegraph_endpoint")?,
         sourcegraph_token: get_token_value("sourcegraph_token")?,
+        amp_client_id: get_token_value("amp_client_id")?,
+        amp_client_secret: get_token_value("amp_client_secret")?,
     })
 }
 
@@ -72,5 +76,7 @@ pub fn get_all_tokens_masked() -> Result<AllTokens, String> {
         github_token: mask(get_token_value("github_token")?),
         sourcegraph_endpoint: mask(get_token_value("sourcegraph_endpoint")?),
         sourcegraph_token: mask(get_token_value("sourcegraph_token")?),
+        amp_client_id: mask(get_token_value("amp_client_id")?),
+        amp_client_secret: mask(get_token_value("amp_client_secret")?),
     })
 }

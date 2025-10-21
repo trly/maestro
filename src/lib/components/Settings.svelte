@@ -11,14 +11,20 @@
 	let githubToken = $state('');
 	let sourcegraphEndpoint = $state('');
 	let sourcegraphToken = $state('');
+	let ampClientId = $state('');
+	let ampClientSecret = $state('');
 	let ampTokenMasked = $state('');
 	let githubTokenMasked = $state('');
 	let sourcegraphEndpointMasked = $state('');
 	let sourcegraphTokenMasked = $state('');
+	let ampClientIdMasked = $state('');
+	let ampClientSecretMasked = $state('');
 	let editingAmp = $state(false);
 	let editingGithub = $state(false);
 	let editingSourcegraphEndpoint = $state(false);
 	let editingSourcegraphToken = $state(false);
+	let editingAmpClientId = $state(false);
+	let editingAmpClientSecret = $state(false);
 	let loading = $state(true);
 	let saveStatus = $state<{ type: 'success' | 'error'; message: string } | null>(null);
 	let ciThreshold = $state(10);
@@ -49,6 +55,8 @@
 			githubTokenMasked = allTokens.githubToken || '';
 			sourcegraphEndpointMasked = allTokens.sourcegraphEndpoint || '';
 			sourcegraphTokenMasked = allTokens.sourcegraphToken || '';
+			ampClientIdMasked = allTokens.ampClientId || '';
+			ampClientSecretMasked = allTokens.ampClientSecret || '';
 			
 			await settingsStore.load();
 			
@@ -83,6 +91,8 @@
 				githubTokenMasked = allTokens.githubToken || '';
 				sourcegraphEndpointMasked = allTokens.sourcegraphEndpoint || '';
 				sourcegraphTokenMasked = allTokens.sourcegraphToken || '';
+				ampClientIdMasked = allTokens.ampClientId || '';
+				ampClientSecretMasked = allTokens.ampClientSecret || '';
 				
 				// Clear input and exit editing mode
 				if (key === 'amp_token') {
@@ -97,6 +107,12 @@
 				} else if (key === 'sourcegraph_token') {
 					sourcegraphToken = '';
 					editingSourcegraphToken = false;
+				} else if (key === 'amp_client_id') {
+					ampClientId = '';
+					editingAmpClientId = false;
+				} else if (key === 'amp_client_secret') {
+					ampClientSecret = '';
+					editingAmpClientSecret = false;
 				}
 			} else {
 				await tokenStore.deleteToken(key);
@@ -112,6 +128,12 @@
 				} else if (key === 'sourcegraph_token') {
 					sourcegraphTokenMasked = '';
 					editingSourcegraphToken = false;
+				} else if (key === 'amp_client_id') {
+					ampClientIdMasked = '';
+					editingAmpClientId = false;
+				} else if (key === 'amp_client_secret') {
+					ampClientSecretMasked = '';
+					editingAmpClientSecret = false;
 				}
 			}
 			saveStatus = { type: 'success', message: 'Token saved securely to system keyring' };
@@ -141,6 +163,14 @@
 				sourcegraphToken = '';
 				sourcegraphTokenMasked = '';
 				editingSourcegraphToken = false;
+			} else if (key === 'amp_client_id') {
+				ampClientId = '';
+				ampClientIdMasked = '';
+				editingAmpClientId = false;
+			} else if (key === 'amp_client_secret') {
+				ampClientSecret = '';
+				ampClientSecretMasked = '';
+				editingAmpClientSecret = false;
 			}
 			saveStatus = { type: 'success', message: 'Token deleted from system keyring' };
 			setTimeout(() => saveStatus = null, 3000);
@@ -163,6 +193,12 @@
 		} else if (key === 'sourcegraph_token') {
 			editingSourcegraphToken = true;
 			sourcegraphToken = '';
+		} else if (key === 'amp_client_id') {
+			editingAmpClientId = true;
+			ampClientId = '';
+		} else if (key === 'amp_client_secret') {
+			editingAmpClientSecret = true;
+			ampClientSecret = '';
 		}
 	}
 
@@ -179,6 +215,12 @@
 		} else if (key === 'sourcegraph_token') {
 			editingSourcegraphToken = false;
 			sourcegraphToken = '';
+		} else if (key === 'amp_client_id') {
+			editingAmpClientId = false;
+			ampClientId = '';
+		} else if (key === 'amp_client_secret') {
+			editingAmpClientSecret = false;
+			ampClientSecret = '';
 		}
 	}
 	
@@ -523,6 +565,132 @@
 							</div>
 							<p class="text-xs text-muted-foreground mt-2">
 								Generate at your Sourcegraph instance: Settings → Access tokens
+							</p>
+						</div>
+
+						<!-- Amp OAuth2 Client ID -->
+						<div>
+							<label for="amp-client-id" class="block text-sm font-medium mb-2">Amp OAuth2 Client ID</label>
+							<p class="text-xs text-muted-foreground mb-2">
+								Required for accessing Amp V2 API (thread history, failure analysis)
+							</p>
+							<div class="flex flex-col sm:flex-row gap-2">
+								{#if editingAmpClientId}
+									<div class="flex-1">
+										<input
+											id="amp-client-id"
+											type="text"
+											bind:value={ampClientId}
+											placeholder="Enter Amp OAuth2 Client ID"
+											class="w-full px-3 py-2 border rounded-md bg-background"
+										/>
+									</div>
+									<button
+										type="button"
+										onclick={() => saveToken('amp_client_id', ampClientId)}
+										class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+									>
+										Save
+									</button>
+									<button
+										type="button"
+										onclick={() => cancelEditing('amp_client_id')}
+										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+									>
+										Cancel
+									</button>
+								{:else}
+									<div class="flex-1">
+										<input
+											type="text"
+											value={ampClientIdMasked || 'Not set'}
+											disabled
+											class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-600"
+										/>
+									</div>
+									<button
+										type="button"
+										onclick={() => startEditing('amp_client_id')}
+										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+									>
+										{ampClientIdMasked ? 'Update' : 'Set'}
+									</button>
+									{#if ampClientIdMasked}
+										<button
+											type="button"
+											onclick={() => deleteToken('amp_client_id')}
+											class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
+										>
+											Delete
+										</button>
+									{/if}
+								{/if}
+							</div>
+							<p class="text-xs text-muted-foreground mt-2">
+								Provisioned by Sourcegraph for Enterprise customers
+							</p>
+						</div>
+
+						<!-- Amp OAuth2 Client Secret -->
+						<div>
+							<label for="amp-client-secret" class="block text-sm font-medium mb-2">Amp OAuth2 Client Secret</label>
+							<p class="text-xs text-muted-foreground mb-2">
+								Required for accessing Amp V2 API (thread history, failure analysis)
+							</p>
+							<div class="flex flex-col sm:flex-row gap-2">
+								{#if editingAmpClientSecret}
+									<div class="flex-1">
+										<input
+											id="amp-client-secret"
+											type="password"
+											bind:value={ampClientSecret}
+											placeholder="Enter Amp OAuth2 Client Secret"
+											class="w-full px-3 py-2 border rounded-md bg-background"
+										/>
+									</div>
+									<button
+										type="button"
+										onclick={() => saveToken('amp_client_secret', ampClientSecret)}
+										class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+									>
+										Save
+									</button>
+									<button
+										type="button"
+										onclick={() => cancelEditing('amp_client_secret')}
+										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+									>
+										Cancel
+									</button>
+								{:else}
+									<div class="flex-1">
+										<input
+											type="text"
+											value={ampClientSecretMasked || 'Not set'}
+											disabled
+											class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-600"
+										/>
+									</div>
+									<button
+										type="button"
+										onclick={() => startEditing('amp_client_secret')}
+										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+									>
+										{ampClientSecretMasked ? 'Update' : 'Set'}
+									</button>
+									{#if ampClientSecretMasked}
+										<button
+											type="button"
+											onclick={() => deleteToken('amp_client_secret')}
+											class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
+										>
+											Delete
+										</button>
+									{/if}
+								{/if}
+							</div>
+							<p class="text-xs text-muted-foreground mt-2">
+								Provisioned by Sourcegraph for Enterprise customers
 							</p>
 						</div>
 					</div>

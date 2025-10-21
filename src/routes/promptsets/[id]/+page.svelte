@@ -5,7 +5,8 @@
 	import DiffViewer from '$lib/components/DiffViewer.svelte';
 	import RevisionHeader from '$lib/components/ui/RevisionHeader.svelte';
 	import RevisionDetail from '$lib/components/ui/RevisionDetail.svelte';
-
+	import AnalysisResult from '$lib/components/ui/AnalysisResult.svelte';
+	import { Tabs } from 'bits-ui';
 	import EditRepositoriesDialog from '$lib/components/ui/EditRepositoriesDialog.svelte';
 	import { api } from '$lib/api';
 	import { showToast } from '$lib/ui/toast';
@@ -13,10 +14,11 @@
 	import { pollExecutions } from '$lib/polling';
 	import { toShortHash } from '$lib/utils';
 	import { sidebarStore } from '$lib/stores/sidebarStore';
-	import type { PromptSet, PromptRevision, Execution, Repository as DBRepository } from '$lib/types';
+	import type { PromptSet, PromptRevision, Execution, Repository as DBRepository, Analysis } from '$lib/types';
 	import type { Repository as ProviderRepository } from '$lib/providers/types';
 	import { executionStore } from '$lib/stores/executionBus';
 	import { fetchExecutionStats, type ExecutionStats } from '$lib/stores/executionStats';
+	import * as ipc from '$lib/ipc';
 
 	let currentPromptSet = $state<PromptSet | null>(null);
 	let revisions = $state<PromptRevision[]>([]);
@@ -24,6 +26,7 @@
 	let executions = $state<Execution[]>([]); // All executions for the prompt set
 	let repositories = $state<Map<string, DBRepository>>(new Map());
 	let liveStats = $state<Map<string, ExecutionStats>>(new Map());
+	let analyses = $state<Analysis[]>([]); // Analyses for current revision
 	
 	// Merge executions with live updates from the event bus and live stats
 	let executionsWithUpdates = $derived(
@@ -84,14 +87,17 @@
 	
 	// Compute revision header props reactively
 	let revisionHeaderProps = $derived.by(() => {
-		if (!currentRevision) return null;
+		if (!currentRevision || !currentPromptSet) return null;
 		
 		const stats = revisionStats[currentRevision.id];
 		
 		return {
 			revision: currentRevision,
 			stats,
-			onDelete: () => deleteRevisionWithConfirm(currentRevision!)
+			analyses,
+			repositoryCount: currentPromptSet.repositoryIds.length,
+			onDelete: () => deleteRevisionWithConfirm(currentRevision!),
+			onEditRepositories: () => openEditRepositories()
 		};
 	});
 	
@@ -100,6 +106,7 @@
 	let diffViewerOpen = $state(false);
 	let diffViewerExecutionId = $state<string | null>(null);
 	let stopPolling = $state<(() => void) | null>(null);
+	let activeTab = $state<string>('executions');
 
 	const promptsetId = $derived($page.params.id);
 	const revisionParam = $derived($page.url.searchParams.get('revision'));
@@ -136,6 +143,9 @@
 				if (revision) {
 					await viewRevisionExecutions(revision);
 				}
+			} else if (revisions.length > 0 && !currentRevision) {
+				// Auto-select the first (most recent) revision if none is selected
+				await viewRevisionExecutions(revisions[0]);
 			}
 		} catch (err) {
 			showToast('Failed to load prompt set: ' + err, 'error');
@@ -157,13 +167,17 @@
 	async function viewRevisionExecutions(revision: PromptRevision) {
 		currentRevision = revision;
 		
-		// Fetch latest executions for this revision to refresh data
-		const revisionExecutions = await api.revisions.getExecutions(revision.id);
+		// Fetch latest executions and analyses for this revision to refresh data
+		const [revisionExecutions, revisionAnalyses] = await Promise.all([
+			api.revisions.getExecutions(revision.id),
+			ipc.getAnalysesByRevision(revision.id)
+		]);
 		
 		// Update the main executions array: replace matching executions, add new ones
 		const updatedExecutions = executions.filter(e => e.revisionId !== revision.id)
 			.concat(revisionExecutions);
 		executions = updatedExecutions;
+		analyses = revisionAnalyses;
 		
 		await backfillMissingStats();
 		
@@ -840,6 +854,11 @@
 		);
 	}
 
+	async function openEditRepositories() {
+		editingRepos = await loadEditingRepos();
+		editReposOpen = true;
+	}
+
 	async function saveRepositories(repos: ProviderRepository[]) {
 		if (!currentPromptSet || repos.length === 0) return;
 
@@ -869,6 +888,88 @@
 		currentPromptSet.repositoryIds = repoIds;
 		showToast('Repositories updated', 'success');
 		await loadPromptSet();
+	}
+
+	async function handleAnalyzeExecutions(revision: PromptRevision) {
+		const failedExecutions = executionsWithUpdates.filter(
+			e => e.revisionId === revision.id && e.status === 'failed'
+		);
+		
+		if (failedExecutions.length === 0) {
+			showToast('No failed executions to analyze', 'info');
+			return;
+		}
+		
+		try {
+			const analysisId = await ipc.createAnalysis(
+				revision.id,
+				'execution',
+				failedExecutions.map(e => e.id)
+			);
+			await ipc.runAnalysis(analysisId);
+			showToast(`Started analyzing ${failedExecutions.length} failed execution${failedExecutions.length > 1 ? 's' : ''}`, 'info');
+			
+			// Refresh analyses to include the new one
+			analyses = await ipc.getAnalysesByRevision(revision.id);
+		} catch (err) {
+			showToast('Failed to start analysis', 'error');
+			console.error('Analysis error:', err);
+		}
+	}
+
+	async function handleAnalyzeValidations(revision: PromptRevision) {
+		const failedValidations = executionsWithUpdates.filter(
+			e => e.revisionId === revision.id && e.validationStatus === 'failed'
+		);
+		
+		if (failedValidations.length === 0) {
+			showToast('No failed validations to analyze', 'info');
+			return;
+		}
+		
+		try {
+			const analysisId = await ipc.createAnalysis(
+				revision.id,
+				'validation',
+				failedValidations.map(e => e.id)
+			);
+			await ipc.runAnalysis(analysisId);
+			showToast(`Started analyzing ${failedValidations.length} failed validation${failedValidations.length > 1 ? 's' : ''}`, 'info');
+			
+			// Refresh analyses to include the new one
+			analyses = await ipc.getAnalysesByRevision(revision.id);
+		} catch (err) {
+			showToast('Failed to start analysis', 'error');
+			console.error('Analysis error:', err);
+		}
+	}
+
+	async function handleDeleteAnalysis(analysisId: string) {
+		try {
+			await ipc.deleteAnalysis(analysisId);
+			showToast('Analysis deleted', 'success');
+			// Refresh analyses list
+			if (currentRevision) {
+				analyses = await ipc.getAnalysesByRevision(currentRevision.id);
+			}
+		} catch (err) {
+			showToast('Failed to delete analysis', 'error');
+			console.error('Delete analysis error:', err);
+		}
+	}
+
+	async function handleRerunAnalysis(analysis: Analysis) {
+		try {
+			await ipc.runAnalysis(analysis.id);
+			showToast('Re-running analysis', 'info');
+			// Refresh analyses to see updated status
+			if (currentRevision) {
+				analyses = await ipc.getAnalysesByRevision(currentRevision.id);
+			}
+		} catch (err) {
+			showToast('Failed to re-run analysis', 'error');
+			console.error('Re-run analysis error:', err);
+		}
 	}
 
 	let unlistenCommit: (() => void) | null = null;
@@ -917,7 +1018,7 @@
 
 {#if currentPromptSet}
 	<!-- Desktop App Layout -->
-	<div class="flex flex-col h-full overflow-hidden">
+	<div class="flex flex-col flex-1 min-h-0 overflow-hidden">
 		<!-- Top Header: Revision Header Only -->
 		{#if revisionHeaderProps}
 			<div class="flex-shrink-0 border-b border-border/20">
@@ -925,19 +1026,19 @@
 			</div>
 		{/if}
 
-		<!-- Main Content Area: Selected Revision Detail -->
+		<!-- Main Content Area: RevisionDetail with Tabs -->
 		<div class="flex-1 min-h-0">
 			{#if currentRevision}
 				<RevisionDetail
 					revision={currentRevision}
 					executions={executionsWithUpdates.filter(e => e.revisionId === currentRevision!.id)}
+					analyses={analyses}
 					{repositories}
 					repositoryIds={currentPromptSet.repositoryIds}
 					hasValidationPrompt={!!currentPromptSet.validationPrompt}
 					validationPrompt={currentPromptSet.validationPrompt}
 					autoValidate={currentPromptSet.autoValidate}
 					onSaveValidation={saveValidationPrompt}
-					onSaveRepositories={saveRepositoriesByIds}
 					onDeleteExecution={deleteExecutionWithConfirm}
 					onStartExecution={startExecutionManually}
 					onValidateExecution={validateExecutionManually}
@@ -959,6 +1060,10 @@
 					onStopAll={stopAllExecutions}
 					onStopAllValidations={stopAllValidations}
 					onRefreshAllCi={refreshAllCiManually}
+					onAnalyzeExecutions={() => handleAnalyzeExecutions(currentRevision!)}
+					onAnalyzeValidations={() => handleAnalyzeValidations(currentRevision!)}
+					onDeleteAnalysis={(analysis) => handleDeleteAnalysis(analysis.id)}
+					onRerunAnalysis={handleRerunAnalysis}
 				/>
 			{:else}
 				<div class="flex items-center justify-center h-full">

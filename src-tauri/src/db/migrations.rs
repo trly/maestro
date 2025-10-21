@@ -55,6 +55,10 @@ pub const MIGRATIONS: &[Migration] = &[
 		version: 12,
 		up: migration_12,
 	},
+	Migration {
+		version: 13,
+		up: migration_13,
+	},
 ];
 
 fn migration_1(conn: &Connection) -> Result<()> {
@@ -214,6 +218,53 @@ fn migration_12(conn: &Connection) -> Result<()> {
 		
 		-- Set default CI stuck threshold to 10 minutes
 		INSERT INTO settings (key, value, updated_at) VALUES ('ci_stuck_threshold_minutes', '10', 0);
+		",
+	)?;
+	Ok(())
+}
+
+fn migration_13(conn: &Connection) -> Result<()> {
+	conn.execute_batch(
+		"
+		-- Failure analyses main table
+		CREATE TABLE analyses (
+			id TEXT PRIMARY KEY,
+			revision_id TEXT NOT NULL,
+			type TEXT NOT NULL CHECK (type IN ('execution', 'validation')),
+			status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed')),
+			analysis_prompt TEXT NOT NULL,
+			analysis_result TEXT,
+			amp_thread_url TEXT,
+			amp_session_id TEXT,
+			error_message TEXT,
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL,
+			completed_at INTEGER,
+			FOREIGN KEY (revision_id) REFERENCES prompt_revisions(id) ON DELETE CASCADE
+		);
+
+		-- Join table to link analyses to executions (many-to-many)
+		CREATE TABLE analysis_executions (
+			analysis_id TEXT NOT NULL,
+			execution_id TEXT NOT NULL,
+			PRIMARY KEY (analysis_id, execution_id),
+			FOREIGN KEY (analysis_id) REFERENCES analyses(id) ON DELETE CASCADE,
+			FOREIGN KEY (execution_id) REFERENCES executions(id) ON DELETE CASCADE
+		);
+
+		-- Indexes for common queries
+		CREATE INDEX idx_analyses_revision_type_created ON analyses (revision_id, type, created_at DESC);
+		CREATE INDEX idx_analyses_status_created ON analyses (status, created_at DESC);
+		CREATE INDEX idx_analysis_execs_execution ON analysis_executions (execution_id);
+		CREATE INDEX idx_analysis_execs_analysis ON analysis_executions (analysis_id);
+
+		-- Trigger to keep updated_at fresh
+		CREATE TRIGGER analyses_set_updated_at
+		AFTER UPDATE ON analyses
+		FOR EACH ROW
+		BEGIN
+			UPDATE analyses SET updated_at = strftime('%s', 'now') WHERE id = OLD.id;
+		END;
 		",
 	)?;
 	Ok(())

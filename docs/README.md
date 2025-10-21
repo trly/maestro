@@ -50,6 +50,19 @@ Complete execution lifecycle:
 - Bulk operations
 - Error handling and reconciliation
 
+### [Failure Analysis](./analyses.md)
+
+**When to read:** Working with failure analysis, Amp V2 API, or OAuth2 integration
+
+Aggregating and analyzing failures:
+
+- Analysis domain model and workflow
+- Amp V2 API integration with OAuth2
+- Thread message fetching and formatting
+- Background analysis execution
+- Frontend trigger UI and result display
+- Security and performance considerations
+
 ### [Change Tracking](./change-tracking.md)
 
 **When to read:** Working with diffs, file changes, or change statistics

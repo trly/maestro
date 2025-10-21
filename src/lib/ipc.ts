@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { Repository, PromptSet, PromptRevision, Execution } from './types'
+import type { Repository, PromptSet, PromptRevision, Execution, Analysis, AnalysisType } from './types'
 
 /**
  * Custom error class for Tauri IPC errors
@@ -423,7 +423,7 @@ export async function cleanupExecution(executionId: string): Promise<void> {
 // Token Commands
 // ============================================================================
 
-export type TokenKey = 'amp_token' | 'github_token' | 'sourcegraph_endpoint' | 'sourcegraph_token'
+export type TokenKey = 'amp_token' | 'github_token' | 'sourcegraph_endpoint' | 'sourcegraph_token' | 'amp_client_id' | 'amp_client_secret'
 
 /**
  * Set a token in the system keyring
@@ -444,6 +444,8 @@ export interface AllTokens {
 	githubToken: string | null
 	sourcegraphEndpoint: string | null
 	sourcegraphToken: string | null
+	ampClientId: string | null
+	ampClientSecret: string | null
 }
 
 /**
@@ -632,4 +634,57 @@ export async function getAvailableTerminals(): Promise<TerminalInfo[]> {
  */
 export async function checkAppInstalled(command: string): Promise<boolean> {
 	return invokeCommand<boolean>('check_app_installed', { command })
+}
+
+// ============================================================================
+// Analysis Commands
+// ============================================================================
+
+/**
+ * Create a new analysis for a revision
+ */
+export async function createAnalysis(
+	revisionId: string,
+	analysisType: AnalysisType,
+	executionIds: string[]
+): Promise<string> {
+	return invokeCommand<string>('create_analysis', {
+		revisionId,
+		analysisType,
+		executionIds
+	})
+}
+
+/**
+ * Run an analysis
+ */
+export async function runAnalysis(analysisId: string): Promise<void> {
+	return invokeCommand<void>('run_analysis', { analysisId })
+}
+
+/**
+ * Get analysis by ID
+ */
+export async function getAnalysis(analysisId: string): Promise<Analysis | null> {
+	return invokeCommand<Analysis | null>('get_analysis', { analysisId })
+}
+
+/**
+ * Get all analyses for a revision (optionally filtered by type)
+ */
+export async function getAnalysesByRevision(
+	revisionId: string,
+	analysisType?: AnalysisType
+): Promise<Analysis[]> {
+	return invokeCommand<Analysis[]>('get_analyses_by_revision', {
+		revisionId,
+		analysisType
+	})
+}
+
+/**
+ * Delete an analysis
+ */
+export async function deleteAnalysis(analysisId: string): Promise<boolean> {
+	return invokeCommand<boolean>('delete_analysis', { analysisId })
 }

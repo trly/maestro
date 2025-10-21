@@ -16,7 +16,7 @@
 - **Backend**: Tauri 2.0 (Rust) at `src-tauri/src/`
 - **Database**: SQLite via rusqlite at `src-tauri/src/db/`
 - **Git**: git2-rs for native operations at `src-tauri/src/git/`
-- **AI**: @sourcegraph/amp-sdk for execution agent
+- **AI**: @sourcegraph/amp-sdk for execution agent, Amp V2 API for thread analysis
 - **UI**: bits-ui primitives + lucide-svelte icons + Tailwind 4
 - **Types**: TypeScript enums mirror Rust enums via serde
 
@@ -25,7 +25,8 @@
 2. **Prompt Revisions** - Versioned prompts executed against repositories
 3. **Executions** - Individual runs of a revision with worktree isolation
 4. **Validations** - Automated validation of execution results
-5. **Settings** - User preferences for editors, terminals, CI, and appearance
+5. **Analyses** - Failure analysis across multiple executions using Amp V2 API
+6. **Settings** - User preferences for editors, terminals, CI, and appearance
 
 ## Key Architectural Patterns
 
@@ -136,10 +137,10 @@ Maestro uses **Gruvbox color scheme** with Tailwind 4's CSS variable system for 
 
 ### Theme Switching
 
-Theme managed by [themeStore.ts](file:///Users/trly/src/github.com/sourcegraph/maestro/src/lib/stores/themeStore.ts):
+Theme managed by [themeStore.svelte.ts](file:///Users/trly/src/github.com/trly/maestro/src/lib/stores/themeStore.svelte.ts):
 
 ```typescript
-import { themeStore } from '$lib/stores/themeStore'
+import { themeStore } from '$lib/stores/themeStore.svelte'
 
 // Set theme (stores in localStorage)
 await themeStore.setTheme('dark')   // Force dark mode
@@ -379,7 +380,7 @@ See @docs/settings.md for complete settings documentation.
 ### Secure Token Storage
 Maestro uses the system keyring (via `keyring` crate) for secure credential storage:
 - **Service Name**: `dev.trly.maestro` (identifies app in keyring)
-- **Token Keys**: `amp_token`, `github_token`, `sourcegraph_endpoint`, `sourcegraph_token`
+- **Token Keys**: `amp_token`, `github_token`, `sourcegraph_endpoint`, `sourcegraph_token`, `amp_client_id`, `amp_client_secret`
 - **Never** store tokens in env vars, config files, or database
 - **Always** retrieve tokens at command execution time via `tokens::get_token_value(key)`
 
@@ -430,6 +431,7 @@ For detailed guidance on specific topics, consult the domain-focused documentati
 - @docs/architecture.md - System architecture, technology stack, data flow, security, concurrency patterns
 - @docs/prompt-sets.md - Prompt sets, revisions, repositories, DAG structure, execution triggering
 - @docs/executions.md - Execution lifecycle, validations, commits, cancellation, bulk operations
+- @docs/analyses.md - Failure analysis using Amp V2 API, OAuth2 authentication, categorizing failures
 - @docs/change-tracking.md - Diff architecture, worktree vs committed diffs, frontend caching
 - @docs/ci-tracking.md - GitHub CI integration, status aggregation, polling strategy
 
@@ -443,6 +445,7 @@ For detailed guidance on specific topics, consult the domain-focused documentati
 - @docs/ssh-authentication.md - SSH setup for git operations, troubleshooting
 - @docs/change-tracking-stats.md - Diff statistics calculation details
 - @docs/distribution.md - Code signing, notarization, release process
+- @docs/sourcegraph-integration.md - Sourcegraph repository search, GraphQL API, configuration
 
 ## Common Tasks
 
@@ -482,6 +485,30 @@ For detailed guidance on specific topics, consult the domain-focused documentati
 - Implementation: Direct `reqwest` HTTP client for GraphQL API
 - Tokens: Both endpoint and access token retrieved from keyring
 - Usage: `search_sourcegraph_repositories(query, limit)` command
+
+**Example**: Amp V2 API integration (see `src-tauri/src/amp/`)
+- Client: `AmpV2Client` with OAuth2 authentication
+- Implementation: `reqwest` HTTP client for REST API
+- Tokens: `amp_client_id` and `amp_client_secret` from keyring
+- Usage: Fetch thread messages for failure analysis
+
+### Adding analysis features
+1. **Create domain model** in `src-tauri/src/types.rs` (e.g., `Analysis` struct)
+2. **Add database tables** via migration in `src-tauri/src/db/migrations.rs`
+3. **Implement CRUD operations** in `src-tauri/src/db/store.rs`
+4. **Add command handlers** in `src-tauri/src/commands/`
+5. **Create IPC wrappers** in `src/lib/ipc.ts`
+6. **Add TypeScript types** in `src/lib/types.ts`
+7. **Build UI component** in `src/lib/components/ui/`
+8. **Integrate in parent page** to fetch and display data
+
+**Example**: Failure analysis (see `src-tauri/src/amp/`, `src-tauri/src/commands/analysis.rs`)
+- Domain: `Analysis` with type (execution/validation) and status
+- Tables: `analyses` + `analysis_executions` join table
+- Commands: `create_analysis`, `run_analysis`, `get_analyses_by_revision`, `delete_analysis`
+- UI: `AnalysisResult.svelte` component displays results with delete/rerun actions
+- Trigger: ScanSearch icon in column headers when failures exist
+- Management: Delete and re-run buttons in AnalysisResult component
 
 ### Creating a new UI component
 1. Use bits-ui primitives (Dialog, Checkbox, etc.) - never manual implementations

@@ -79,3 +79,22 @@ export interface Execution {
 	completedAt: number | null;
 	progressMessage?: string;
 }
+
+export type AnalysisType = 'execution' | 'validation';
+
+export type AnalysisStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+export interface Analysis {
+	id: string;
+	revisionId: string;
+	type: AnalysisType;
+	status: AnalysisStatus;
+	analysisPrompt: string;
+	analysisResult: string | null;
+	ampThreadUrl: string | null;
+	ampSessionId: string | null;
+	errorMessage: string | null;
+	createdAt: number;
+	updatedAt: number;
+	completedAt: number | null;
+}

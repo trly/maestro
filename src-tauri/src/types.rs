@@ -210,3 +210,86 @@ impl ToSql for FileStatus {
 		Ok(ToSqlOutput::from(s))
 	}
 }
+
+// ============================================================================
+// Analysis Types
+// ============================================================================
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AnalysisType {
+	Execution,
+	Validation,
+}
+
+impl FromSql for AnalysisType {
+	fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+		match value.as_str()? {
+			"execution" => Ok(AnalysisType::Execution),
+			"validation" => Ok(AnalysisType::Validation),
+			other => Err(FromSqlError::Other(
+				format!("Invalid AnalysisType: {}", other).into(),
+			)),
+		}
+	}
+}
+
+impl ToSql for AnalysisType {
+	fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+		let s = match self {
+			AnalysisType::Execution => "execution",
+			AnalysisType::Validation => "validation",
+		};
+		Ok(ToSqlOutput::from(s))
+	}
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AnalysisStatus {
+	Pending,
+	Completed,
+	Failed,
+}
+
+impl FromSql for AnalysisStatus {
+	fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+		match value.as_str()? {
+			"pending" => Ok(AnalysisStatus::Pending),
+			"completed" => Ok(AnalysisStatus::Completed),
+			"failed" => Ok(AnalysisStatus::Failed),
+			other => Err(FromSqlError::Other(
+				format!("Invalid AnalysisStatus: {}", other).into(),
+			)),
+		}
+	}
+}
+
+impl ToSql for AnalysisStatus {
+	fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+		let s = match self {
+			AnalysisStatus::Pending => "pending",
+			AnalysisStatus::Completed => "completed",
+			AnalysisStatus::Failed => "failed",
+		};
+		Ok(ToSqlOutput::from(s))
+	}
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Analysis {
+	pub id: String,
+	pub revision_id: String,
+	#[serde(rename = "type")]
+	pub analysis_type: AnalysisType,
+	pub status: AnalysisStatus,
+	pub analysis_prompt: String,
+	pub analysis_result: Option<String>,
+	pub amp_thread_url: Option<String>,
+	pub amp_session_id: Option<String>,
+	pub error_message: Option<String>,
+	pub created_at: i64,
+	pub updated_at: i64,
+	pub completed_at: Option<i64>,
+}

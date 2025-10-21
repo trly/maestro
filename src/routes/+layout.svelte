@@ -26,13 +26,13 @@
 	});
 </script>
 
-<div class="@container/app h-screen bg-background flex flex-col">
-	<div class="flex-1 flex overflow-hidden min-h-0">
+<div class="@container/app h-screen max-h-screen bg-background flex flex-col">
+	<div class="flex-1 flex overflow-hidden min-h-0 max-h-screen">
 		<aside class="shrink-0 border-r border-border/20 bg-card overflow-hidden transition-all duration-300 flex flex-col @max-md/app:hidden @max-6xl/app:w-12 @6xl/app:{sidebarCollapsed ? 'w-12' : 'w-72 @lg/app:w-80'}">
 			<PromptSidebar collapsed={sidebarCollapsed} onToggleCollapse={() => sidebarCollapsed = !sidebarCollapsed} />
 		</aside>
 
-		<main class="@container/main flex-1 min-w-0 overflow-hidden flex flex-col">
+		<main class="@container/main flex-1 min-w-0 min-h-0 overflow-hidden flex flex-col">
 			{@render children()}
 		</main>
 	</div>

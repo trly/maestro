@@ -1,5 +1,5 @@
 import { writable, type Writable } from 'svelte/store'
-import type { ExecutionStatus, ValidationStatus, CommitStatus, CiStatus } from '../types'
+import type { ExecutionStatus, ValidationStatus, CommitStatus, CiStatus, AnalysisStatus } from '../types'
 import { clearExecutionStats } from './executionStats'
 
 export interface ExecutionSessionEvent {
@@ -37,6 +37,19 @@ export interface ExecutionCiEvent {
 	ciUrl?: string
 }
 
+export interface AnalysisStatusEvent {
+	analysisId: string
+	status: AnalysisStatus
+	errorMessage?: string
+}
+
+export interface AnalysisResultEvent {
+	analysisId: string
+	analysisResult: string
+	ampThreadUrl?: string
+	completedAt: number
+}
+
 export interface ExecutionData {
 	sessionId?: string
 	threadUrl?: string
@@ -51,7 +64,16 @@ export interface ExecutionData {
 	progressMessage?: string
 }
 
+export interface AnalysisData {
+	status?: AnalysisStatus
+	analysisResult?: string
+	ampThreadUrl?: string
+	completedAt?: number
+	errorMessage?: string
+}
+
 const executionStore: Writable<Map<string, ExecutionData>> = writable(new Map())
+const analysisStore: Writable<Map<string, AnalysisData>> = writable(new Map())
 let unlisteners: Array<() => void> = []
 
 export async function subscribeToExecutions() {
@@ -118,7 +140,25 @@ export async function subscribeToExecutions() {
 		})
 	})
 
-	unlisteners = [unlisten1, unlisten2, unlisten3, unlisten4, unlisten5, unlisten6]
+	const unlisten7 = await listen<AnalysisStatusEvent>('analysis:status', (event) => {
+		const { analysisId, status, errorMessage } = event.payload
+		analysisStore.update((map) => {
+			const existing = map.get(analysisId) || {}
+			map.set(analysisId, { ...existing, status, errorMessage })
+			return new Map(map)
+		})
+	})
+
+	const unlisten8 = await listen<AnalysisResultEvent>('analysis:result', (event) => {
+		const { analysisId, analysisResult, ampThreadUrl, completedAt } = event.payload
+		analysisStore.update((map) => {
+			const existing = map.get(analysisId) || {}
+			map.set(analysisId, { ...existing, analysisResult, ampThreadUrl, completedAt })
+			return new Map(map)
+		})
+	})
+
+	unlisteners = [unlisten1, unlisten2, unlisten3, unlisten4, unlisten5, unlisten6, unlisten7, unlisten8]
 }
 
 export function unsubscribeFromExecutions() {
@@ -126,4 +166,4 @@ export function unsubscribeFromExecutions() {
 	unlisteners = []
 }
 
-export { executionStore }
+export { executionStore, analysisStore }

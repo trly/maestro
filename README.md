@@ -96,6 +96,7 @@ Maestro orchestrates AI-powered code changes across multiple repositories:
 2. **Prompt Revisions** - Version control for prompt iterations
 3. **Executions** - Isolated worktree environments for each repository
 4. **Validations** - Automated testing of AI-generated changes
+5. **Failure Analysis** - Aggregate and analyze failures using Amp V2 API
 
 ### Data Flow
 
@@ -149,9 +150,12 @@ Maestro uses platform-specific app data directories:
 
 - [AGENTS.md](AGENTS.md) - Codebase guide for AI agents
 - [docs/](docs/) - Detailed technical documentation
+  - [Architecture](docs/architecture.md) - System design and core domains
   - [IPC Guide](docs/ipc-guide.md) - Command reference and patterns
   - [Event Bus](docs/execution-event-bus.md) - Event handling architecture
-  - [Diff Architecture](docs/diff-architecture.md) - Diff access patterns
+  - [Change Tracking](docs/change-tracking.md) - Diff access patterns
+  - [Failure Analysis](docs/analyses.md) - Aggregating failures with Amp V2 API
+  - [CI Tracking](docs/ci-tracking.md) - GitHub CI integration
   - [SSH Authentication](docs/ssh-authentication.md) - Private repo setup
 
 ## Development Workflow

@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use tauri::Manager;
 
 mod commands;
+pub mod amp;
 pub mod ci;
 mod db;
 mod git;
@@ -142,6 +143,11 @@ pub fn run() {
       commands::app_check::get_available_terminals,
       commands::app_check::check_app_installed,
       commands::sourcegraph::search_sourcegraph_repositories,
+      commands::analysis::create_analysis,
+      commands::analysis::run_analysis,
+      commands::analysis::get_analysis,
+      commands::analysis::get_analyses_by_revision,
+      commands::analysis::delete_analysis,
     ])
     .plugin(tauri_plugin_notification::init())
     .plugin(tauri_plugin_shell::init())

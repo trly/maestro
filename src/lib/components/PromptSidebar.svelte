@@ -4,8 +4,7 @@
 	import { onMount } from 'svelte';
 	import { Plus, PanelLeftClose, PanelLeftOpen, Settings, ChevronDown } from 'lucide-svelte';
 	import { Accordion } from 'bits-ui';
-	import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
-	import UiScrollArea from '$lib/components/ui/UiScrollArea.svelte';
+import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 	import { api } from '$lib/api';
 	import { showToast } from '$lib/ui/toast';
 	import { confirm } from '$lib/ui/confirm';
@@ -206,7 +205,7 @@
 
 	<!-- Content -->
 	{#if !collapsed}
-		<UiScrollArea class="flex-1">
+		<div class="flex-1 overflow-auto">
 			<div class="p-2">
 				{#if isLoading}
 					<div class="space-y-1.5">
@@ -349,6 +348,6 @@
 					</Accordion.Root>
 				{/if}
 			</div>
-		</UiScrollArea>
+		</div>
 	{/if}
 </div>
