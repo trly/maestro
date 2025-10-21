@@ -11,6 +11,15 @@ Before working with Svelte or bits-ui components, **ALWAYS** consult:
 
 These documents contain the authoritative patterns for Svelte 5 runes mode and bits-ui component usage.
 
+## Critical: Component Styling
+
+**ALWAYS use semantic tokens for all styling:**
+
+- ✅ `text-success`, `bg-primary`, `text-destructive`
+- ❌ `text-green-600`, `bg-blue-500`, `text-red-600`
+
+See [AGENTS.md Status Icon/Color Mappings](../AGENTS.md#status-iconcolor-mappings-use-these-everywhere) for complete color reference.
+
 ## Core Reactivity Primitives
 
 ### `$state` - Reactive State

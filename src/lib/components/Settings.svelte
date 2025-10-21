@@ -303,7 +303,7 @@
 		</div>
 
 		{#if saveStatus}
-			<div class="mb-6 p-4 rounded-lg {saveStatus.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+			<div class="mb-6 p-4 rounded-lg {saveStatus.type === 'success' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}">
 				{saveStatus.message}
 			</div>
 		{/if}
@@ -334,32 +334,32 @@
 										/>
 									</div>
 									<button
-										type="button"
-										onclick={() => saveToken('amp_token', ampToken)}
-										class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+									type="button"
+									onclick={() => saveToken('amp_token', ampToken)}
+									class="px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
 									>
-										Save
+									Save
 									</button>
 									<button
-										type="button"
-										onclick={() => cancelEditing('amp_token')}
-										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+									type="button"
+									onclick={() => cancelEditing('amp_token')}
+									class="px-3 py-2 border rounded-md hover:bg-muted"
 									>
-										Cancel
+									Cancel
 									</button>
 								{:else}
 									<div class="flex-1">
 										<input
-											type="text"
-											value={ampTokenMasked || 'Not set'}
-											disabled
-											class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-600"
+										type="text"
+										value={ampTokenMasked || 'Not set'}
+										disabled
+										class="w-full px-3 py-2 border rounded-md bg-muted text-muted-foreground"
 										/>
 									</div>
 									<button
 										type="button"
 										onclick={() => startEditing('amp_token')}
-										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+										class="px-3 py-2 border rounded-md hover:bg-muted"
 									>
 										{ampTokenMasked ? 'Update' : 'Set'}
 									</button>
@@ -367,7 +367,7 @@
 										<button
 											type="button"
 											onclick={() => deleteToken('amp_token')}
-											class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
+											class="px-3 py-2 text-destructive hover:bg-destructive/10 rounded-md"
 										>
 											Delete
 										</button>
@@ -396,14 +396,14 @@
 									<button
 										type="button"
 										onclick={() => saveToken('github_token', githubToken)}
-										class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+										class="px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
 									>
 										Save
 									</button>
 									<button
 										type="button"
 										onclick={() => cancelEditing('github_token')}
-										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+										class="px-3 py-2 border rounded-md hover:bg-muted"
 									>
 										Cancel
 									</button>
@@ -413,13 +413,13 @@
 											type="text"
 											value={githubTokenMasked || 'Not set'}
 											disabled
-											class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-600"
+											class="w-full px-3 py-2 border rounded-md bg-muted text-muted-foreground"
 										/>
 									</div>
 									<button
 										type="button"
 										onclick={() => startEditing('github_token')}
-										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+										class="px-3 py-2 border rounded-md hover:bg-muted"
 									>
 										{githubTokenMasked ? 'Update' : 'Set'}
 									</button>
@@ -427,7 +427,7 @@
 										<button
 											type="button"
 											onclick={() => deleteToken('github_token')}
-											class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
+											class="px-3 py-2 text-destructive hover:bg-destructive/10 rounded-md"
 										>
 											Delete
 										</button>
@@ -465,14 +465,14 @@
 									<button
 										type="button"
 										onclick={() => saveToken('sourcegraph_endpoint', sourcegraphEndpoint)}
-										class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+										class="px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
 									>
 										Save
 									</button>
 									<button
 										type="button"
 										onclick={() => cancelEditing('sourcegraph_endpoint')}
-										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+										class="px-3 py-2 border rounded-md hover:bg-muted"
 									>
 										Cancel
 									</button>
@@ -482,13 +482,13 @@
 											type="text"
 											value={sourcegraphEndpointMasked || 'Not set'}
 											disabled
-											class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-600"
+											class="w-full px-3 py-2 border rounded-md bg-muted text-muted-foreground"
 										/>
 									</div>
 									<button
 										type="button"
 										onclick={() => startEditing('sourcegraph_endpoint')}
-										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+										class="px-3 py-2 border rounded-md hover:bg-muted"
 									>
 										{sourcegraphEndpointMasked ? 'Update' : 'Set'}
 									</button>
@@ -496,7 +496,7 @@
 										<button
 											type="button"
 											onclick={() => deleteToken('sourcegraph_endpoint')}
-											class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
+											class="px-3 py-2 text-destructive hover:bg-destructive/10 rounded-md"
 										>
 											Delete
 										</button>
@@ -525,14 +525,14 @@
 									<button
 										type="button"
 										onclick={() => saveToken('sourcegraph_token', sourcegraphToken)}
-										class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+										class="px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
 									>
 										Save
 									</button>
 									<button
 										type="button"
 										onclick={() => cancelEditing('sourcegraph_token')}
-										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+										class="px-3 py-2 border rounded-md hover:bg-muted"
 									>
 										Cancel
 									</button>
@@ -542,13 +542,13 @@
 											type="text"
 											value={sourcegraphTokenMasked || 'Not set'}
 											disabled
-											class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-600"
+											class="w-full px-3 py-2 border rounded-md bg-muted text-muted-foreground"
 										/>
 									</div>
 									<button
 										type="button"
 										onclick={() => startEditing('sourcegraph_token')}
-										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+										class="px-3 py-2 border rounded-md hover:bg-muted"
 									>
 										{sourcegraphTokenMasked ? 'Update' : 'Set'}
 									</button>
@@ -556,7 +556,7 @@
 										<button
 											type="button"
 											onclick={() => deleteToken('sourcegraph_token')}
-											class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
+											class="px-3 py-2 text-destructive hover:bg-destructive/10 rounded-md"
 										>
 											Delete
 										</button>
@@ -588,14 +588,14 @@
 									<button
 										type="button"
 										onclick={() => saveToken('amp_client_id', ampClientId)}
-										class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+										class="px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
 									>
 										Save
 									</button>
 									<button
 										type="button"
 										onclick={() => cancelEditing('amp_client_id')}
-										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+										class="px-3 py-2 border rounded-md hover:bg-muted"
 									>
 										Cancel
 									</button>
@@ -605,13 +605,13 @@
 											type="text"
 											value={ampClientIdMasked || 'Not set'}
 											disabled
-											class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-600"
+											class="w-full px-3 py-2 border rounded-md bg-muted text-muted-foreground"
 										/>
 									</div>
 									<button
 										type="button"
 										onclick={() => startEditing('amp_client_id')}
-										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+										class="px-3 py-2 border rounded-md hover:bg-muted"
 									>
 										{ampClientIdMasked ? 'Update' : 'Set'}
 									</button>
@@ -619,7 +619,7 @@
 										<button
 											type="button"
 											onclick={() => deleteToken('amp_client_id')}
-											class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
+											class="px-3 py-2 text-destructive hover:bg-destructive/10 rounded-md"
 										>
 											Delete
 										</button>
@@ -651,14 +651,14 @@
 									<button
 										type="button"
 										onclick={() => saveToken('amp_client_secret', ampClientSecret)}
-										class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+										class="px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
 									>
 										Save
 									</button>
 									<button
 										type="button"
 										onclick={() => cancelEditing('amp_client_secret')}
-										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+										class="px-3 py-2 border rounded-md hover:bg-muted"
 									>
 										Cancel
 									</button>
@@ -668,13 +668,13 @@
 											type="text"
 											value={ampClientSecretMasked || 'Not set'}
 											disabled
-											class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-600"
+											class="w-full px-3 py-2 border rounded-md bg-muted text-muted-foreground"
 										/>
 									</div>
 									<button
 										type="button"
 										onclick={() => startEditing('amp_client_secret')}
-										class="px-3 py-2 border rounded-md hover:bg-gray-50"
+										class="px-3 py-2 border rounded-md hover:bg-muted"
 									>
 										{ampClientSecretMasked ? 'Update' : 'Set'}
 									</button>
@@ -682,7 +682,7 @@
 										<button
 											type="button"
 											onclick={() => deleteToken('amp_client_secret')}
-											class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
+											class="px-3 py-2 text-destructive hover:bg-destructive/10 rounded-md"
 										>
 											Delete
 										</button>
@@ -817,14 +817,14 @@
 								<button
 									type="button"
 									onclick={saveCiThreshold}
-									class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+									class="px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
 								>
 									Save
 								</button>
 								<button
 									type="button"
 									onclick={cancelCiThresholdEdit}
-									class="px-3 py-2 border rounded-md hover:bg-gray-50"
+									class="px-3 py-2 border rounded-md hover:bg-muted"
 								>
 									Cancel
 								</button>
@@ -834,13 +834,13 @@
 										type="text"
 										value="{ciThreshold} minutes"
 										disabled
-										class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-600"
+										class="w-full px-3 py-2 border rounded-md bg-muted text-muted-foreground"
 									/>
 								</div>
 								<button
 									type="button"
 									onclick={() => editingCiThreshold = true}
-									class="px-3 py-2 border rounded-md hover:bg-gray-50"
+									class="px-3 py-2 border rounded-md hover:bg-muted"
 								>
 									Update
 								</button>

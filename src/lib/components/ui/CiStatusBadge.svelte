@@ -13,11 +13,11 @@
 	let icon = $derived.by(() => {
 		if (!props.ciStatus) return null;
 		switch (props.ciStatus) {
-			case 'pending': return { Icon: Loader2, class: 'text-blue-600 animate-spin', label: 'CI running' };
-			case 'passed': return { Icon: CheckCircle2, class: 'text-green-600', label: 'CI passed' };
-			case 'failed': return { Icon: XCircle, class: 'text-red-600', label: 'CI failed' };
-			case 'skipped': return { Icon: MinusCircle, class: 'text-gray-400', label: 'No CI configured for this branch' };
-			case 'not_configured': return { Icon: MinusCircle, class: 'text-gray-400', label: 'No CI configured' };
+			case 'pending': return { Icon: Loader2, class: 'text-primary animate-spin', label: 'CI running' };
+			case 'passed': return { Icon: CheckCircle2, class: 'text-success', label: 'CI passed' };
+			case 'failed': return { Icon: XCircle, class: 'text-destructive', label: 'CI failed' };
+			case 'skipped': return { Icon: MinusCircle, class: 'text-muted-foreground', label: 'No CI configured for this branch' };
+			case 'not_configured': return { Icon: MinusCircle, class: 'text-muted-foreground', label: 'No CI configured' };
 			default: return null;
 		}
 	});

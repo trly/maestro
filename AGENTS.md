@@ -166,11 +166,38 @@ await themeStore.init()
 ### Styling Best Practices
 
 1. **Use Tailwind utilities** - Avoid custom CSS when possible
-2. **Semantic tokens only** - Never reference raw Gruvbox colors in components
+2. **Semantic tokens only** - **NEVER** use raw colors like `text-blue-600`, `bg-red-500`, etc. **ALWAYS** use semantic tokens
 3. **Consistent spacing** - Use Tailwind's spacing scale (`p-4`, `gap-2`, etc.)
 4. **Hover states** - Use `hover:` variants with opacity modifiers (`bg-primary/90`)
 5. **Border radius** - Use CSS variables: `rounded-[var(--radius)]` or `rounded-[var(--radius-sm)]`
 6. **Focus rings** - Use `focus-visible:ring-2 focus-visible:ring-ring`
+
+### Status Icon/Color Mappings (Use These Everywhere)
+
+**Execution Status:**
+- `pending` → `text-muted-foreground` (gray) + `Clock` icon
+- `running` → `text-primary animate-spin` (blue) + `Loader2` icon
+- `completed` → `text-success` (green) + `CheckCircle2` icon
+- `failed` → `text-destructive` (red) + `XCircle` icon
+- `cancelled` → `text-warning` (orange) + `Ban` icon
+
+**Validation Status:**
+- `pending` → `text-muted-foreground` (gray) + `Clock` icon
+- `running` → `text-primary animate-spin` (blue) + `Loader2` icon
+- `passed` → `text-success` (green) + `CheckCircle2` icon
+- `failed` → `text-destructive` (red) + `XCircle` icon
+
+**Action Button Colors:**
+- Start/Validate → `text-success hover:text-success/90`
+- Stop/Cancel → `text-warning hover:text-warning/90`
+- Delete → `text-destructive hover:text-destructive/90`
+- Restart/Retry/Edit → `text-primary hover:text-primary/90`
+- Push/Analyze → `text-accent hover:text-accent/90`
+
+**Never Use Raw Colors:**
+- ❌ `text-green-600`, `text-red-500`, `text-blue-700`
+- ❌ `bg-gray-50`, `bg-green-100`, `bg-red-100`
+- ✅ Use semantic tokens instead: `text-success`, `text-destructive`, `bg-muted`
 
 ## Code Conventions
 
@@ -515,7 +542,7 @@ For detailed guidance on specific topics, consult the domain-focused documentati
 1. Use bits-ui primitives (Dialog, Checkbox, etc.) - never manual implementations
 2. Place in `src/lib/components/ui/` or `src/lib/components/`
 3. Import icons from `lucide-svelte`
-4. Use semantic Tailwind tokens for styling (see Styling & Theming section)
+4. **ALWAYS** use semantic Tailwind tokens for styling - **NEVER** raw colors (see Status Icon/Color Mappings section above)
 
 ### Adding bulk operations
 1. **Add handler in parent component** that operates on array of items

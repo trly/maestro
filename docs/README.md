@@ -9,6 +9,14 @@ New to Maestro? Start here:
 3. **[IPC Guide](./ipc-guide.md)** - Learn type-safe backend communication
 4. **[Reactivity Guide](./reactivity.md)** - Svelte 5 runes mode patterns
 
+## Critical: Styling Guidelines
+
+**ALWAYS use semantic tokens, NEVER raw colors:**
+
+When writing any UI code, you **MUST** use semantic tokens like `text-success`, `bg-primary`, `text-destructive` instead of raw Tailwind colors like `text-green-600`, `bg-blue-500`, `text-red-600`.
+
+See [AGENTS.md Status Icon/Color Mappings](../AGENTS.md#styling--theming) for complete reference.
+
 ## Core Domain Guides
 
 ### [Architecture Overview](./architecture.md)

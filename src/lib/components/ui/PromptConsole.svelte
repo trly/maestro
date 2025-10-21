@@ -142,20 +142,20 @@
 									<X class="w-4 h-4" />
 								</button>
 								<button
-									onclick={saveValidation}
-									disabled={isSaving}
-									class="text-green-600 hover:text-green-700 transition-colors disabled:opacity-50"
-									aria-label="Save validation prompt"
+								onclick={saveValidation}
+								disabled={isSaving}
+								class="text-success hover:text-success/90 transition-colors disabled:opacity-50"
+								aria-label="Save validation prompt"
 								>
-									<Save class="w-4 h-4" />
+								<Save class="w-4 h-4" />
 								</button>
-							{:else}
+								{:else}
 								<button
-									onclick={startEditingValidation}
-									class="text-blue-600 hover:text-blue-700 transition-colors"
-									aria-label="Edit validation prompt"
+								onclick={startEditingValidation}
+								class="text-primary hover:text-primary/90 transition-colors"
+								aria-label="Edit validation prompt"
 								>
-									<Edit class="w-4 h-4" />
+								<Edit class="w-4 h-4" />
 								</button>
 							{/if}
 						</div>

@@ -8,7 +8,7 @@ Maestro is a hybrid Tauri 2.0 + SvelteKit desktop application for orchestrating 
 - **SvelteKit** (Svelte 5) with adapter-static
 - **TypeScript** with strict mode
 - **bits-ui** component primitives
-- **Tailwind 4** with Gruvbox theme
+- **Tailwind 4** with Gruvbox theme (semantic tokens only - never raw colors)
 - **lucide-svelte** icons
 
 **Backend:**

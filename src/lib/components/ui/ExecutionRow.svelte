@@ -91,12 +91,12 @@
 	// Reactive icon/color for execution status
 	let executionIcon = $derived.by(() => {
 		switch (liveExecution.status) {
-			case 'running': return { Icon: Loader2, class: 'text-blue-600 animate-spin' };
-			case 'completed': return { Icon: CheckCircle2, class: 'text-green-600' };
-			case 'failed': return { Icon: XCircle, class: 'text-red-600' };
-			case 'cancelled': return { Icon: Ban, class: 'text-orange-600' };
-			case 'pending': return { Icon: Clock, class: 'text-gray-400' };
-			default: return { Icon: Clock, class: 'text-gray-400' };
+			case 'running': return { Icon: Loader2, class: 'text-primary animate-spin' };
+			case 'completed': return { Icon: CheckCircle2, class: 'text-success' };
+			case 'failed': return { Icon: XCircle, class: 'text-destructive' };
+			case 'cancelled': return { Icon: Ban, class: 'text-warning' };
+			case 'pending': return { Icon: Clock, class: 'text-muted-foreground' };
+			default: return { Icon: Clock, class: 'text-muted-foreground' };
 		}
 	});
 
@@ -104,9 +104,9 @@
 	let validationIcon = $derived.by(() => {
 		if (!liveExecution.validationStatus) return null;
 		switch (liveExecution.validationStatus) {
-			case 'running': return { Icon: Loader2, class: 'text-blue-600 animate-spin' };
-			case 'passed': return { Icon: CheckCircle2, class: 'text-green-600' };
-			case 'failed': return { Icon: XCircle, class: 'text-red-600' };
+			case 'running': return { Icon: Loader2, class: 'text-primary animate-spin' };
+			case 'passed': return { Icon: CheckCircle2, class: 'text-success' };
+			case 'failed': return { Icon: XCircle, class: 'text-destructive' };
 			default: return null;
 		}
 	});
@@ -114,8 +114,8 @@
 	// Reactive icon/color for commit status
 	let commitIcon = $derived.by(() => {
 		switch (liveExecution.commitStatus) {
-			case 'committed': return { Icon: GitCommit, class: 'text-green-600' };
-			case 'uncommitted': return { Icon: GitBranch, class: 'text-orange-600' };
+			case 'committed': return { Icon: GitCommit, class: 'text-success' };
+			case 'uncommitted': return { Icon: GitBranch, class: 'text-warning' };
 			default: return null;
 		}
 	});
@@ -236,7 +236,7 @@
 	<button
 	{...props}
 	onclick={() => onStart?.()}
-	class="text-green-600 hover:text-green-700 transition-colors"
+	class="text-success hover:text-success/90 transition-colors"
 	aria-label="Start execution"
 	>
 	<PlayCircle class="w-4 h-4" />
@@ -249,7 +249,7 @@
 	<button
 	{...props}
 	onclick={() => onStop?.()}
-	class="text-orange-600 hover:text-orange-700 transition-colors"
+	class="text-warning hover:text-warning/90 transition-colors"
 	aria-label="Stop execution"
 	>
 	<Square class="w-4 h-4 fill-current" />
@@ -262,7 +262,7 @@
 	<button
 	{...props}
 	onclick={() => onResume?.()}
-	class="text-blue-600 hover:text-blue-700 transition-colors"
+	class="text-primary hover:text-primary/90 transition-colors"
 	aria-label="Restart execution"
 	>
 	<RotateCw class="w-4 h-4" />
@@ -304,7 +304,7 @@
 	<button
 	{...props}
 	onclick={() => onStopValidation?.()}
-	class="text-orange-600 hover:text-orange-700 transition-colors"
+	class="text-warning hover:text-warning/90 transition-colors"
 	aria-label="Stop validation"
 	>
 	<X class="w-4 h-4" />
@@ -317,7 +317,7 @@
 	<button
 	{...props}
 	onclick={() => onValidate?.()}
-	class="text-green-600 hover:text-green-700 transition-colors"
+	class="text-success hover:text-success/90 transition-colors"
 	aria-label="Start validation"
 	>
 	<CheckCircle2 class="w-4 h-4" />
@@ -330,7 +330,7 @@
 	<button
 	{...props}
 	onclick={() => onValidate?.()}
-	class="text-blue-600 hover:text-blue-700 transition-colors"
+	class="text-primary hover:text-primary/90 transition-colors"
 	aria-label="Revalidate"
 	>
 	<RotateCw class="w-4 h-4" />
@@ -360,21 +360,21 @@
 		<!-- Changes Stats -->
 		<div class="flex items-center gap-2 text-xs">
 			<button
-				onclick={() => onReviewChanges?.()}
-				disabled={!onReviewChanges}
-				class="flex items-center gap-2 hover:text-blue-600 transition-colors cursor-pointer disabled:cursor-default disabled:hover:text-current"
+			onclick={() => onReviewChanges?.()}
+			disabled={!onReviewChanges}
+			class="flex items-center gap-2 hover:text-primary transition-colors cursor-pointer disabled:cursor-default disabled:hover:text-current"
 			>
 				{#if fileCount > 0}
 					<UiTooltip content={`Click to view ${fileCount} file${fileCount !== 1 ? 's' : ''} changed`}>
 						{#snippet children({ props })}
 							<div {...props} class="flex items-center gap-1">
 								<FileText class="w-3.5 h-3.5 text-muted-foreground" />
-								<span class="text-yellow-600">{fileCount}</span>
+								<span class="text-warning">{fileCount}</span>
 							</div>
 						{/snippet}
 					</UiTooltip>
-					<span class="text-green-600">+{additions}</span>
-					<span class="text-red-600">-{deletions}</span>
+					<span class="text-success">+{additions}</span>
+					<span class="text-destructive">-{deletions}</span>
 				{:else}
 					<span class="text-muted-foreground">No changes</span>
 				{/if}
@@ -385,12 +385,12 @@
 				<UiTooltip content="Push to remote">
 					{#snippet children({ props })}
 						<button
-							{...props}
-							onclick={() => onPush?.()}
-							class="text-purple-600 hover:text-purple-700 transition-colors"
-							aria-label="Push to remote"
+						{...props}
+						onclick={() => onPush?.()}
+						class="text-accent hover:text-accent/90 transition-colors"
+						aria-label="Push to remote"
 						>
-							<Upload class="w-4 h-4" />
+						<Upload class="w-4 h-4" />
 						</button>
 					{/snippet}
 				</UiTooltip>
@@ -445,12 +445,12 @@
 			<UiTooltip content="Open in editor">
 				{#snippet children({ props })}
 					<button
-						{...props}
-						onclick={handleOpenInEditor}
-						class="text-blue-600 hover:text-blue-700 transition-colors"
-						aria-label="Open in editor"
+					{...props}
+					onclick={handleOpenInEditor}
+					class="text-primary hover:text-primary/90 transition-colors"
+					aria-label="Open in editor"
 					>
-						<Code class="w-4 h-4" />
+					<Code class="w-4 h-4" />
 					</button>
 				{/snippet}
 			</UiTooltip>
@@ -471,12 +471,12 @@
 			<UiTooltip content="Delete execution">
 				{#snippet children({ props })}
 					<button
-						{...props}
-						onclick={onDelete}
-						class="text-red-600 hover:text-red-700 transition-colors"
-						aria-label="Delete execution"
+					{...props}
+					onclick={onDelete}
+					class="text-destructive hover:text-destructive/90 transition-colors"
+					aria-label="Delete execution"
 					>
-						<Trash2 class="w-4 h-4" />
+					<Trash2 class="w-4 h-4" />
 					</button>
 				{/snippet}
 			</UiTooltip>

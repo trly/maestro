@@ -104,7 +104,7 @@
 					<button
 						{...props}
 						onclick={onStopAll}
-						class="text-orange-600 hover:text-orange-700 transition-colors"
+						class="text-warning hover:text-warning/90 transition-colors"
 						aria-label="Stop all running executions"
 					>
 						<Square class="w-3.5 h-3.5" />
@@ -115,12 +115,12 @@
 			<UiTooltip content="Execute on all repos">
 				{#snippet children({ props })}
 					<button
-						{...props}
-						onclick={onExecuteAll}
-						class="text-green-600 hover:text-green-700 transition-colors"
-						aria-label="Execute on all repos"
+					{...props}
+					onclick={onExecuteAll}
+					class="text-success hover:text-success/90 transition-colors"
+					aria-label="Execute on all repos"
 					>
-						<Play class="w-3.5 h-3.5" />
+					<Play class="w-3.5 h-3.5" />
 					</button>
 				{/snippet}
 			</UiTooltip>
@@ -129,12 +129,12 @@
 			<UiTooltip content="Analyze failed executions">
 				{#snippet children({ props })}
 					<button
-						{...props}
-						onclick={onAnalyzeExecutions}
-						class="text-purple-600 hover:text-purple-700 transition-colors"
-						aria-label="Analyze failed executions"
+					{...props}
+					onclick={onAnalyzeExecutions}
+					class="text-accent hover:text-accent/90 transition-colors"
+					aria-label="Analyze failed executions"
 					>
-						<ScanSearch class="w-3.5 h-3.5" />
+					<ScanSearch class="w-3.5 h-3.5" />
 					</button>
 				{/snippet}
 			</UiTooltip>
@@ -159,12 +159,12 @@
 			<UiTooltip content="Stop all running validations">
 				{#snippet children({ props })}
 					<button
-						{...props}
-						onclick={onStopAllValidations}
-						class="text-orange-600 hover:text-orange-700 transition-colors"
-						aria-label="Stop all running validations"
+					{...props}
+					onclick={onStopAllValidations}
+					class="text-warning hover:text-warning/90 transition-colors"
+					aria-label="Stop all running validations"
 					>
-						<Square class="w-3.5 h-3.5 fill-current" />
+					<Square class="w-3.5 h-3.5 fill-current" />
 					</button>
 				{/snippet}
 			</UiTooltip>
@@ -173,12 +173,12 @@
 			<UiTooltip content="Analyze failed validations">
 				{#snippet children({ props })}
 					<button
-						{...props}
-						onclick={onAnalyzeValidations}
-						class="text-purple-600 hover:text-purple-700 transition-colors"
-						aria-label="Analyze failed validations"
+					{...props}
+					onclick={onAnalyzeValidations}
+					class="text-accent hover:text-accent/90 transition-colors"
+					aria-label="Analyze failed validations"
 					>
-						<ScanSearch class="w-3.5 h-3.5" />
+					<ScanSearch class="w-3.5 h-3.5" />
 					</button>
 				{/snippet}
 			</UiTooltip>
@@ -206,12 +206,12 @@
 			<UiTooltip content="Refresh all CI statuses">
 				{#snippet children({ props })}
 					<button
-						{...props}
-						onclick={onRefreshAllCi}
-						class="text-blue-600 hover:text-blue-700 transition-colors"
-						aria-label="Refresh all CI statuses"
+					{...props}
+					onclick={onRefreshAllCi}
+					class="text-primary hover:text-primary/90 transition-colors"
+					aria-label="Refresh all CI statuses"
 					>
-						<RotateCw class="w-3.5 h-3.5" />
+					<RotateCw class="w-3.5 h-3.5" />
 					</button>
 				{/snippet}
 			</UiTooltip>

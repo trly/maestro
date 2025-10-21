@@ -30,20 +30,20 @@
 	<div class="flex items-center gap-2">
 		<button
 			onclick={onBulkStart}
-			class="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
+			class="px-3 py-1.5 text-xs font-medium rounded-md bg-success text-success-foreground hover:bg-success/90 transition-colors"
 		>
 			Start
 		</button>
 		<button
 			onclick={onBulkRestart}
-			class="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+			class="px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
 		>
 			Restart
 		</button>
 		{#if hasValidationPrompt && onBulkStartValidations}
 			<button
 				onclick={onBulkStartValidations}
-				class="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
+				class="px-3 py-1.5 text-xs font-medium rounded-md bg-success text-success-foreground hover:bg-success/90 transition-colors"
 			>
 				Start validation
 			</button>
@@ -51,14 +51,14 @@
 		{#if hasValidationPrompt && onBulkRevalidate}
 			<button
 				onclick={onBulkRevalidate}
-				class="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+				class="px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
 			>
 				Revalidate
 			</button>
 		{/if}
 		<button
 			onclick={onBulkDelete}
-			class="px-3 py-1.5 text-xs font-medium rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
+			class="px-3 py-1.5 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
 		>
 			Delete
 		</button>

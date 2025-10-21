@@ -49,12 +49,12 @@
 				<UiTooltip content="Edit repositories">
 					{#snippet children({ props })}
 						<button
-							{...props}
-							onclick={onEditRepositories}
-							class="text-blue-600 hover:text-blue-700 transition-colors"
-							aria-label="Edit repositories"
+						{...props}
+						onclick={onEditRepositories}
+						class="text-primary hover:text-primary/90 transition-colors"
+						aria-label="Edit repositories"
 						>
-							<Edit class="w-3.5 h-3.5" />
+						<Edit class="w-3.5 h-3.5" />
 						</button>
 					{/snippet}
 				</UiTooltip>
@@ -62,7 +62,7 @@
 			{#if hasActiveAnalysis}
 				<UiTooltip content="{activeAnalysisCount} analysis {activeAnalysisCount === 1 ? 'running' : 'running'}">
 					{#snippet children({ props })}
-						<div {...props} class="flex items-center gap-1 px-2 py-0.5 bg-purple-600/10 rounded text-purple-600">
+						<div {...props} class="flex items-center gap-1 px-2 py-0.5 bg-accent/10 rounded text-accent">
 							<Loader2 class="w-3 h-3 animate-spin" />
 							<span class="text-[10px] font-medium">{activeAnalysisCount}</span>
 						</div>
@@ -72,12 +72,12 @@
 			<UiTooltip content="Delete this revision">
 				{#snippet children({ props })}
 					<button
-						{...props}
-						onclick={onDelete}
-						class="text-red-600 hover:text-red-700 transition-colors"
-						aria-label="Delete revision"
+					{...props}
+					onclick={onDelete}
+					class="text-destructive hover:text-destructive/90 transition-colors"
+					aria-label="Delete revision"
 					>
-						<Trash2 class="w-4 h-4" />
+					<Trash2 class="w-4 h-4" />
 					</button>
 				{/snippet}
 			</UiTooltip>
@@ -90,10 +90,10 @@
 					<span class="text-muted-foreground">Executions:</span>
 					<div class="flex items-center gap-1.5">
 						<div class="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
-							<div 
-								class="h-full bg-green-600 transition-all duration-300"
-								style="width: {completionPercent}%"
-							></div>
+						<div 
+						class="h-full bg-success transition-all duration-300"
+						style="width: {completionPercent}%"
+						></div>
 						</div>
 						<span class="text-foreground font-medium">
 							{stats.completed}/{stats.total}
@@ -106,10 +106,10 @@
 					<span class="text-muted-foreground">Validated:</span>
 					<div class="flex items-center gap-1.5">
 						<div class="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
-							<div 
-								class="h-full bg-blue-600 transition-all duration-300"
-								style="width: {validationPercent}%"
-							></div>
+						<div 
+						class="h-full bg-primary transition-all duration-300"
+						style="width: {validationPercent}%"
+						></div>
 						</div>
 						<span class="text-foreground font-medium">
 							{stats.validationPassed}/{stats.total}

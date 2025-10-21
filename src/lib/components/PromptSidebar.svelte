@@ -211,8 +211,8 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 					<div class="space-y-1.5">
 						{#each Array(3) as _}
 							<div class="p-2 border border-border/20 rounded-lg animate-pulse">
-								<div class="h-3 bg-gray-200 rounded w-3/4 mb-1.5"></div>
-								<div class="h-2 bg-gray-200 rounded w-1/2"></div>
+								<div class="h-3 bg-muted rounded w-3/4 mb-1.5"></div>
+								<div class="h-2 bg-muted rounded w-1/2"></div>
 							</div>
 						{/each}
 					</div>
@@ -320,19 +320,19 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 															</div>
 															
 															{#if stats.running > 0}
-																<div class="flex items-center gap-1 text-blue-600">
-																	<div class="w-1 h-1 rounded-full bg-blue-600 animate-pulse"></div>
-																	<span>{stats.running}</span>
-																</div>
+															<div class="flex items-center gap-1 text-primary">
+															<div class="w-1 h-1 rounded-full bg-primary animate-pulse"></div>
+															<span>{stats.running}</span>
+															</div>
 															{/if}
 
 															{#if ps.validationPrompt && stats.completed > 0}
-																<div class="flex items-center gap-1">
-																	<span class="text-muted-foreground">V:</span>
-																	<span class="font-medium text-green-600">
-																		{stats.validationPassed}/{stats.completed}
-																	</span>
-																</div>
+															<div class="flex items-center gap-1">
+															<span class="text-muted-foreground">V:</span>
+															<span class="font-medium text-success">
+															{stats.validationPassed}/{stats.completed}
+															</span>
+															</div>
 															{/if}
 														</div>
 													{:else}

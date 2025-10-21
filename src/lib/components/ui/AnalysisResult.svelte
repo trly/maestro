@@ -29,13 +29,13 @@
 	let statusConfig = $derived.by(() => {
 		switch (reactiveAnalysis.status) {
 			case 'completed': 
-				return { Icon: CheckCircle2, class: 'text-green-600', bgClass: 'bg-success/10', textClass: 'text-success', label: 'Completed' }
+				return { Icon: CheckCircle2, class: 'text-success', bgClass: 'bg-success/10', textClass: 'text-success', label: 'Completed' }
 			case 'failed': 
-				return { Icon: AlertCircle, class: 'text-red-600', bgClass: 'bg-destructive/10', textClass: 'text-destructive', label: 'Failed' }
+				return { Icon: AlertCircle, class: 'text-destructive', bgClass: 'bg-destructive/10', textClass: 'text-destructive', label: 'Failed' }
 			case 'running': 
-				return { Icon: Loader2, class: 'text-blue-600 animate-spin', bgClass: 'bg-primary/10', textClass: 'text-primary', label: 'Running' }
+				return { Icon: Loader2, class: 'text-primary animate-spin', bgClass: 'bg-primary/10', textClass: 'text-primary', label: 'Running' }
 			default: 
-				return { Icon: Clock, class: 'text-gray-400', bgClass: 'bg-muted', textClass: 'text-muted-foreground', label: 'Pending' }
+				return { Icon: Clock, class: 'text-muted-foreground', bgClass: 'bg-muted', textClass: 'text-muted-foreground', label: 'Pending' }
 		}
 	})
 
@@ -85,12 +85,12 @@
 				<UiTooltip content="Re-run analysis">
 					{#snippet children({ props })}
 						<button
-							{...props}
-							onclick={onRerun}
-							class="text-blue-600 hover:text-blue-700 transition-colors"
-							aria-label="Re-run analysis"
+						{...props}
+						onclick={onRerun}
+						class="text-primary hover:text-primary/90 transition-colors"
+						aria-label="Re-run analysis"
 						>
-							<RotateCw class="w-4 h-4" />
+						<RotateCw class="w-4 h-4" />
 						</button>
 					{/snippet}
 				</UiTooltip>
@@ -100,12 +100,12 @@
 				<UiTooltip content="Delete analysis">
 					{#snippet children({ props })}
 						<button
-							{...props}
-							onclick={onDelete}
-							class="text-red-600 hover:text-red-700 transition-colors"
-							aria-label="Delete analysis"
+						{...props}
+						onclick={onDelete}
+						class="text-destructive hover:text-destructive/90 transition-colors"
+						aria-label="Delete analysis"
 						>
-							<Trash2 class="w-4 h-4" />
+						<Trash2 class="w-4 h-4" />
 						</button>
 					{/snippet}
 				</UiTooltip>
