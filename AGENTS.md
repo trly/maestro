@@ -189,6 +189,7 @@ await themeStore.init()
 - Use `$state` for reactive component state (NOT traditional stores)
 - Use `$derived` for computed values
 - Use `$props()` for component inputs
+- **Components are dynamic by default** - use `<Component />` directly instead of `<svelte:component this={Component} />`
 - **NEVER** destructure props if they need to be reactive - keep as single object and access via `props.fieldName`
 - **NEVER** create stores inside `{#each}` loops - use `$derived` instead
 - **NEVER** subscribe to stores in scoped blocks - make data reactive at component top level

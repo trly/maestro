@@ -31,16 +31,12 @@ pub fn create_analysis(
     
     let analysis_id = Uuid::new_v4().to_string();
     
-    let analysis_prompt = format!(
-        "Analyze failed {} threads and categorize common failure patterns.",
-        analysis_type
-    );
-    
+    // Prompt will be generated and stored during run_analysis_impl
     store.create_analysis(
         &analysis_id,
         &revision_id,
         analysis_type_enum,
-        &analysis_prompt,
+        "",  // Empty placeholder - actual prompt generated with thread data
     ).map_err(|e| format!("Failed to create analysis: {}", e))?;
     
     store.add_analysis_executions(&analysis_id, execution_ids)
@@ -150,6 +146,13 @@ async fn run_analysis_impl(
         },
         formatted_threads
     );
+    
+    // Store the generated prompt in the database
+    {
+        let store_state = app.state::<Mutex<Store>>();
+        let store_guard = store_state.lock().unwrap();
+        store_guard.update_analysis_prompt(&analysis_id, &analysis_prompt)?;
+    }
     
     let temp_dir = std::env::temp_dir().join(format!("maestro-analysis-{}", analysis_id));
     std::fs::create_dir_all(&temp_dir)?;

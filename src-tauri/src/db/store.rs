@@ -839,6 +839,19 @@ impl Store {
 		Ok(())
 	}
 
+	pub fn update_analysis_prompt(
+		&self,
+		id: &str,
+		analysis_prompt: &str,
+	) -> Result<()> {
+		let now = now_ms();
+		self.conn.execute(
+			"UPDATE analyses SET analysis_prompt = ?1, updated_at = ?2 WHERE id = ?3",
+			params![analysis_prompt, now, id],
+		)?;
+		Ok(())
+	}
+
 	pub fn update_analysis_result(
 		&self,
 		id: &str,

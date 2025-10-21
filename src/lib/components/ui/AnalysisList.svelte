@@ -15,8 +15,24 @@
 		onRerun: (analysis: Analysis) => void
 	} = $props()
 	
+	// Merge analyses with live updates from event bus
+	let analysesWithUpdates = $derived(
+		analyses.map(analysis => {
+			const updates = $analysisStore.get(analysis.id)
+			if (!updates) return analysis
+			return {
+				...analysis,
+				...(updates.status && { status: updates.status }),
+				...(updates.ampThreadUrl && { ampThreadUrl: updates.ampThreadUrl }),
+				...(updates.ampSessionId && { ampSessionId: updates.ampSessionId }),
+				...(updates.analysisResult && { analysisResult: updates.analysisResult }),
+				...(updates.errorMessage && { errorMessage: updates.errorMessage })
+			}
+		})
+	)
+	
 	let sortedAnalyses = $derived(
-		[...analyses].sort((a, b) => b.createdAt - a.createdAt)
+		[...analysesWithUpdates].sort((a, b) => b.createdAt - a.createdAt)
 	)
 	
 	let selectedAnalysis = $state<Analysis | null>(null)
@@ -68,19 +84,15 @@
 		</div>
 	{:else}
 		{#each sortedAnalyses as analysis (analysis.id)}
-			{@const statusIcon = getStatusIcon(analysis.status)}
+			{@const StatusIcon = getStatusIcon(analysis.status)}
 			{@const statusClass = getStatusClass(analysis.status)}
-			{@const updates = $analysisStore.get(analysis.id)}
-			{@const currentStatus = updates?.status || analysis.status}
-			{@const currentIcon = getStatusIcon(currentStatus)}
-			{@const currentClass = getStatusClass(currentStatus)}
 			
 			<button
 				onclick={() => openAnalysis(analysis)}
 				class="w-full text-left rounded-[var(--radius)] border border-border bg-card hover:bg-accent/50 transition-colors p-3"
 			>
 				<div class="flex items-center gap-3">
-					<svelte:component this={currentIcon} class="w-4 h-4 {currentClass} {currentStatus === 'running' ? 'animate-spin' : ''}" />
+					<StatusIcon class="w-4 h-4 {statusClass} {analysis.status === 'running' ? 'animate-spin' : ''}" />
 					
 					<div class="flex-1 min-w-0">
 						<div class="flex items-center gap-2 mb-1">
@@ -93,7 +105,7 @@
 						</div>
 					</div>
 					
-					{#if analysis.ampThreadUrl || updates?.ampThreadUrl}
+					{#if analysis.ampThreadUrl}
 						<ExternalLink class="w-3.5 h-3.5 text-muted-foreground" />
 					{/if}
 				</div>
