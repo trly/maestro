@@ -26,7 +26,6 @@
 	} from 'lucide-svelte';
 	import CiStatusBadge from './CiStatusBadge.svelte';
 	import { openInEditor, copyWorktreePath } from '$lib/utils/worktree';
-	import { settingsStore } from '$lib/stores/settingsStore';
 	import { executionStore } from '$lib/stores/executionBus';
 
 	let {
@@ -84,7 +83,8 @@
 			...(updates.commitSha && { commitSha: updates.commitSha }),
 			...(updates.committedAt && { committedAt: updates.committedAt }),
 			...(updates.ciStatus && { ciStatus: updates.ciStatus }),
-			...(updates.ciUrl && { ciUrl: updates.ciUrl })
+			...(updates.ciUrl && { ciUrl: updates.ciUrl }),
+			...(updates.progressMessage && { progressMessage: updates.progressMessage })
 		};
 	});
 
@@ -220,7 +220,7 @@
 	<!-- Execution Status -->
 	<div class="flex flex-col gap-1">
 	<div class="flex items-center gap-2">
-	<UiTooltip content={progressMessage || `Execution: ${liveExecution.status}`}>
+	<UiTooltip content={liveExecution.progressMessage || `Execution: ${liveExecution.status}`}>
 	{#snippet children({ props })}
 	{@const Icon = executionIcon.Icon}
 	<div {...props}>

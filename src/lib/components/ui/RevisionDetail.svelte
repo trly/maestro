@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { GitMerge } from 'lucide-svelte';
 	import { Tabs } from 'bits-ui';
 	import PromptConsole from './PromptConsole.svelte';
 	import ExecutionTable from './ExecutionTable.svelte';
