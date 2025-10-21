@@ -119,13 +119,12 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 
 	// Compute revision stats reactively with live execution updates
 	let revisionStats = $derived.by(() => {
-		const updates = $executionStore
 		const stats = new Map<string, { total: number; running: number; completed: number; validationPassed: number }>()
 		
 		for (const [revisionId, executions] of executionsByRevision.entries()) {
 			// Merge static executions with live updates
 			const executionsWithUpdates = executions.map(e => {
-				const data = updates.get(e.id)
+				const data = $executionStore.get(e.id)
 				if (!data) return e
 				return {
 					...e,

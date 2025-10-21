@@ -344,6 +344,7 @@
 			
 			// Reload to get updated state
 			executions = await api.promptSets.getExecutions(currentPromptSet.id);
+			sidebarStore.refresh(); // Trigger sidebar to reload
 			startPolling(revision.id);
 			
 			// Show appropriate message
@@ -542,6 +543,7 @@
 			);
 			
 			await api.executions.resume(execution.id);
+			sidebarStore.refresh(); // Trigger sidebar to reload
 			const revisionId = currentRevision?.id || execution.revisionId;
 			if (revisionId) {
 				startPolling(revisionId);

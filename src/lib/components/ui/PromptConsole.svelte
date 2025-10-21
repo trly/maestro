@@ -114,7 +114,16 @@
 			</div>
 			
 			<!-- Validation Prompt (Right) -->
-			{#if validationPrompt || isEditingValidation}
+			{#if !validationPrompt && !isEditingValidation}
+				<div class="flex-1 flex flex-col min-w-0 items-center justify-center">
+					<button
+						onclick={startEditingValidation}
+						class="text-sm text-muted-foreground hover:text-foreground transition-colors"
+					>
+						+ Add validation prompt
+					</button>
+				</div>
+			{:else if validationPrompt || isEditingValidation}
 				<div class="flex-1 flex flex-col min-w-0">
 					<div class="px-4 py-2 bg-muted/10 border-b border-border/10 flex items-center justify-between gap-3">
 						<h3 class="text-xs font-semibold text-muted-foreground">Validation Prompt</h3>

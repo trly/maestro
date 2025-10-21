@@ -136,7 +136,7 @@
 					{...props}
 					onclick={onAnalyzeExecutions}
 					disabled={analyzingExecutions}
-					class="text-accent hover:text-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+					class="text-warning hover:text-warning/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 					aria-label="Analyze failed executions"
 					>
 					{#if analyzingExecutions}
@@ -185,7 +185,7 @@
 					{...props}
 					onclick={onAnalyzeValidations}
 					disabled={analyzingValidations}
-					class="text-accent hover:text-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+					class="text-warning hover:text-warning/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 					aria-label="Analyze failed validations"
 					>
 					{#if analyzingValidations}
