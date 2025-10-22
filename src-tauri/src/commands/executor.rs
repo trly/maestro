@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use tauri::Manager;
@@ -42,7 +42,7 @@ fn get_repo_lock(owner: &str, repo: &str) -> std::sync::Arc<Mutex<()>> {
 		.clone()
 }
 
-async fn ensure_admin_repo_and_fetch(admin_repo_dir: &PathBuf, owner: &str, repo: &str) -> Result<PathBuf> {
+async fn ensure_admin_repo_and_fetch(admin_repo_dir: &Path, owner: &str, repo: &str) -> Result<PathBuf> {
 	let repo_lock = get_repo_lock(owner, repo);
 	let _lock = repo_lock.lock().unwrap();
 	
@@ -73,7 +73,7 @@ struct WorktreeInfo {
 
 async fn add_worktree(
 	admin_repo_path: &PathBuf,
-	worktree_dir: &PathBuf,
+	worktree_dir: &Path,
 	promptset_id: &str,
 	revision_id: &str,
 	execution_id: &str,
@@ -89,19 +89,19 @@ async fn add_worktree(
 	// If worktree exists, remove it properly using git worktree remove
 	if worktree_path.exists() {
 		let _ = Command::new("git")
-			.args(&["worktree", "remove", "--force", worktree_path.to_str().unwrap()])
+			.args(["worktree", "remove", "--force", worktree_path.to_str().unwrap()])
 			.current_dir(admin_repo_path)
 			.output();
 		
 		let _ = Command::new("git")
-			.args(&["worktree", "prune", "-v"])
+			.args(["worktree", "prune", "-v"])
 			.current_dir(admin_repo_path)
 			.output();
 	}
 
 	// If branch already exists, delete it
 	let branch_check = Command::new("git")
-		.args(&["rev-parse", "--verify", &branch_name])
+		.args(["rev-parse", "--verify", &branch_name])
 		.current_dir(admin_repo_path)
 		.output()?;
 	
@@ -111,7 +111,7 @@ async fn add_worktree(
 	}
 
 	let output = Command::new("git")
-		.args(&[
+		.args([
 			"worktree",
 			"add",
 			"-b",
@@ -139,7 +139,7 @@ async fn add_worktree(
 #[allow(dead_code)]
 async fn remove_worktree(
 	admin_repo_path: &PathBuf,
-	worktree_dir: &PathBuf,
+	worktree_dir: &Path,
 	promptset_id: &str,
 	execution_id: &str,
 	branch_name: Option<&str>,
@@ -147,7 +147,7 @@ async fn remove_worktree(
 	let worktree_path = worktree_path(worktree_dir, promptset_id, execution_id);
 
 	let output = Command::new("git")
-		.args(&["worktree", "remove", "--force", worktree_path.to_str().unwrap()])
+		.args(["worktree", "remove", "--force", worktree_path.to_str().unwrap()])
 		.current_dir(admin_repo_path)
 		.output()?;
 
@@ -161,7 +161,7 @@ async fn remove_worktree(
 	}
 
 	let _ = Command::new("git")
-		.args(&["worktree", "prune", "-v"])
+		.args(["worktree", "prune", "-v"])
 		.current_dir(admin_repo_path)
 		.output();
 
@@ -169,7 +169,7 @@ async fn remove_worktree(
 }
 
 async fn execute_with_amp(
-	repo_path: &PathBuf,
+	repo_path: &Path,
 	prompt_text: &str,
 	continue_session_id: Option<&str>,
 	execution_key: Option<&str>,
@@ -267,7 +267,7 @@ async fn execute_with_amp(
 				if let Some(sid) = msg.get("sessionId").and_then(|v| v.as_str()) {
 					session_id = sid.to_string();
 					if let Some(callback) = &on_session_start {
-						callback(&sid);
+						callback(sid);
 					}
 				}
 			}
@@ -300,7 +300,7 @@ async fn execute_with_amp(
 			if session_id.is_empty() {
 				session_id = sid.to_string();
 				if let Some(callback) = &on_session_start {
-					callback(&sid);
+					callback(sid);
 				}
 			}
 		}
@@ -657,7 +657,7 @@ PROMPT: FAIL";
 					status: Some(execution_status),
 					session_id: Some(session_id.clone()),
 					thread_url: Some(thread_url),
-					prompt_status: prompt_status,
+					prompt_status,
 					prompt_result: result_message.clone(),
 					completed_at: Some(chrono::Utc::now().timestamp_millis()),
 					..Default::default()
@@ -815,7 +815,7 @@ async fn validate_execution_impl(
 		}
 
 		let output = Command::new("git")
-			.args(&["status", "--porcelain"])
+			.args(["status", "--porcelain"])
 			.current_dir(&worktree_path)
 			.output()?;
 		
@@ -883,13 +883,10 @@ VALIDATION: FAIL";
 		let validation_thread_url = format!("https://ampcode.com/threads/{}", validation_session_id);
 
 		let validation_passed = result_message.as_ref().map(|m| m.contains("VALIDATION: PASS")).unwrap_or(false);
-		let validation_failed = result_message.as_ref().map(|m| m.contains("VALIDATION: FAIL")).unwrap_or(false);
 		let validation_status = if validation_passed {
-			ValidationStatus::Passed
-		} else if validation_failed {
-			ValidationStatus::Failed
+		 ValidationStatus::Passed
 		} else {
-			ValidationStatus::Failed
+		 ValidationStatus::Failed
 		};
 		let validation_status_str = match validation_status {
 			ValidationStatus::Passed => "passed",
@@ -1118,7 +1115,7 @@ PROMPT: FAIL";
 		let default_branch_ref = format!("origin/{}", default_branch);
 
 		let merge_base_output = Command::new("git")
-			.args(&["merge-base", &branch_name, &default_branch_ref])
+			.args(["merge-base", &branch_name, &default_branch_ref])
 			.current_dir(&admin_repo_path)
 			.output()?;
 
@@ -1140,7 +1137,7 @@ PROMPT: FAIL";
 					status: Some(ExecutionStatus::Completed),
 					session_id: Some(session_id.clone()),
 					thread_url: Some(thread_url),
-					prompt_status: prompt_status,
+					prompt_status,
 					prompt_result: result_message.clone(),
 					completed_at: Some(chrono::Utc::now().timestamp_millis()),
 					..Default::default()
@@ -1281,7 +1278,7 @@ pub async fn commit_changes(
 				ExecutionUpdates {
 					commit_status: Some(CommitStatus::Committed),
 					commit_sha: Some(commit_sha.clone()),
-					committed_at: Some(committed_at.clone()),
+					committed_at: Some(committed_at),
 					parent_sha,
 					branch,
 					..Default::default()

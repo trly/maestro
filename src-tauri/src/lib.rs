@@ -64,6 +64,10 @@ pub fn run() {
       let store = db::store::Store::new(paths.db_path.to_str().expect("Invalid db path"))
         .expect("Failed to initialize database");
       
+      // Initialize token cache (single keyring access for all tokens)
+      commands::tokens::init_token_cache()
+        .unwrap_or_else(|e| log::warn!("Failed to initialize token cache: {}", e));
+      
       // Crash recovery: reset any stuck running executions/validations
       commands::executor::reconcile_on_startup(&store)
         .expect("Failed to reconcile execution states");

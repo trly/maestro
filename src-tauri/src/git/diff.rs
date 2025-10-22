@@ -121,7 +121,7 @@ pub fn get_committed_file_diff(
 	file_path: &str,
 ) -> Result<String> {
 	let output = Command::new("git")
-		.args(&["diff", parent_sha, commit_sha, "--", file_path])
+		.args(["diff", parent_sha, commit_sha, "--", file_path])
 		.current_dir(admin_repo_path)
 		.output()
 		.context("Failed to run git diff")?;
@@ -241,7 +241,7 @@ pub fn get_worktree_diff(worktree_path: &Path) -> Result<ModifiedFilesResponse> 
 
 pub fn get_worktree_file_diff(worktree_path: &Path, file_path: &str) -> Result<String> {
 	let tracked_check = Command::new("git")
-		.args(&["ls-files", "--", file_path])
+		.args(["ls-files", "--", file_path])
 		.current_dir(worktree_path)
 		.output()
 		.context("Failed to check if file is tracked")?;
@@ -250,13 +250,13 @@ pub fn get_worktree_file_diff(worktree_path: &Path, file_path: &str) -> Result<S
 
 	let output = if is_tracked {
 		Command::new("git")
-			.args(&["diff", "HEAD", "--", file_path])
+			.args(["diff", "HEAD", "--", file_path])
 			.current_dir(worktree_path)
 			.output()
 			.context("Failed to run git diff")?
 	} else {
 		Command::new("git")
-			.args(&["diff", "--no-index", "/dev/null", file_path])
+			.args(["diff", "--no-index", "/dev/null", file_path])
 			.current_dir(worktree_path)
 			.output()
 			.context("Failed to run git diff")?

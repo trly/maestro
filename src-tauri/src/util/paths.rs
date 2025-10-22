@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use crate::Paths;
 
 /// Construct path to admin repository clone
@@ -14,7 +14,7 @@ pub fn execution_worktree_path(paths: &Paths, promptset_id: &str, execution_id: 
 }
 
 /// Construct path to execution worktree (takes references, more flexible)
-pub fn worktree_path(worktree_dir: &PathBuf, promptset_id: &str, execution_id: &str) -> PathBuf {
+pub fn worktree_path(worktree_dir: &Path, promptset_id: &str, execution_id: &str) -> PathBuf {
 	worktree_dir.join(promptset_id).join(execution_id)
 }
 

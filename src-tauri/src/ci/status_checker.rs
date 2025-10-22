@@ -85,7 +85,7 @@ pub async fn poll_ci_until_terminal(
 				);
 				
 				// Emit event (serialize status properly using serde)
-				let status_str = serde_json::to_value(&status)
+				let status_str = serde_json::to_value(status)
 					.ok()
 					.and_then(|v| v.as_str().map(|s| s.to_string()))
 					.unwrap_or_else(|| format!("{:?}", status).to_lowercase());
