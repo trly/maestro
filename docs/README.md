@@ -5,9 +5,10 @@
 New to Maestro? Start here:
 
 1. **[Architecture Overview](./architecture.md)** - Understand the system design and core domains
-2. **[SSH Authentication](./ssh-authentication.md)** - Set up SSH for repository access (required)
-3. **[IPC Guide](./ipc-guide.md)** - Learn type-safe backend communication
-4. **[Reactivity Guide](./reactivity.md)** - Svelte 5 runes mode patterns
+2. **[Component Architecture](./components.md)** - Frontend component organization and patterns
+3. **[SSH Authentication](./ssh-authentication.md)** - Set up SSH for repository access (required)
+4. **[IPC Guide](./ipc-guide.md)** - Learn type-safe backend communication
+5. **[Reactivity Guide](./reactivity.md)** - Svelte 5 runes mode patterns
 
 ## Critical: Styling Guidelines
 
@@ -94,6 +95,33 @@ GitHub CI/CD integration:
 - Status aggregation (GitHub Actions + Commit Statuses)
 - Polling strategy and rate limits
 - UI components (badges, status display)
+
+## Frontend Guides
+
+### [Component Architecture](./components.md)
+
+**When to read:** Building or modifying UI components
+
+Frontend component organization:
+
+- Directory structure (`executions/`, `ui/`)
+- Execution display components (Table, Filters, List, Row)
+- Reusable UI primitives (BulkActionBar, IconButton, FilterInput)
+- Data flow patterns (props, event bus, optimistic UI)
+- Performance optimizations (virtual scrolling, derived state)
+- Common patterns (selection, loading states)
+
+### [Reactivity Guide](./reactivity.md)
+
+**When to read:** Working with Svelte 5 runes and reactive state
+
+Critical Svelte 5 patterns:
+
+- Props pattern (never destructure!)
+- Runes (`$state`, `$derived`, `$effect`, `$props`)
+- Composables pattern
+- bits-ui integration
+- Top 5 reactivity footguns to avoid
 
 ## Infrastructure Guides
 

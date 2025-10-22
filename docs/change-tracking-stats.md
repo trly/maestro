@@ -38,7 +38,7 @@ Stats are displayed in two columns:
 2. **Changes Stats** - Shows file count and line changes (clickable to view diff)
 
 ```svelte
-<!-- src/lib/components/ui/ExecutionRow.svelte -->
+<!-- src/lib/components/executions/ExecutionRow.svelte -->
 <ExecutionRow
     {execution}
     fileCount={(execution.filesAdded || 0) + (execution.filesRemoved || 0) + (execution.filesModified || 0)}
@@ -155,5 +155,5 @@ clearDiffCache(executionId);
 **Frontend:**
 - `src/lib/stores/executionStats.ts` - On-demand stats fetching and caching
 - `src/lib/stores/diffStore.ts` - Caching layer for diff file lists
-- `src/lib/components/ui/ExecutionRow.svelte` - Stats display
+- `src/lib/components/executions/ExecutionRow.svelte` - Stats display
 - `src/lib/components/DiffViewer.svelte` - Detailed diff viewer

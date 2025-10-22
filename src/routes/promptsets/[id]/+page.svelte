@@ -5,7 +5,7 @@
 	import DiffViewer from '$lib/components/DiffViewer.svelte';
 	import RevisionHeader from '$lib/components/ui/RevisionHeader.svelte';
 	import PromptConsole from '$lib/components/ui/PromptConsole.svelte';
-	import ExecutionTable from '$lib/components/ui/ExecutionTable.svelte';
+	import ExecutionTable from '$lib/components/executions/ExecutionTable.svelte';
 	import AnalysisList from '$lib/components/ui/AnalysisList.svelte';
 	import { Tabs } from 'bits-ui';
 	import EditRepositoriesDialog from '$lib/components/ui/EditRepositoriesDialog.svelte';
@@ -32,6 +32,7 @@
 	// Loading states for async operations
 	let pushingExecutions = $state<Set<string>>(new Set());
 	let refreshingCi = $state<Set<string>>(new Set());
+	let loadingStats = $state<Set<string>>(new Set());
 	let analyzingExecutions = $state(false);
 	let analyzingValidations = $state(false);
 	
@@ -203,8 +204,7 @@
 		
 		await backfillMissingStats();
 		
-		// Load live stats for executions with no stats in DB
-		await loadLiveStats(revisionExecutions);
+		// Stats will be loaded lazily when each row becomes visible
 
 		if (revisionExecutions.some(e => 
 			e.status === 'pending' || 
@@ -216,24 +216,27 @@
 		}
 	}
 
-	async function loadLiveStats(executionsToLoad: Execution[]) {
-		// Load stats for all completed executions (stats are always calculated on-demand)
-		const needsStats = executionsToLoad.filter(e => e.status === 'completed');
+	async function loadSingleExecutionStats(executionId: string, status: string) {
+		// Only load stats for completed executions
+		if (status !== 'completed') return;
+		
+		// Skip if already loaded or currently loading
+		if (liveStats.has(executionId) || loadingStats.has(executionId)) return;
 
-		if (needsStats.length === 0) return;
+		// Mark as loading
+		loadingStats = new Set(loadingStats).add(executionId);
 
-		const newStats = new Map(liveStats);
-		await Promise.all(
-			needsStats.map(async (execution) => {
-				try {
-					const stats = await fetchExecutionStats(execution.id);
-					newStats.set(execution.id, stats);
-				} catch (err) {
-					console.error(`Failed to load stats for ${execution.id}:`, err);
-				}
-			})
-		);
-		liveStats = newStats;
+		try {
+			const stats = await fetchExecutionStats(executionId);
+			liveStats = new Map(liveStats).set(executionId, stats);
+		} catch (err) {
+			console.error(`Failed to load stats for ${executionId}:`, err);
+		} finally {
+			// Remove from loading set
+			const updatedLoading = new Set(loadingStats);
+			updatedLoading.delete(executionId);
+			loadingStats = updatedLoading;
+		}
 	}
 
 	function startPolling(revisionId: string) {
@@ -1165,6 +1168,7 @@
 								executions={executionsWithUpdates.filter(e => e.revisionId === currentRevision!.id)}
 								{repositories}
 								hasValidationPrompt={!!currentPromptSet.validationPrompt}
+								revisionId={currentRevision?.id}
 								onDeleteExecution={deleteExecutionWithConfirm}
 								onStartExecution={startExecutionManually}
 								onValidateExecution={validateExecutionManually}
@@ -1177,21 +1181,15 @@
 								}}
 								onPushExecution={pushExecutionManually}
 								onRefreshCi={refreshCiManually}
+								onLoadStats={loadSingleExecutionStats}
 								onBulkDelete={bulkDeleteExecutions}
 								onBulkStart={bulkStartExecutions}
 								onBulkRestart={bulkRestartExecutions}
 								onBulkStartValidations={bulkStartValidations}
 								onBulkRevalidate={bulkRevalidateExecutions}
-								onExecuteAll={() => executeRevision(currentRevision!)}
-								onStopAll={stopAllExecutions}
-								onStopAllValidations={stopAllValidations}
-								onRefreshAllCi={refreshAllCiManually}
-								onAnalyzeExecutions={() => handleAnalyzeExecutions(currentRevision!)}
-								onAnalyzeValidations={() => handleAnalyzeValidations(currentRevision!)}
 								{pushingExecutions}
 								{refreshingCi}
-								{analyzingExecutions}
-								{analyzingValidations}
+								{loadingStats}
 								{bulkStarting}
 								{bulkRestarting}
 								{bulkValidating}

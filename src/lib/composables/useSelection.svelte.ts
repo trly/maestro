@@ -2,9 +2,10 @@
  * Composable for managing multi-select state in lists
  * Follows Svelte 5 runes pattern for reactive state management
  */
+import { SvelteSet } from 'svelte/reactivity'
 
 export interface SelectionState {
-	selectedIds: Set<string>
+	selectedIds: SvelteSet<string>
 	toggleAll: (itemIds: string[]) => void
 	toggle: (id: string) => void
 	clear: () => void
@@ -12,34 +13,33 @@ export interface SelectionState {
 }
 
 export function useSelection(): SelectionState {
-	let selectedIds = $state<Set<string>>(new Set())
+	let selectedIds = $state(new SvelteSet<string>())
 
 	function toggleAll(itemIds: string[]) {
 		if (itemIds.length === 0) {
-			selectedIds = new Set()
+			selectedIds.clear()
 			return
 		}
 
 		const allCurrentlySelected = itemIds.every(id => selectedIds.has(id))
 		if (allCurrentlySelected) {
-			selectedIds = new Set()
+			selectedIds.clear()
 		} else {
-			selectedIds = new Set(itemIds)
+			selectedIds.clear()
+			itemIds.forEach(id => selectedIds.add(id))
 		}
 	}
 
 	function toggle(id: string) {
-		const newSet = new Set(selectedIds)
-		if (newSet.has(id)) {
-			newSet.delete(id)
+		if (selectedIds.has(id)) {
+			selectedIds.delete(id)
 		} else {
-			newSet.add(id)
+			selectedIds.add(id)
 		}
-		selectedIds = newSet
 	}
 
 	function clear() {
-		selectedIds = new Set()
+		selectedIds.clear()
 	}
 
 	function getSelected<T extends { id: string }>(items: T[]): T[] {
@@ -47,7 +47,7 @@ export function useSelection(): SelectionState {
 	}
 
 	return {
-		get selectedIds() { return selectedIds },
+		selectedIds, // Expose rune directly (no getter)
 		toggleAll,
 		toggle,
 		clear,
