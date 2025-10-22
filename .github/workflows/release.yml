@@ -30,6 +30,9 @@ jobs:
       - name: Install Node dependencies
         run: bun install
 
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --locked
+
       - name: Build app (deb)
         run: cargo tauri build --bundles deb
 
@@ -62,6 +65,9 @@ jobs:
 
       - name: Install Node dependencies
         run: bun install
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --locked
 
       - name: Build app (dmg)
         run: cargo tauri build --bundles dmg
