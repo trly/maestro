@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "vite dev --port 5173 --strictPort",
-    "beforeBuildCommand": "vite build"
+    "beforeDevCommand": "bun vite dev --port 5173 --strictPort",
+    "beforeBuildCommand": "bun vite build"
   },
   "app": {
     "windows": [
