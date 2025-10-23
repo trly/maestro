@@ -17,7 +17,7 @@
 	import { sidebarStore } from '$lib/stores/sidebarStore';
 	import type { PromptSet, PromptRevision, Execution, Repository as DBRepository, Analysis } from '$lib/types';
 	import type { Repository as ProviderRepository } from '$lib/providers/types';
-	import { executionStore } from '$lib/stores/executionBus';
+	import { executionStore, analysisStore } from '$lib/stores/executionBus';
 	import { fetchExecutionStats, type ExecutionStats } from '$lib/stores/executionStats';
 	import * as ipc from '$lib/ipc';
 
@@ -79,6 +79,19 @@
 			linesRemoved: effectiveStats.linesRemoved,
 		};
 		})
+	});
+
+	// Merge analyses with live updates from event bus
+	let analysesWithUpdates = $derived.by(() => {
+		const updates = $analysisStore;
+		return analyses.map(analysis => {
+			const data = updates.get(analysis.id);
+			if (!data) return analysis;
+			return {
+				...analysis,
+				...(data.status && { status: data.status })
+			};
+		});
 	});
 
 	// Compute reactive execution stats per revision (from all executions, not just current)
@@ -1169,6 +1182,10 @@
 								{repositories}
 								hasValidationPrompt={!!currentPromptSet.validationPrompt}
 								revisionId={currentRevision?.id}
+								onAnalyzeExecutions={revisionHeaderProps ? () => handleAnalyzeExecutions(currentRevision!) : undefined}
+								onAnalyzeValidations={revisionHeaderProps ? () => handleAnalyzeValidations(currentRevision!) : undefined}
+								analyzingExecutions={analysesWithUpdates.some(a => (a.status === 'pending' || a.status === 'running') && a.analysisType === 'executions')}
+								analyzingValidations={analysesWithUpdates.some(a => (a.status === 'pending' || a.status === 'running') && a.analysisType === 'validations')}
 								onDeleteExecution={deleteExecutionWithConfirm}
 								onStartExecution={startExecutionManually}
 								onValidateExecution={validateExecutionManually}

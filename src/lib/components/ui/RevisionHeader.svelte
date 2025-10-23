@@ -4,6 +4,7 @@
 	import IconButton from './IconButton.svelte';
 	import { toShortHash } from '$lib/utils';
 	import type { PromptRevision, Analysis } from '$lib/types';
+	import { analysisStore } from '$lib/stores/executionBus';
 
 	let {
 		revision,
@@ -21,10 +22,23 @@
 		onEditRepositories?: () => void;
 	} = $props();
 	
+	// Merge analyses with live updates from event bus
+	let analysesWithUpdates = $derived.by(() => {
+		const updates = $analysisStore;
+		return analyses.map(analysis => {
+			const data = updates.get(analysis.id);
+			if (!data) return analysis;
+			return {
+				...analysis,
+				...(data.status && { status: data.status })
+			};
+		});
+	});
+	
 	let completionPercent = $derived(stats && stats.total > 0 ? (stats.completed / stats.total) * 100 : 0);
 	let validationPercent = $derived(stats && stats.total > 0 ? (stats.validationPassed / stats.total) * 100 : 0);
-	let hasActiveAnalysis = $derived(analyses.some(a => a.status === 'pending' || a.status === 'running'));
-	let activeAnalysisCount = $derived(analyses.filter(a => a.status === 'pending' || a.status === 'running').length);
+	let hasActiveAnalysis = $derived(analysesWithUpdates.some(a => a.status === 'pending' || a.status === 'running'));
+	let activeAnalysisCount = $derived(analysesWithUpdates.filter(a => a.status === 'pending' || a.status === 'running').length);
 </script>
 
 <div class="h-full flex items-center gap-3 px-4 py-3 bg-card">
@@ -47,7 +61,7 @@
 				</UiTooltip>
 			{/if}
 			{#if onEditRepositories}
-				<IconButton icon={Edit} tooltip="Edit repositories" onclick={onEditRepositories} variant="primary" size="sm" />
+			<IconButton icon={Edit} tooltip="Edit repositories" onclick={onEditRepositories} variant="primary" size="sm" />
 			{/if}
 			{#if hasActiveAnalysis}
 				<UiTooltip content="{activeAnalysisCount} analysis {activeAnalysisCount === 1 ? 'running' : 'running'}">

@@ -7,37 +7,42 @@
 	import BulkActionBar from '$lib/components/ui/BulkActionBar.svelte'
 
 	const props = $props<{
-		executions: Execution[]
-		repositories: Map<string, Repository>
-		hasValidationPrompt?: boolean
-		executionsVersion?: number
-		revisionId?: string
-		// Loading states
-		pushingExecutions: Set<string>
-		refreshingCi: Set<string>
-		loadingStats: Set<string>
-		bulkStarting: boolean
-		bulkRestarting: boolean
-		bulkValidating: boolean
-		bulkRevalidating: boolean
-		bulkDeleting: boolean
-		// Action handlers
-		onDeleteExecution: (execution: Execution, repoName: string) => void
-		onStartExecution: (execution: Execution) => void
-		onValidateExecution: (execution: Execution) => void
-		onStopExecution: (execution: Execution) => void
-		onStopValidation: (execution: Execution) => void
-		onResumeExecution: (execution: Execution) => void
-		onReviewChanges: (executionId: string) => void
-		onPushExecution: (execution: Execution) => void
-		onRefreshCi: (execution: Execution) => void
-		onLoadStats: (executionId: string, status: string) => void
-		onBulkDelete: (executions: Execution[]) => void
-		onBulkStart: (executions: Execution[]) => void
-		onBulkRestart: (executions: Execution[]) => void
-		onBulkStartValidations: (executions: Execution[]) => void
-		onBulkRevalidate: (executions: Execution[]) => void
-	}>()
+	executions: Execution[]
+	repositories: Map<string, Repository>
+	hasValidationPrompt?: boolean
+	executionsVersion?: number
+	revisionId?: string
+	// Loading states
+	pushingExecutions: Set<string>
+	refreshingCi: Set<string>
+	loadingStats: Set<string>
+	bulkStarting: boolean
+	bulkRestarting: boolean
+	bulkValidating: boolean
+	bulkRevalidating: boolean
+	bulkDeleting: boolean
+	// Analysis
+	onAnalyzeExecutions?: () => void
+	onAnalyzeValidations?: () => void
+	analyzingExecutions?: boolean
+	analyzingValidations?: boolean
+	// Action handlers
+	onDeleteExecution: (execution: Execution, repoName: string) => void
+	onStartExecution: (execution: Execution) => void
+	onValidateExecution: (execution: Execution) => void
+	onStopExecution: (execution: Execution) => void
+	onStopValidation: (execution: Execution) => void
+	onResumeExecution: (execution: Execution) => void
+	onReviewChanges: (executionId: string) => void
+	onPushExecution: (execution: Execution) => void
+	onRefreshCi: (execution: Execution) => void
+	onLoadStats: (executionId: string, status: string) => void
+	onBulkDelete: (executions: Execution[]) => void
+	onBulkStart: (executions: Execution[]) => void
+	onBulkRestart: (executions: Execution[]) => void
+	onBulkStartValidations: (executions: Execution[]) => void
+	onBulkRevalidate: (executions: Execution[]) => void
+}>()
 
 	// Filters + sort state
 	let filters = $state<ColumnFilters>({})
@@ -206,38 +211,42 @@
 	<ExecutionFilters {filters} onFilterChange={setFilters} />
 
 	<ExecutionList
-		ids={filteredSortedIds}
-		{executionsById}
-		repositories={props.repositories}
-		{selection}
-		pushingExecutions={props.pushingExecutions}
-		refreshingCi={props.refreshingCi}
-		loadingStats={props.loadingStats}
-		{sort}
-		hasValidationPrompt={props.hasValidationPrompt}
-		onToggleSelectAll={handleToggleSelectAll}
-		onChangeSort={handleChangeSort}
-		onLoadStats={(id) => {
-			const execution = getExecution(id)
-			props.onLoadStats(id, execution.status)
-		}}
-		onLoadCi={(id) => {
-			const execution = getExecution(id)
-			if (execution.commitStatus === 'committed') {
-				props.onRefreshCi(execution)
-			}
-		}}
-		onStart={(id) => props.onStartExecution(getExecution(id))}
-		onStop={(id) => props.onStopExecution(getExecution(id))}
-		onRestart={(id) => props.onResumeExecution(getExecution(id))}
-		onValidate={(id) => props.onValidateExecution(getExecution(id))}
-		onStopValidation={(id) => props.onStopValidation(getExecution(id))}
-		onDelete={(id) => {
-			const execution = getExecution(id)
-			props.onDeleteExecution(execution, getRepoName(execution))
-		}}
-		onReviewChanges={(id) => props.onReviewChanges(id)}
-		onPush={(id) => props.onPushExecution(getExecution(id))}
-		onRefreshCi={(id) => props.onRefreshCi(getExecution(id))}
-	/>
+	ids={filteredSortedIds}
+	{executionsById}
+	repositories={props.repositories}
+	{selection}
+	pushingExecutions={props.pushingExecutions}
+	refreshingCi={props.refreshingCi}
+	loadingStats={props.loadingStats}
+	{sort}
+	hasValidationPrompt={props.hasValidationPrompt}
+	onAnalyzeExecutions={props.onAnalyzeExecutions}
+	onAnalyzeValidations={props.onAnalyzeValidations}
+	analyzingExecutions={props.analyzingExecutions}
+	analyzingValidations={props.analyzingValidations}
+	onToggleSelectAll={handleToggleSelectAll}
+	onChangeSort={handleChangeSort}
+	onLoadStats={(id) => {
+	const execution = getExecution(id)
+	props.onLoadStats(id, execution.status)
+	}}
+	onLoadCi={(id) => {
+	 const execution = getExecution(id)
+	 if (execution.commitStatus === 'committed') {
+	  props.onRefreshCi(execution)
+	 }
+	}}
+	onStart={(id) => props.onStartExecution(getExecution(id))}
+	onStop={(id) => props.onStopExecution(getExecution(id))}
+	onRestart={(id) => props.onResumeExecution(getExecution(id))}
+	onValidate={(id) => props.onValidateExecution(getExecution(id))}
+	onStopValidation={(id) => props.onStopValidation(getExecution(id))}
+	onDelete={(id) => {
+	 const execution = getExecution(id)
+	 props.onDeleteExecution(execution, getRepoName(execution))
+	}}
+	onReviewChanges={(id) => props.onReviewChanges(id)}
+	onPush={(id) => props.onPushExecution(getExecution(id))}
+	onRefreshCi={(id) => props.onRefreshCi(getExecution(id))}
+/>
 </div>

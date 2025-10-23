@@ -134,8 +134,9 @@ Theme managed by [themeStore.svelte.ts](file:///Users/trly/src/github.com/trly/m
 - Start/Validate → `text-success hover:text-success/90`
 - Stop/Cancel → `text-warning hover:text-warning/90`
 - Delete → `text-destructive hover:text-destructive/90`
-- Restart/Retry/Edit → `text-primary hover:text-primary/90`
-- Push/Analyze → `text-accent hover:text-accent/90`
+- Restart/Retry/Edit/Push/Analyze → `text-primary hover:text-primary/90`
+
+**Note:** `text-accent` should only be used for disabled button states, never for active icon buttons.
 
 ## Code Conventions
 

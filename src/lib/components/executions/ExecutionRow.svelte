@@ -220,14 +220,14 @@
 			{/if}
 
 			{#if canPush}
-				<IconButton 
-					icon={Upload} 
-					tooltip={props.pushing ? "Pushing..." : "Push to remote"} 
-					onclick={props.onPush} 
-					variant="accent" 
-					disabled={props.pushing} 
-					loading={props.pushing} 
-				/>
+			<IconButton 
+			icon={Upload} 
+			tooltip={props.pushing ? "Pushing..." : "Push to remote"} 
+			onclick={props.onPush} 
+			variant="primary" 
+			disabled={props.pushing} 
+			loading={props.pushing} 
+			/>
 			{/if}
 		</div>
 

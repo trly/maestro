@@ -18,7 +18,7 @@
 	icon: ComponentType
 	tooltip: string
 	onclick?: () => void
-	variant?: 'default' | 'success' | 'destructive' | 'warning' | 'primary' | 'accent' | 'ghost'
+	variant?: 'default' | 'success' | 'destructive' | 'warning' | 'primary' | 'accent' | 'ghost' // NOTE: accent should only be used for disabled states
 	disabled?: boolean
 	 size?: 'sm' | 'default' | 'lg'
 		loading?: boolean
@@ -27,7 +27,7 @@
 	} = $props()
 
 	const variantClasses = {
-		default: 'text-foreground hover:text-foreground/90',
+		default: 'text-primary hover:text-primary/90',
 		success: 'text-success hover:text-success/90',
 		destructive: 'text-destructive hover:text-destructive/90',
 		warning: 'text-warning hover:text-warning/90',

@@ -3,7 +3,8 @@
 	import type { SortSpec } from './types'
 	import type { SelectionState } from '$lib/composables/useSelection.svelte'
 	import ExecutionRow from './ExecutionRow.svelte'
-	import { ChevronUp, ChevronDown } from 'lucide-svelte'
+	import IconButton from '$lib/components/ui/IconButton.svelte'
+	import { ChevronUp, ChevronDown, Brain } from 'lucide-svelte'
 
 	const props = $props<{
 		ids: string[]
@@ -15,6 +16,10 @@
 		loadingStats: Set<string>
 		sort: SortSpec
 		hasValidationPrompt?: boolean
+		onAnalyzeExecutions?: () => void
+		onAnalyzeValidations?: () => void
+		analyzingExecutions?: boolean
+		analyzingValidations?: boolean
 		onToggleSelectAll: () => void
 		onChangeSort: (key: SortSpec['key']) => void
 		onLoadStats: (id: string) => void
@@ -75,17 +80,30 @@
 			{/if}
 		</button>
 
+		<div class="flex items-center gap-1.5">
 		<button 
-			class="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors text-left flex items-center gap-1"
-			onclick={() => props.onChangeSort('status')}
+		 class="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors text-left flex items-center gap-1"
+		  onclick={() => props.onChangeSort('status')}
 		>
-			<span>Execution</span>
-			{#if getSortIcon('status')}
-				{@const Icon = getSortIcon('status')}
-				<Icon class="w-3 h-3" />
-			{/if}
+		 <span>Execution</span>
+		{#if getSortIcon('status')}
+		 {@const Icon = getSortIcon('status')}
+		  <Icon class="w-3 h-3" />
+		  {/if}
 		</button>
+		 {#if props.onAnalyzeExecutions}
+		 <IconButton 
+		  icon={Brain} 
+		   tooltip="Analyze execution failures" 
+		  onclick={props.onAnalyzeExecutions} 
+		  variant="primary" 
+		 size="sm" 
+		 loading={props.analyzingExecutions} 
+		 />
+		 {/if}
+	</div>
 
+	<div class="flex items-center gap-1.5">
 		<button 
 			class="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors text-left flex items-center gap-1"
 			onclick={() => props.onChangeSort('validation')}
@@ -96,6 +114,17 @@
 				<Icon class="w-3 h-3" />
 			{/if}
 		</button>
+		{#if props.onAnalyzeValidations}
+			<IconButton 
+				icon={Brain} 
+				tooltip="Analyze validation failures" 
+				onclick={props.onAnalyzeValidations} 
+				variant="primary" 
+				size="sm" 
+				loading={props.analyzingValidations} 
+			/>
+		{/if}
+	</div>
 
 		<button 
 			class="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors text-left flex items-center gap-1"
