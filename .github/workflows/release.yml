@@ -100,6 +100,5 @@ jobs:
             builds/linux/**/*.rpm
             builds/linux/**/*.AppImage
             builds/macos/**/*.dmg
-          draft: true
           generate_release_notes: true
           fail_on_unmatched_files: true
