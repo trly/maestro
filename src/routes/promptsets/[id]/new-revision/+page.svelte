@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import RevisionEditor from '$lib/components/ui/RevisionEditor.svelte';
 	import { api } from '$lib/api';
 	import { showToast } from '$lib/ui/toast';
 	import { sidebarStore } from '$lib/stores/sidebarStore';
 	import type { PromptSet, PromptRevision } from '$lib/types';
+
+	let { data } = $props();
 
 	let promptSet = $state<PromptSet | null>(null);
 	let revisions = $state<PromptRevision[]>([]);
@@ -19,7 +20,7 @@
 	);
 
 	async function loadData() {
-		const promptSetId = $page.params.id;
+		const promptSetId = data.promptsetId;
 		if (!promptSetId) {
 			showToast('Invalid prompt set ID', 'error');
 			isLoading = false;
@@ -78,7 +79,7 @@
 	}
 
 	function cancel() {
-		goto(`/promptsets/${$page.params.id}`);
+		goto(`/promptsets/${data.promptsetId}`);
 	}
 
 	onMount(loadData);

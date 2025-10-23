@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { Plus, PanelLeftClose, PanelLeftOpen, Settings, ChevronDown } from 'lucide-svelte';
 	import { Accordion } from 'bits-ui';
@@ -13,7 +12,7 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 	import { executionStore } from '$lib/stores/executionBus';
 	import type { PromptSet, PromptRevision, Execution } from '$lib/types';
 
-	let { collapsed = false, onToggleCollapse } = $props();
+	let { collapsed = false, onToggleCollapse, pathname, searchParams } = $props();
 
 	let allPromptSets = $state<PromptSet[]>([]);
 	let revisionsByPromptSet = $state<Map<string, PromptRevision[]>>(new Map());
@@ -94,8 +93,8 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 
 	// Auto-select newest revision when first landing on a prompt set without a revision
 	$effect(() => {
-		const currentPath = $page.url.pathname;
-		const currentRevisionParam = $page.url.searchParams.get('revision');
+		const currentPath = pathname;
+		const currentRevisionParam = searchParams.revision;
 		
 		// Only auto-navigate once when we're on a prompt set page without a revision
 		const promptSetMatch = currentPath.match(/^\/promptsets\/([^\/]+)$/);
@@ -144,8 +143,8 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 		return stats
 	})
 
-	const isPromptSetActive = (id: string) => $page.url.pathname.startsWith(`/promptsets/${id}`);
-	const isRevisionActive = (revisionId: string) => $page.url.searchParams.get('revision') === revisionId || $page.url.searchParams.get('revision') === toShortHash(revisionId);
+	const isPromptSetActive = (id: string) => pathname.startsWith(`/promptsets/${id}`);
+	const isRevisionActive = (revisionId: string) => searchParams.revision === revisionId || searchParams.revision === toShortHash(revisionId);
 </script>
 
 <div class="h-full flex flex-col bg-card">
@@ -170,7 +169,7 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 					<button
 						{...props}
 						onclick={() => goto('/settings')}
-						class="p-1.5 rounded-md transition-colors {$page.url.pathname === '/settings' ? 'bg-accent text-accent-foreground' : 'hover:bg-accent'}"
+						class="p-1.5 rounded-md transition-colors {pathname === '/settings' ? 'bg-accent text-accent-foreground' : 'hover:bg-accent'}"
 						aria-label="Settings"
 					>
 						<Settings class="w-3.5 h-3.5" />
@@ -215,9 +214,9 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 						<button
 							{...props}
 							onclick={() => goto('/settings')}
-							class="p-1.5 rounded-md transition-colors mx-auto {$page.url.pathname === '/settings' ? 'bg-accent text-accent-foreground' : 'hover:bg-accent'}"
+							class="p-1.5 rounded-md transition-colors mx-auto {pathname === '/settings' ? 'bg-accent text-accent-foreground' : 'hover:bg-accent'}"
 							aria-label="Settings"
-						>
+							>
 							<Settings class="w-3.5 h-3.5" />
 						</button>
 					{/snippet}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Trash2, Loader2, Edit, FolderGit2 } from 'lucide-svelte';
+	import { Trash2, LoaderCircle, Pencil, FolderGit2 } from 'lucide-svelte';
 	import UiTooltip from './UiTooltip.svelte';
 	import IconButton from './IconButton.svelte';
 	import { toShortHash } from '$lib/utils';
@@ -61,13 +61,13 @@
 				</UiTooltip>
 			{/if}
 			{#if onEditRepositories}
-			<IconButton icon={Edit} tooltip="Edit repositories" onclick={onEditRepositories} variant="primary" size="sm" />
+			<IconButton icon={Pencil} tooltip="Edit repositories" onclick={onEditRepositories} variant="primary" size="sm" />
 			{/if}
 			{#if hasActiveAnalysis}
 				<UiTooltip content="{activeAnalysisCount} analysis {activeAnalysisCount === 1 ? 'running' : 'running'}">
 					{#snippet children({ props })}
 						<div {...props} class="flex items-center gap-1 px-2 py-0.5 bg-accent/10 rounded text-accent">
-							<Loader2 class="w-3 h-3 animate-spin" />
+						<LoaderCircle class="w-3 h-3 animate-spin" />
 							<span class="text-[10px] font-medium">{activeAnalysisCount}</span>
 						</div>
 					{/snippet}

@@ -50,7 +50,7 @@
 
 	// Reset filters when switching revisions
 	$effect(() => {
-		const _revisionId = props.revisionId
+		props.revisionId
 		filters = {}
 	})
 
@@ -71,14 +71,14 @@
 
 	// Derived helpers
 	let executionsById = $derived.by(() => {
-		const _v = props.executionsVersion
+		props.executionsVersion
 		const map = new Map<string, Execution>()
 		for (const e of props.executions) map.set(e.id, e)
 		return map
 	})
 
 	let filteredExecutions = $derived.by(() => {
-		const _repoSize = props.repositories.size
+		props.repositories.size
 		const repoContains = (repoId: string, q: string) => {
 			const name = props.repositories.get(repoId)?.providerId || repoId
 			return name.toLowerCase().includes(q.toLowerCase())

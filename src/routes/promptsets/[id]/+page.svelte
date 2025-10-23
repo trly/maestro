@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { onMount, onDestroy } from 'svelte';
 	import DiffViewer from '$lib/components/DiffViewer.svelte';
@@ -20,6 +19,8 @@
 	import { executionStore, analysisStore } from '$lib/stores/executionBus';
 	import { fetchExecutionStats, type ExecutionStats } from '$lib/stores/executionStats';
 	import * as ipc from '$lib/ipc';
+
+	let { data } = $props();
 
 	let currentPromptSet = $state<PromptSet | null>(null);
 	let revisions = $state<PromptRevision[]>([]);
@@ -137,14 +138,14 @@
 	let stopPolling = $state<(() => void) | null>(null);
 	let activeTab = $state<string>('executions');
 
-	const promptsetId = $derived($page.params.id);
-	const revisionParam = $derived($page.url.searchParams.get('revision'));
+	const promptsetId = $derived(data.promptsetId);
+	const revisionParam = $derived(data.revisionParam);
 	
 	// Reload prompt set when promptsetId changes or when navigating with a new revision
 	$effect(() => {
 		// Access both to create dependencies
 		const id = promptsetId;
-		const rev = revisionParam;
+		revisionParam;
 		
 		if (id) {
 			loadPromptSet();
@@ -973,7 +974,7 @@
 		const repoPromises = repos.map(async (repo) => {
 			try {
 				const dbRepo = await api.repositories.find(repo.provider, repo.fullName)
-					.catch(async (findErr) => {
+					.catch(async () => {
 						return await api.repositories.create(repo.provider, repo.fullName, repo.name || undefined);
 					});
 				repositories.set(dbRepo.id, dbRepo);
@@ -1184,8 +1185,8 @@
 								revisionId={currentRevision?.id}
 								onAnalyzeExecutions={revisionHeaderProps ? () => handleAnalyzeExecutions(currentRevision!) : undefined}
 								onAnalyzeValidations={revisionHeaderProps ? () => handleAnalyzeValidations(currentRevision!) : undefined}
-								analyzingExecutions={analysesWithUpdates.some(a => (a.status === 'pending' || a.status === 'running') && a.analysisType === 'executions')}
-								analyzingValidations={analysesWithUpdates.some(a => (a.status === 'pending' || a.status === 'running') && a.analysisType === 'validations')}
+								analyzingExecutions={analysesWithUpdates.some(a => (a.status === 'pending' || a.status === 'running') && a.type === 'execution')}
+								analyzingValidations={analysesWithUpdates.some(a => (a.status === 'pending' || a.status === 'running') && a.type === 'validation')}
 								onDeleteExecution={deleteExecutionWithConfirm}
 								onStartExecution={startExecutionManually}
 								onValidateExecution={validateExecutionManually}

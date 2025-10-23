@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import RepositorySelector from '$lib/components/RepositorySelector.svelte';
 	import RevisionEditor from '$lib/components/ui/RevisionEditor.svelte';
@@ -14,6 +13,8 @@
 	import { pollExecutions } from '$lib/polling';
 	import type { Execution } from '$lib/types';
 
+	let { data } = $props();
+
 	let step = $state<'create' | 'prompt'>('create');
 	let promptSetName = $state('');
 	let selectedRepos = $state<Repository[]>([]);
@@ -25,7 +26,7 @@
 	let repositories = $state<Map<string, DBRepository>>(new Map());
 	let stopPolling = $state<(() => void) | null>(null);
 
-	const promptsetParam = $derived($page.url.searchParams.get('promptset'));
+	const promptsetParam = $derived(data.promptsetParam);
 
 	onMount(async () => {
 		if (promptsetParam) {

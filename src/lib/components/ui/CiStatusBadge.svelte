@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { CiStatus } from '../../types';
 	import UiTooltip from './UiTooltip.svelte';
-	import { CheckCircle2, XCircle, Loader2, MinusCircle } from 'lucide-svelte';
+	import { CircleCheck, CircleX, LoaderCircle, CircleMinus } from 'lucide-svelte';
 	import { openInBrowser } from '$lib/utils/browser';
 
 	let props: {
@@ -14,11 +14,11 @@
 	let icon = $derived.by(() => {
 		if (!props.ciStatus) return null;
 		switch (props.ciStatus) {
-			case 'pending': return { Icon: Loader2, class: 'text-primary animate-spin', label: 'CI running' };
-			case 'passed': return { Icon: CheckCircle2, class: 'text-success', label: 'CI passed' };
-			case 'failed': return { Icon: XCircle, class: 'text-destructive', label: 'CI failed' };
-			case 'skipped': return { Icon: MinusCircle, class: 'text-muted-foreground', label: 'No CI configured for this branch' };
-			case 'not_configured': return { Icon: MinusCircle, class: 'text-muted-foreground', label: 'No CI configured' };
+			case 'pending': return { Icon: LoaderCircle, class: 'text-primary animate-spin', label: 'CI running' };
+			case 'passed': return { Icon: CircleCheck, class: 'text-success', label: 'CI passed' };
+			case 'failed': return { Icon: CircleX, class: 'text-destructive', label: 'CI failed' };
+			case 'skipped': return { Icon: CircleMinus, class: 'text-muted-foreground', label: 'No CI configured for this branch' };
+			case 'not_configured': return { Icon: CircleMinus, class: 'text-muted-foreground', label: 'No CI configured' };
 			default: return null;
 		}
 	});
@@ -35,7 +35,7 @@
 {#if icon}
 	<UiTooltip content={props.isRefreshing ? "Refreshing..." : props.ciUrl ? `${icon.label} - Click to view` : (props.onRefresh && props.ciStatus !== 'skipped' && props.ciStatus !== 'not_configured') ? `${icon.label} - Click to refresh` : icon.label}>
 		{#snippet children({ props: triggerProps })}
-			{@const Icon = props.isRefreshing ? Loader2 : icon.Icon}
+			{@const Icon = props.isRefreshing ? LoaderCircle : icon.Icon}
 			{@const iconClass = props.isRefreshing ? 'text-primary animate-spin' : icon.class}
 			<button
 				{...triggerProps}

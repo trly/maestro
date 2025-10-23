@@ -7,6 +7,7 @@ AI-powered orchestrator for running prompts across multiple repositories using [
 ## Quick Start
 
 ### Prerequisites
+
 - [Bun](https://bun.sh) (JavaScript runtime & package manager)
 - [Rust](https://rustup.rs) (for Tauri backend)
 - SSH key added to GitHub (for private repos - see [SSH setup](docs/ssh-authentication.md))
@@ -15,26 +16,29 @@ AI-powered orchestrator for running prompts across multiple repositories using [
 ### Installation
 
 1. **Install dependencies:**
+
    ```bash
    bun install
    ```
 
 2. **Install Rust** (if not already installed):
+
    ```bash
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
    ```
 
 3. **Set up SSH authentication** (required for private repos):
+
    ```bash
    # Generate SSH key if you don't have one
    ssh-keygen -t ed25519 -C "your_email@example.com"
-   
+
    # Add to ssh-agent
    ssh-add ~/.ssh/id_ed25519
-   
+
    # Add public key to GitHub: https://github.com/settings/keys
    ```
-   
+
    See [docs/ssh-authentication.md](docs/ssh-authentication.md) for detailed instructions.
 
 4. **Start development server:**
@@ -45,6 +49,7 @@ AI-powered orchestrator for running prompts across multiple repositories using [
 ### Production Installation
 
 1. **Build the installer:**
+
    ```bash
    bun run build
    ```
@@ -52,16 +57,18 @@ AI-powered orchestrator for running prompts across multiple repositories using [
 2. **Install the app:**
 
    **macOS:**
+
    ```bash
    # Option 1: Install from DMG (recommended)
    open src-tauri/target/release/bundle/dmg/*.dmg
    # Drag Maestro.app to Applications folder
-   
+
    # Option 2: Run directly from bundle
    open src-tauri/target/release/bundle/macos/Maestro.app
    ```
 
    **Linux (Debian/Ubuntu):**
+
    ```bash
    sudo dpkg -i src-tauri/target/release/bundle/deb/*.deb
    # Launch from application menu or run:
@@ -70,12 +77,12 @@ AI-powered orchestrator for running prompts across multiple repositories using [
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `bun run dev` | Start Tauri app in development mode |
-| `bun run build` | Build production installer |
-| `bun run check` | Run TypeScript type checking |
-| `cargo test` | Run Rust tests (from `src-tauri/`) |
+| Command         | Description                         |
+| --------------- | ----------------------------------- |
+| `bun run dev`   | Start Tauri app in development mode |
+| `bun run build` | Build production installer          |
+| `bun run check` | Run TypeScript type checking        |
+| `cargo test`    | Run Rust tests (from `src-tauri/`)  |
 
 ## Tech Stack
 
@@ -181,21 +188,24 @@ Maestro uses platform-specific app data directories:
 ### Common Patterns
 
 **Tauri IPC:**
+
 ```typescript
-import { getExecution, executePrompt } from '$lib/ipc'
-const execution = await getExecution(id)
+import { getExecution, executePrompt } from "$lib/ipc";
+const execution = await getExecution(id);
 ```
 
 **Execution Events:**
+
 ```typescript
-import { subscribeToExecutions } from '$lib/stores/executionBus'
-subscribeToExecutions() // Call once at app init
+import { subscribeToExecutions } from "$lib/stores/executionBus";
+subscribeToExecutions(); // Call once at app init
 ```
 
 **Diff Access:**
+
 ```typescript
-import { fetchDiff } from '$lib/stores/diffStore'
-const files = await fetchDiff(executionId)
+import { fetchDiff } from "$lib/stores/diffStore";
+const files = await fetchDiff(executionId);
 ```
 
 ## Troubleshooting
@@ -207,6 +217,7 @@ const files = await fetchDiff(executionId)
 **Cause:** In development mode, the Tauri app isn't code-signed, so macOS treats each run as potentially different.
 
 **Workarounds:**
+
 - **Accept the prompt** - It's annoying but harmless during development
 - **Manual keychain config** - Open Keychain Access.app → find `dev.trly.maestro` entries → double-click → add the dev binary to "Always allow access"
 

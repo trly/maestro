@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { X, Edit, Save } from 'lucide-svelte';
+	import { X, Pencil, Save } from 'lucide-svelte';
 	import { Switch } from 'bits-ui';
 	import type { PromptRevision } from '$lib/types';
 
@@ -24,7 +24,6 @@
 	let manuallyResized = $state(false);
 	let promptContentRef = $state<HTMLPreElement | null>(null);
 	let validationContentRef = $state<HTMLElement | null>(null);
-	let containerRef = $state<HTMLDivElement | null>(null);
 	let startY = $state(0);
 	let startHeight = $state(0);
 
@@ -108,7 +107,7 @@
 	});
 </script>
 
-<div class="flex-shrink-0" bind:this={containerRef}>
+<div class="flex-shrink-0">
 	<!-- Prompt Content -->
 	<div class="border-b border-border/20 overflow-hidden bg-card">
 		<div class="flex divide-x divide-border/20" style="height: {manuallyResized ? promptHeight : computedHeight}px;">
@@ -173,7 +172,7 @@
 								class="text-primary hover:text-primary/90 transition-colors"
 								aria-label="Edit validation prompt"
 								>
-								<Edit class="w-4 h-4" />
+								<Pencil class="w-4 h-4" />
 								</button>
 							{/if}
 						</div>

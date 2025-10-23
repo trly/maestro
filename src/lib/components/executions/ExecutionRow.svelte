@@ -6,8 +6,8 @@
 	import IconButton from '$lib/components/ui/IconButton.svelte'
 	import CiStatusBadge from '$lib/components/ui/CiStatusBadge.svelte'
 	import { 
-		PlayCircle, RotateCw, Square, CheckCircle2, Code, Copy, Trash2,
-		ExternalLink, FileText, Loader2, Upload, X
+		CirclePlay, RotateCw, Square, CircleCheck, Code, Copy, Trash2,
+		ExternalLink, FileText, LoaderCircle, Upload, X
 	} from 'lucide-svelte'
 	import { openInBrowser } from '$lib/utils/browser'
 	import { openInEditor, copyWorktreePath } from '$lib/utils/worktree'
@@ -74,7 +74,6 @@
 	)
 	let canStopValidation = $derived(execution.validationStatus === 'running')
 	let canPush = $derived(execution.commitStatus === 'committed' && execution.commitSha)
-	let isRunning = $derived(execution.status === 'running' || execution.validationStatus === 'running')
 
 	let fileCount = $derived((execution.filesAdded || 0) + (execution.filesRemoved || 0) + (execution.filesModified || 0))
 	let additions = $derived(execution.linesAdded || 0)
@@ -112,7 +111,7 @@
 		aria-label={props.selected ? 'Deselect' : 'Select'}
 	>
 		{#if props.selected}
-			<CheckCircle2 class="w-4 h-4 text-primary-foreground" />
+			<CircleCheck class="w-4 h-4 text-primary-foreground" />
 		{/if}
 	</button>
 
@@ -134,7 +133,7 @@
 			</UiTooltip>
 
 			{#if canStart}
-				<IconButton icon={PlayCircle} tooltip="Start execution" onclick={props.onStart} variant="success" />
+				<IconButton icon={CirclePlay} tooltip="Start execution" onclick={props.onStart} variant="success" />
 			{:else if canStop}
 				<IconButton icon={Square} tooltip="Stop execution" onclick={props.onStop} variant="warning" />
 			{:else if canRestart}
@@ -169,7 +168,7 @@
 				{#if canStopValidation}
 					<IconButton icon={X} tooltip="Stop validation" onclick={props.onStopValidation} variant="warning" />
 				{:else if canValidate}
-					<IconButton icon={CheckCircle2} tooltip="Start validation" onclick={props.onValidate} variant="success" />
+					<IconButton icon={CircleCheck} tooltip="Start validation" onclick={props.onValidate} variant="success" />
 				{:else if canRevalidate}
 					<IconButton icon={RotateCw} tooltip="Revalidate" onclick={props.onValidate} variant="primary" />
 				{/if}
@@ -194,7 +193,7 @@
 		<div class="flex items-center gap-2 text-xs">
 			{#if props.loadingStats}
 				<div class="flex items-center gap-1.5 text-muted-foreground">
-					<Loader2 class="w-3.5 h-3.5 animate-spin" />
+					<LoaderCircle class="w-3.5 h-3.5 animate-spin" />
 					<span class="text-xs">Loading...</span>
 				</div>
 			{:else}

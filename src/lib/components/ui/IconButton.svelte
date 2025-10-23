@@ -1,8 +1,7 @@
 <script lang="ts">
-	import type { ComponentType } from 'svelte'
 	import UiTooltip from './UiTooltip.svelte'
 
-	import { Loader2 } from 'lucide-svelte'
+	import { LoaderCircle } from 'lucide-svelte'
 
 	let {
 	icon,
@@ -15,7 +14,7 @@
 	class: className = '',
 	...props
 	}: {
-	icon: ComponentType
+	icon: any
 	tooltip: string
 	onclick?: () => void
 	variant?: 'default' | 'success' | 'destructive' | 'warning' | 'primary' | 'accent' | 'ghost' // NOTE: accent should only be used for disabled states
@@ -60,7 +59,7 @@
 			aria-label={tooltip}
 		>
 			{#if loading}
-				<Loader2 class={sizeClasses[size]} />
+				<LoaderCircle class={sizeClasses[size]} />
 			{:else}
 				<Icon class={sizeClasses[size]} />
 			{/if}

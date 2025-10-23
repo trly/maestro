@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Analysis } from '$lib/types'
-	import { ExternalLink, RotateCw, Trash2, AlertCircle, Loader2, Clock } from 'lucide-svelte'
+	import { ExternalLink, RotateCw, Trash2, TriangleAlert, LoaderCircle, Clock } from 'lucide-svelte'
 	import { openInBrowser } from '$lib/utils/browser'
 	import UiTooltip from './UiTooltip.svelte'
 	import { marked } from 'marked'
@@ -110,7 +110,7 @@
 	{#if reactiveAnalysis.status === 'failed' && reactiveAnalysis.errorMessage}
 		<div class="rounded-[var(--radius-sm)] bg-destructive/10 border-destructive/20 border p-3">
 			<div class="flex items-start gap-2">
-				<AlertCircle class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+				<TriangleAlert class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
 				<div class="text-sm text-destructive">
 					<div class="font-medium mb-1">Analysis Failed</div>
 					<div class="text-xs opacity-90">{reactiveAnalysis.errorMessage}</div>
@@ -129,7 +129,7 @@
 		<div class="rounded-[var(--radius-sm)] bg-muted/50 p-3">
 			<div class="flex items-center justify-between gap-2 text-sm text-muted-foreground">
 				<div class="flex items-center gap-2">
-					<Loader2 class="w-4 h-4 animate-spin" />
+					<LoaderCircle class="w-4 h-4 animate-spin" />
 					<span>Analysis in progress...</span>
 				</div>
 				{#if reactiveAnalysis.ampThreadUrl}
