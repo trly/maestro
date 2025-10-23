@@ -116,10 +116,12 @@ FROM executions";
 
 const SELECT_ANALYSIS: &str = "
 SELECT 
-	id, revision_id, type, status, analysis_prompt, analysis_result,
-	amp_thread_url, amp_session_id, error_message,
-	created_at, updated_at, completed_at
-FROM analyses";
+	a.id, a.revision_id, a.type, a.status, a.analysis_prompt, a.analysis_result,
+	a.amp_thread_url, a.amp_session_id, a.error_message,
+	COUNT(ae.execution_id) as execution_count,
+	a.created_at, a.updated_at, a.completed_at
+FROM analyses a
+LEFT JOIN analysis_executions ae ON a.id = ae.analysis_id";
 
 fn map_repository(row: &Row) -> rusqlite::Result<Repository> {
 	Ok(Repository {
@@ -176,6 +178,7 @@ fn map_analysis(row: &Row) -> rusqlite::Result<Analysis> {
 		amp_thread_url: row.get("amp_thread_url")?,
 		amp_session_id: row.get("amp_session_id")?,
 		error_message: row.get("error_message")?,
+		execution_count: row.get("execution_count")?,
 		created_at: row.get("created_at")?,
 		updated_at: row.get("updated_at")?,
 		completed_at: row.get("completed_at")?,
@@ -794,6 +797,7 @@ impl Store {
 			amp_thread_url: None,
 			amp_session_id: None,
 			error_message: None,
+			execution_count: 0,
 			created_at: now,
 			updated_at: now,
 			completed_at: None,
@@ -801,7 +805,7 @@ impl Store {
 	}
 
 	pub fn get_analysis(&self, id: &str) -> Result<Option<Analysis>> {
-		let mut stmt = self.conn.prepare_cached(&format!("{SELECT_ANALYSIS} WHERE id = ?1"))?;
+		let mut stmt = self.conn.prepare_cached(&format!("{SELECT_ANALYSIS} WHERE a.id = ?1 GROUP BY a.id"))?;
 		stmt.query_row([id], map_analysis)
 			.optional()
 			.map_err(Into::into)
@@ -813,8 +817,8 @@ impl Store {
 		analysis_type: Option<AnalysisType>,
 	) -> Result<Vec<Analysis>> {
 		let query = match analysis_type {
-			Some(_) => format!("{SELECT_ANALYSIS} WHERE revision_id = ?1 AND type = ?2 ORDER BY created_at DESC"),
-			None => format!("{SELECT_ANALYSIS} WHERE revision_id = ?1 ORDER BY created_at DESC"),
+			Some(_) => format!("{SELECT_ANALYSIS} WHERE a.revision_id = ?1 AND a.type = ?2 GROUP BY a.id ORDER BY a.created_at DESC"),
+			None => format!("{SELECT_ANALYSIS} WHERE a.revision_id = ?1 GROUP BY a.id ORDER BY a.created_at DESC"),
 		};
 
 		let mut stmt = self.conn.prepare(&query)?;

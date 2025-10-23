@@ -5,8 +5,11 @@
 	import RevisionHeader from '$lib/components/ui/RevisionHeader.svelte';
 	import PromptConsole from '$lib/components/ui/PromptConsole.svelte';
 	import ExecutionTable from '$lib/components/executions/ExecutionTable.svelte';
-	import AnalysisList from '$lib/components/ui/AnalysisList.svelte';
-	import { Tabs } from 'bits-ui';
+	import AnalysisTable from '$lib/components/analyses/AnalysisTable.svelte';
+	import AnalysisResult from '$lib/components/analyses/AnalysisResult.svelte';
+	import IconButton from '$lib/components/ui/IconButton.svelte';
+	import { X } from 'lucide-svelte';
+	import { Tabs, Dialog } from 'bits-ui';
 	import EditRepositoriesDialog from '$lib/components/ui/EditRepositoriesDialog.svelte';
 	import { api } from '$lib/api';
 	import { showToast } from '$lib/ui/toast';
@@ -18,6 +21,7 @@
 	import type { Repository as ProviderRepository } from '$lib/providers/types';
 	import { executionStore, analysisStore } from '$lib/stores/executionBus';
 	import { fetchExecutionStats, type ExecutionStats } from '$lib/stores/executionStats';
+	import { openInBrowser } from '$lib/utils/browser';
 	import * as ipc from '$lib/ipc';
 
 	let { data } = $props();
@@ -29,6 +33,8 @@
 	let repositories = $state<Map<string, DBRepository>>(new Map());
 	let liveStats = $state<Map<string, ExecutionStats>>(new Map());
 	let analyses = $state<Analysis[]>([]); // Analyses for current revision
+	let selectedAnalysis = $state<Analysis | null>(null);
+	let analysisDialogOpen = $state(false);
 	
 	// Loading states for async operations
 	let pushingExecutions = $state<Set<string>>(new Set());
@@ -1217,12 +1223,21 @@
 						</Tabs.Content>
 						
 						<Tabs.Content value="analyses" class="flex-1 min-h-0 overflow-hidden data-[state=active]:flex data-[state=inactive]:hidden">
-							<AnalysisList
-								{analyses}
-								onDelete={(analysis) => handleDeleteAnalysis(analysis.id)}
-								onRerun={handleRerunAnalysis}
-							/>
-						</Tabs.Content>
+						<AnalysisTable
+						{analyses}
+						revisionId={currentRevision?.id}
+						onDeleteAnalysis={(analysis) => handleDeleteAnalysis(analysis.id)}
+						 onViewThread={(analysis) => {
+						   if (analysis.ampThreadUrl) {
+									openInBrowser(analysis.ampThreadUrl);
+								}
+							}}
+						onViewAnalysis={(analysis) => {
+							selectedAnalysis = analysis;
+							analysisDialogOpen = true;
+						}}
+						/>
+					</Tabs.Content>
 					</Tabs.Root>
 			{:else}
 				<div class="flex items-center justify-center h-full">
@@ -1246,3 +1261,27 @@
 {#if diffViewerExecutionId}
 	<DiffViewer executionId={diffViewerExecutionId} bind:open={diffViewerOpen} />
 {/if}
+
+<Dialog.Root bind:open={analysisDialogOpen}>
+	<Dialog.Portal>
+		<Dialog.Overlay class="fixed inset-0 z-50 bg-black/80" />
+		<Dialog.Content class="fixed inset-4 z-50 rounded-lg border border-border bg-background shadow-lg flex flex-col overflow-hidden" forceMount={false}>
+			<div class="overflow-y-auto p-6 pt-16">
+				<Dialog.Close class="absolute top-4 right-4 z-10 text-muted-foreground hover:text-foreground transition-colors" aria-label="Close">
+					<X class="w-4 h-4" />
+				</Dialog.Close>
+				{#if selectedAnalysis}
+					<AnalysisResult
+						analysis={selectedAnalysis}
+						onDelete={() => {
+							if (selectedAnalysis) {
+								handleDeleteAnalysis(selectedAnalysis.id);
+								analysisDialogOpen = false;
+							}
+						}}
+					/>
+				{/if}
+			</div>
+		</Dialog.Content>
+	</Dialog.Portal>
+</Dialog.Root>

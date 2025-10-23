@@ -289,6 +289,7 @@ pub struct Analysis {
 	pub amp_thread_url: Option<String>,
 	pub amp_session_id: Option<String>,
 	pub error_message: Option<String>,
+	pub execution_count: i64,
 	pub created_at: i64,
 	pub updated_at: i64,
 	pub completed_at: Option<i64>,

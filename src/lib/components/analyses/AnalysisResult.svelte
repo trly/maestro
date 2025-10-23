@@ -2,7 +2,7 @@
 	import type { Analysis } from '$lib/types'
 	import { ExternalLink, RotateCw, Trash2, TriangleAlert, LoaderCircle, Clock } from 'lucide-svelte'
 	import { openInBrowser } from '$lib/utils/browser'
-	import UiTooltip from './UiTooltip.svelte'
+	import UiTooltip from '$lib/components/ui/UiTooltip.svelte'
 	import { marked } from 'marked'
 	import { analysisStore } from '$lib/stores/executionBus'
 	import { getAnalysisStatusConfig } from '$lib/utils/statusConfig'
@@ -38,11 +38,11 @@
 	}
 </script>
 
-<div class="rounded-[var(--radius)] border-border border bg-card p-4 space-y-3">
+<div class="space-y-6">
 	<div class="flex items-start justify-between gap-4">
 		<div class="flex-1 space-y-2">
 			<div class="flex items-center gap-2">
-				<h4 class="text-sm font-medium text-card-foreground">
+				<h4 class="text-lg font-medium text-foreground">
 					{typeLabel} Analysis
 				</h4>
 				<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md {statusConfig.bgClass} {statusConfig.textClass} text-xs font-medium">
@@ -108,47 +108,39 @@
 	</div>
 
 	{#if reactiveAnalysis.status === 'failed' && reactiveAnalysis.errorMessage}
-		<div class="rounded-[var(--radius-sm)] bg-destructive/10 border-destructive/20 border p-3">
-			<div class="flex items-start gap-2">
-				<TriangleAlert class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
-				<div class="text-sm text-destructive">
-					<div class="font-medium mb-1">Analysis Failed</div>
-					<div class="text-xs opacity-90">{reactiveAnalysis.errorMessage}</div>
-				</div>
+		<div class="flex items-start gap-2 text-destructive">
+			<TriangleAlert class="w-4 h-4 mt-0.5 flex-shrink-0" />
+			<div class="text-sm">
+				<div class="font-medium mb-1">Analysis Failed</div>
+				<div class="text-xs opacity-90">{reactiveAnalysis.errorMessage}</div>
 			</div>
 		</div>
 	{/if}
 
 	{#if reactiveAnalysis.analysisResult}
-		<div class="rounded-[var(--radius-sm)] bg-muted/50 p-3">
-			<div class="prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground">
-				{@html formattedResult}
-			</div>
+		<div class="prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground">
+			{@html formattedResult}
 		</div>
 	{:else if reactiveAnalysis.status === 'running'}
-		<div class="rounded-[var(--radius-sm)] bg-muted/50 p-3">
-			<div class="flex items-center justify-between gap-2 text-sm text-muted-foreground">
-				<div class="flex items-center gap-2">
-					<LoaderCircle class="w-4 h-4 animate-spin" />
-					<span>Analysis in progress...</span>
-				</div>
-				{#if reactiveAnalysis.ampThreadUrl}
-					<button
-						onclick={() => openInBrowser(reactiveAnalysis.ampThreadUrl || '')}
-						class="flex items-center gap-1 text-xs hover:text-foreground transition-colors"
-					>
-						<span>View Thread</span>
-						<ExternalLink class="w-3 h-3" />
-					</button>
-				{/if}
+		<div class="flex items-center justify-between gap-2 text-sm text-muted-foreground">
+			<div class="flex items-center gap-2">
+				<LoaderCircle class="w-4 h-4 animate-spin" />
+				<span>Analysis in progress...</span>
 			</div>
+			{#if reactiveAnalysis.ampThreadUrl}
+				<button
+					onclick={() => openInBrowser(reactiveAnalysis.ampThreadUrl || '')}
+					class="flex items-center gap-1 text-xs hover:text-foreground transition-colors"
+				>
+					<span>View Thread</span>
+					<ExternalLink class="w-3 h-3" />
+				</button>
+			{/if}
 		</div>
 	{:else if reactiveAnalysis.status === 'pending'}
-		<div class="rounded-[var(--radius-sm)] bg-muted/50 p-3">
-			<div class="flex items-center gap-2 text-sm text-muted-foreground">
-				<Clock class="w-4 h-4" />
-				<span>Analysis pending...</span>
-			</div>
+		<div class="flex items-center gap-2 text-sm text-muted-foreground">
+			<Clock class="w-4 h-4" />
+			<span>Analysis pending...</span>
 		</div>
 	{/if}
 </div>

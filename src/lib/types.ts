@@ -94,6 +94,7 @@ export interface Analysis {
 	ampThreadUrl: string | null;
 	ampSessionId: string | null;
 	errorMessage: string | null;
+	executionCount: number;
 	createdAt: number;
 	updatedAt: number;
 	completedAt: number | null;
