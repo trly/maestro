@@ -82,6 +82,7 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 	}
 
 	let hasAutoNavigated = $state(false);
+	let previousPromptSetId = $state<string | null>(null);
 
 	onMount(loadPromptSets);
 	
@@ -89,6 +90,18 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 	$effect(() => {
 		const _ = $sidebarStore; // Subscribe to refresh trigger
 		loadPromptSets();
+	});
+
+	// Auto-expand accordion for active prompt set (only when navigating to a different prompt set)
+	$effect(() => {
+		const promptSetMatch = pathname.match(/^\/promptsets\/([^\/]+)/);
+		if (promptSetMatch) {
+			const promptSetId = promptSetMatch[1];
+			// Only auto-expand when navigating to a different prompt set
+			if (previousPromptSetId !== promptSetId && !accordionValue.includes(promptSetId)) {
+				accordionValue = [...accordionValue, promptSetId];
+			}
+		}
 	});
 
 	// Auto-select newest revision when first landing on a prompt set without a revision
@@ -102,11 +115,24 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 			const promptSetId = promptSetMatch[1];
 			const revisions = revisionsByPromptSet.get(promptSetId);
 			
-			// If this prompt set has revisions, navigate to the newest one
-			if (revisions && revisions.length > 0) {
+			// Don't auto-select if we just switched from another prompt set with a revision
+			const switchingPromptSets = previousPromptSetId && previousPromptSetId !== promptSetId;
+			
+			// If this prompt set has revisions, navigate to the newest one (unless switching prompt sets)
+			if (revisions && revisions.length > 0 && !switchingPromptSets) {
 				const newestRevision = revisions[0]; // Revisions are already sorted by createdAt desc
 				goto(`/promptsets/${promptSetId}?revision=${newestRevision.id}`, { replaceState: true });
 				hasAutoNavigated = true;
+			}
+			
+			previousPromptSetId = promptSetId;
+		}
+		
+		// Track prompt set changes
+		if (promptSetMatch) {
+			const promptSetId = promptSetMatch[1];
+			if (currentRevisionParam && previousPromptSetId !== promptSetId) {
+				previousPromptSetId = promptSetId;
 			}
 		}
 		
@@ -262,7 +288,13 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 									<Accordion.Trigger
 										class="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left hover:bg-muted/50 rounded-md transition-colors group"
 									>
-										<div class="flex-1 min-w-0">
+										<button
+											onclick={(e) => {
+												e.stopPropagation();
+												goto(`/promptsets/${ps.id}`);
+											}}
+											class="flex-1 min-w-0 text-left"
+										>
 											<h3 class="font-medium text-foreground text-xs truncate">
 												{ps.name}
 											</h3>
@@ -270,7 +302,7 @@ import UiTooltip from '$lib/components/ui/UiTooltip.svelte';
 												{ps.repositoryIds.length} {ps.repositoryIds.length === 1 ? 'repo' : 'repos'}
 												· {revisions.length} {revisions.length === 1 ? 'revision' : 'revisions'}
 											</p>
-										</div>
+										</button>
 										
 										<div class="flex items-center gap-1">
 											<UiTooltip content="Create new revision">
