@@ -11,6 +11,7 @@ export interface Repository {
 	provider: RepositoryProvider;
 	providerId: string;
 	name: string | null;
+	defaultBranch: string | null;
 	lastSyncedAt: number | null;
 	createdAt: number;
 }

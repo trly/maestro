@@ -1,8 +1,8 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use tauri::AppHandle;
 
-use crate::ci::{CiContext, GitHubProvider, check_ci_once};
-use crate::commands::{executor_events, tokens};
+use crate::ci::{CiContext, check_ci_once};
+use crate::commands::executor_events;
 use crate::db::store::{Store, ExecutionUpdates};
 use crate::types::CiStatus;
 
@@ -13,13 +13,6 @@ pub async fn start_ci_check(
 	app: AppHandle,
 	store: tauri::State<'_, Mutex<Store>>,
 ) -> Result<(), String> {
-	// Get GitHub token from keyring
-	let github_token = tokens::get_token_value("github_token")
-		.map_err(|e| format!("Failed to access token: {}", e))?
-		.ok_or_else(|| "GitHub token not configured. Please set it in Settings.".to_string())?;
-	
-	let provider = Arc::new(GitHubProvider::new(github_token).map_err(|e| e.to_string())?);
-	
 	// Get execution details
 	let execution = {
 		let store = store.lock().map_err(|e| e.to_string())?;
@@ -47,24 +40,27 @@ pub async fn start_ci_check(
 			.ok_or_else(|| format!("Repository {} not found", execution.repository_id))?
 	};
 	
-	// Parse owner/repo from provider_id (format: "owner/repo")
-	let parts: Vec<&str> = repository.provider_id.split('/').collect();
-	if parts.len() != 2 {
-		return Err(format!("Invalid provider_id format: {}", repository.provider_id));
-	}
-	let owner = parts[0];
-	let repo = parts[1];
+	// Parse owner/repo from provider_id
+	let (owner, repo_name) = crate::util::git::parse_provider_id(&repository.provider_id)
+		.map_err(|e| format!("Failed to parse provider ID: {}", e))?;
+	
+	// Create CI provider using the provider trait
+	let provider = crate::ci::provider::create_ci_provider(&repository.provider, &repository.provider_id)
+		.await
+		.map_err(|e| format!("Failed to create CI provider: {}", e))?;
 	
 	let ctx = CiContext {
-		owner: owner.to_string(),
-		repo: repo.to_string(),
+		owner,
+		repo: repo_name,
 		commit_sha: commit_sha.clone(),
 		branch: branch.clone(),
 		provider_cfg: serde_json::json!({}),
 	};
 	
+	// Get initial CI URL from provider
+	let ci_url = provider.get_commit_url(&commit_sha);
+	
 	// Emit initial pending status
-	let ci_url = format!("https://github.com/{}/{}/commit/{}/checks", owner, repo, commit_sha);
 	executor_events::emit_execution_ci(&app, &execution_id, "pending", Some(&ci_url));
 	
 	// Update database with pending status
@@ -108,13 +104,6 @@ pub async fn refresh_ci_status(
 	app: AppHandle,
 	store: tauri::State<'_, Mutex<Store>>,
 ) -> Result<(), String> {
-	// Get GitHub token from keyring
-	let github_token = tokens::get_token_value("github_token")
-		.map_err(|e| format!("Failed to access token: {}", e))?
-		.ok_or_else(|| "GitHub token not configured. Please set it in Settings.".to_string())?;
-	
-	let provider = Arc::new(GitHubProvider::new(github_token).map_err(|e| e.to_string())?);
-	
 	// Get execution details
 	let execution = {
 		let store = store.lock().map_err(|e| e.to_string())?;
@@ -142,17 +131,18 @@ pub async fn refresh_ci_status(
 			.ok_or_else(|| format!("Repository {} not found", execution.repository_id))?
 	};
 	
-	// Parse owner/repo from provider_id (format: "owner/repo")
-	let parts: Vec<&str> = repository.provider_id.split('/').collect();
-	if parts.len() != 2 {
-		return Err(format!("Invalid provider_id format: {}", repository.provider_id));
-	}
-	let owner = parts[0];
-	let repo = parts[1];
+	// Parse owner/repo from provider_id
+	let (owner, repo_name) = crate::util::git::parse_provider_id(&repository.provider_id)
+		.map_err(|e| format!("Failed to parse provider ID: {}", e))?;
+	
+	// Create CI provider using the provider trait
+	let provider = crate::ci::provider::create_ci_provider(&repository.provider, &repository.provider_id)
+		.await
+		.map_err(|e| format!("Failed to create CI provider: {}", e))?;
 	
 	let ctx = CiContext {
-		owner: owner.to_string(),
-		repo: repo.to_string(),
+		owner,
+		repo: repo_name,
 		commit_sha: commit_sha.clone(),
 		branch,
 		provider_cfg: serde_json::json!({}),

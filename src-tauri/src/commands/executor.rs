@@ -17,14 +17,21 @@ use crate::Paths;
 use super::executor_events::{emit_execution_session, emit_execution_status, emit_execution_validation, emit_execution_commit, emit_execution_progress};
 
 async fn fetch_default_branch_from_github(owner: &str, repo: &str) -> Result<String> {
-	let octocrab = octocrab::instance();
-	let repo_info = octocrab
-		.repos(owner, repo)
-		.get()
-		.await
-		.context("Failed to fetch repository info from GitHub")?;
+	use crate::git::{GitProvider, GitProviderContext, GitHubGitProvider};
+	use crate::commands::tokens::get_token_value;
 	
-	Ok(repo_info.default_branch.unwrap_or_else(|| "main".to_string()))
+	let github_token = get_token_value("github_token")
+		.map_err(|e| anyhow::anyhow!("Failed to access GitHub token: {}", e))?
+		.ok_or_else(|| anyhow::anyhow!("GitHub token not configured"))?;
+	
+	let provider = GitHubGitProvider::new(github_token)?;
+	let ctx = GitProviderContext {
+		owner: owner.to_string(),
+		repo: repo.to_string(),
+	};
+	
+	let metadata = provider.get_repo_metadata(&ctx).await?;
+	Ok(metadata.default_branch)
 }
 
 lazy_static::lazy_static! {
@@ -1341,45 +1348,40 @@ pub async fn push_commit(
 
 	emit_execution_progress(&app, &execution_id, "Push completed successfully");
 
-	// Wait for GitHub to process the push
+	// Wait for provider to process the push
 	tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
-	// Start CI checking automatically after push
-	// Get repository details to construct CI context
-	let (owner, repo_name) = {
+	// Start CI checking automatically after push using CiProvider
+	let (provider_name, provider_id) = {
 		let store_state = app.state::<Mutex<Store>>();
 		let store = store_state.lock().unwrap();
 		let repository = store.get_repository(&repository_id)
 			.map_err(|e| e.to_string())?
 			.ok_or_else(|| format!("Repository {} not found", repository_id))?;
 		
-		// Parse owner/repo from provider_id (format: "owner/repo")
-		let parts: Vec<&str> = repository.provider_id.split('/').collect();
-		if parts.len() != 2 {
-			return Err(format!("Invalid provider_id format: {}", repository.provider_id));
-		}
-		(parts[0].to_string(), parts[1].to_string())
+		(repository.provider.clone(), repository.provider_id.clone())
 	};
 
-	// Check if GitHub token is configured (from keyring, not env var)
-	use crate::commands::tokens::get_token_value;
-	if let Ok(Some(github_token)) = get_token_value("github_token") {
-		// Import CI modules
-		use crate::ci::{CiContext, GitHubProvider, CiProvider};
-		use std::sync::Arc;
+	// Create CI provider using the provider trait
+	if let Ok(provider) = crate::ci::provider::create_ci_provider(&provider_name, &provider_id).await {
+		use crate::ci::CiContext;
 		
-		let provider = Arc::new(GitHubProvider::new(github_token).map_err(|e| e.to_string())?);
+		// Parse owner/repo from provider_id
+		let (owner, repo_name) = match crate::util::git::parse_provider_id(&provider_id) {
+			Ok(parsed) => parsed,
+			Err(_) => (String::new(), String::new()),
+		};
 		
 		let ctx = CiContext {
-			owner: owner.clone(),
-			repo: repo_name.clone(),
+			owner,
+			repo: repo_name,
 			commit_sha: commit_sha.clone(),
 			branch: branch.clone(),
 			provider_cfg: serde_json::json!({}),
 		};
 		
 		// Check if CI is configured by polling once
-		let ci_url = format!("https://github.com/{}/{}/commit/{}/checks", owner, repo_name, commit_sha);
+		let ci_url = provider.get_commit_url(&commit_sha);
 		let ci_status = match provider.poll(&ctx).await {
 			Ok(checks) if checks.is_empty() => {
 				// No CI configured
@@ -1393,7 +1395,7 @@ pub async fn push_commit(
 			},
 			Err(e) => {
 				// API error - assume not configured to avoid false positives
-				log::warn!("Failed to check CI for {}/{} @ {}: {}", owner, repo_name, commit_sha, e);
+				log::warn!("[push_commit] Failed to check CI @ {}: {}", commit_sha, e);
 				use crate::types::CiStatus;
 				CiStatus::NotConfigured
 			}

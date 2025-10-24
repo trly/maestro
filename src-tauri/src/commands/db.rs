@@ -1,19 +1,9 @@
 use crate::db::store::{Store, ExecutionUpdates, Repository, PromptSet, PromptRevision, Execution};
+use crate::git::GitProviderContext;
 use std::sync::Mutex;
 use tauri::State;
 
 type StoreState<'a> = State<'a, Mutex<Store>>;
-
-pub async fn fetch_github_default_branch(owner: &str, repo: &str) -> Result<String, String> {
-	let octocrab = octocrab::instance();
-	let repo_info = octocrab
-		.repos(owner, repo)
-		.get()
-		.await
-		.map_err(|e| format!("GitHub API request failed: {}", e))?;
-	
-	Ok(repo_info.default_branch.unwrap_or_else(|| "main".to_string()))
-}
 
 #[tauri::command]
 pub async fn sync_repository_metadata(
@@ -27,17 +17,22 @@ pub async fn sync_repository_metadata(
 		.map_err(|e| e.to_string())?
 		.ok_or_else(|| "Repository not found".to_string())?;
 	
-	if repository.provider != "github" {
-		return Err("Only GitHub repositories supported".to_string());
-	}
+	// Create the appropriate git provider
+	let provider = crate::git::git_provider::create_git_provider(&repository.provider, &repository.provider_id)
+		.map_err(|e| format!("Failed to create git provider: {}", e))?;
 	
-	let parts: Vec<&str> = repository.provider_id.split('/').collect();
-	if parts.len() != 2 {
-		return Err("Invalid provider_id format".to_string());
-	}
+	// Parse owner/repo from provider_id
+	let (owner, repo) = crate::util::git::parse_provider_id(&repository.provider_id)
+		.map_err(|e| format!("Failed to parse provider ID: {}", e))?;
 	
-	let (owner, repo) = (parts[0], parts[1]);
-	let default_branch = fetch_github_default_branch(owner, repo).await?;
+	let ctx = GitProviderContext {
+		owner,
+		repo,
+	};
+	
+	// Fetch default branch from provider
+	let default_branch = provider.fetch_default_branch(&ctx).await
+		.map_err(|e| format!("Failed to fetch default branch: {}", e))?;
 	
 	store
 		.lock()
@@ -60,18 +55,21 @@ pub async fn create_repository(
 		.create_repository(&provider, &provider_id)
 		.map_err(|e| e.to_string())?;
 	
-	// Fetch default branch from GitHub if provider is github
-	if provider == "github" {
-		if let Ok(default_branch) = fetch_github_default_branch(
-			provider_id.split('/').next().unwrap_or(""),
-			provider_id.split('/').nth(1).unwrap_or("")
-		).await {
-			store
-				.lock()
-				.unwrap()
-				.update_repository_default_branch(&repo.id, &default_branch)
-				.map_err(|e| e.to_string())?;
-			repo.default_branch = Some(default_branch);
+	// Fetch default branch using GitProvider
+	if let Ok(git_provider) = crate::git::git_provider::create_git_provider(&provider, &provider_id) {
+		if let Ok((owner, repo_name)) = crate::util::git::parse_provider_id(&provider_id) {
+			let ctx = GitProviderContext {
+				owner,
+				repo: repo_name,
+			};
+			if let Ok(default_branch) = git_provider.fetch_default_branch(&ctx).await {
+				store
+					.lock()
+					.unwrap()
+					.update_repository_default_branch(&repo.id, &default_branch)
+					.map_err(|e| e.to_string())?;
+				repo.default_branch = Some(default_branch);
+			}
 		}
 	}
 	

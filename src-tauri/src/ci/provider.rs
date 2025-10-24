@@ -1,4 +1,5 @@
 use anyhow::Result;
+use std::sync::Arc;
 use crate::types::CiStatus;
 
 /// Context passed to CI providers for polling
@@ -46,4 +47,25 @@ pub trait CiProvider: Send + Sync {
     /// Poll for CI status
     /// Returns a list of checks (can be multiple for providers like GitHub that aggregate multiple sources)
     async fn poll(&self, ctx: &CiContext) -> Result<Vec<CiCheck>>;
+    
+    /// Get URL for viewing commit CI status
+    fn get_commit_url(&self, commit_sha: &str) -> String;
+}
+
+/// Factory function to create a CI provider
+pub async fn create_ci_provider(provider: &str, _provider_id: &str) -> Result<Arc<dyn CiProvider>> {
+    use crate::commands::tokens::get_token_value;
+    use crate::ci::GitHubCiProvider;
+    
+    match provider {
+        "github" => {
+            let token = get_token_value("github_token")
+                .map_err(|e| anyhow::anyhow!("Failed to access GitHub token: {}", e))?
+                .ok_or_else(|| anyhow::anyhow!("GitHub token not configured"))?;
+            
+            let provider = GitHubCiProvider::new(token)?;
+            Ok(Arc::new(provider))
+        }
+        _ => Err(anyhow::anyhow!("Unsupported CI provider: {}", provider))
+    }
 }
