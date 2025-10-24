@@ -2,6 +2,11 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.0.9] - 2025-10-24
+
+### Changed
+- Optimized CI/CD to reuse build artifacts from commit CI runs instead of re-running CI on tag push
+
 ## [0.0.8] - 2025-10-24
 
 ### Changed
