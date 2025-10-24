@@ -1,105 +1,42 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
-      - "v[0-9]+.[0-9]+.[0-9]+-*"
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
 
 jobs:
-  build-linux:
+  verify-and-release:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install mise
-        uses: jdx/mise-action@v2
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf rpm
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install Node dependencies
-        run: bun install
-
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --locked
-
-      - name: Build app (deb)
-        run: cargo tauri build --bundles deb
-
-      - name: Build app (rpm)
-        run: cargo tauri build --bundles rpm
-
-      - name: Build app (AppImage)
-        run: cargo tauri build --bundles appimage
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-builds
-          path: |
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/rpm/*.rpm
-            src-tauri/target/release/bundle/appimage/*.AppImage
-          if-no-files-found: error
-
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install mise
-        uses: jdx/mise-action@v2
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install Node dependencies
-        run: bun install
-
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --locked
-
-      - name: Build app (dmg)
-        run: cargo tauri build --bundles dmg
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-builds
-          path: src-tauri/target/release/bundle/dmg/*.dmg
-          if-no-files-found: error
-
-  create-release:
-    needs: [build-linux, build-macos]
-    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'refs/tags/v')
     permissions:
       contents: write
       actions: read
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Download Linux build artifact
+        uses: actions/download-artifact@v4
         with:
-          name: linux-builds
+          name: linux-build
           path: ./builds/linux
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
 
-      - uses: actions/download-artifact@v4
+      - name: Download macOS build artifact
+        uses: actions/download-artifact@v4
         with:
-          name: macos-builds
+          name: macos-build
           path: ./builds/macos
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           prerelease: true
+          tag_name: ${{ github.event.workflow_run.head_branch }}
           files: |
             builds/linux/**/*.deb
-            builds/linux/**/*.rpm
-            builds/linux/**/*.AppImage
             builds/macos/**/*.dmg
           generate_release_notes: true
           fail_on_unmatched_files: true
