@@ -1,26 +1,33 @@
 name: Release
 
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+*']
 
 jobs:
   verify-and-release:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'refs/tags/v')
     permissions:
       contents: write
       actions: read
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Get CI run for this commit
+        id: ci-run
+        run: |
+          RUN_ID=$(gh run list --workflow=ci.yml --commit=${{ github.sha }} --json databaseId --jq '.[0].databaseId')
+          echo "run-id=$RUN_ID" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Download Linux build artifact
         uses: actions/download-artifact@v4
         with:
           name: linux-build
           path: ./builds/linux
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ steps.ci-run.outputs.run-id }}
 
       - name: Download macOS build artifact
         uses: actions/download-artifact@v4
@@ -28,13 +35,12 @@ jobs:
           name: macos-build
           path: ./builds/macos
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ steps.ci-run.outputs.run-id }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           prerelease: true
-          tag_name: ${{ github.event.workflow_run.head_branch }}
           files: |
             builds/linux/**/*.deb
             builds/macos/**/*.dmg
