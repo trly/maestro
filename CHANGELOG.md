@@ -2,6 +2,11 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.0.8] - 2025-10-24
+
+### Changed
+- Refactored CI workflow to separate lint, build, and test jobs with platform matrix
+
 ## [0.0.7] - 2025-10-24
 
 ### Fixed
