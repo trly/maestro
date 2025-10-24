@@ -94,8 +94,8 @@ jobs:
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
-        prerelease: true
         with:
+          prerelease: true
           files: |
             builds/linux/**/*.deb
             builds/linux/**/*.rpm

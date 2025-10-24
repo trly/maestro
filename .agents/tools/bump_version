@@ -1,0 +1,148 @@
+#!/usr/bin/env bun
+import fs from "node:fs"
+import { execSync } from "node:child_process"
+
+const action = process.env.TOOLBOX_ACTION
+
+if (action === 'describe') showDescription()
+else if (action === 'execute') execute()
+
+function showDescription() {
+  process.stdout.write(
+    JSON.stringify({
+      name: "bump_version",
+      description: 'You must use this tool instead of Bash to bump version numbers across the codebase. It updates package.json and tauri.conf.json, then prompts you to update CHANGELOG and create a commit with tag.',
+      args: {
+        major: ['boolean', 'Bump major version (x.0.0)'],
+        minor: ['boolean', 'Bump minor version (0.x.0)'],
+        fix: ['boolean', 'Bump patch/fix version (0.0.x)'],
+        rc: ['string', 'Create release candidate for specified semver (e.g., "0.2.0" becomes "0.2.0-rc.1")'],
+        version: ['string', 'Set explicit version number (e.g., "1.2.3"), overrides all other flags']
+      },
+    }),
+  )
+}
+
+function execute() {
+  const params = JSON.parse(fs.readFileSync(0, 'utf-8'))
+  
+  // If explicit version is provided, use it
+  if (params.version) {
+    const newVersion = params.version
+    updateVersionFiles(newVersion)
+    promptAgent(newVersion)
+    return
+  }
+
+  // Handle RC version
+  if (params.rc) {
+    const baseVersion = params.rc
+    if (!baseVersion.match(/^\d+\.\d+\.\d+$/)) {
+      process.stderr.write(`RC version must be a valid semver (e.g., "0.2.0"), got: ${baseVersion}\n`)
+      process.exit(1)
+    }
+    
+    const nextRcVersion = getNextRcVersion(baseVersion)
+    updateVersionFiles(nextRcVersion)
+    promptAgent(nextRcVersion)
+    return
+  }
+
+  // Get current version from package.json
+  const pkgPath = 'package.json'
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'))
+  const currentVersion = pkg.version
+  
+  // Count flags
+  const flags = [params.major, params.minor, params.fix].filter(Boolean).length
+  if (flags === 0) {
+    process.stderr.write('You must specify one of: --major, --minor, --fix, --rc, or provide a version string\n')
+    process.exit(1)
+  }
+  if (flags > 1) {
+    process.stderr.write('Only one of --major, --minor, or --fix can be specified\n')
+    process.exit(1)
+  }
+
+  const newVersion = bumpVersion(currentVersion, params)
+  updateVersionFiles(newVersion)
+  promptAgent(newVersion)
+}
+
+function bumpVersion(current, params) {
+  // Strip any pre-release suffix
+  const base = current.split('-')[0]
+  const [major, minor, patch] = base.split('.').map(Number)
+  
+  if (params.major) return `${major + 1}.0.0`
+  if (params.minor) return `${major}.${minor + 1}.0`
+  if (params.fix) return `${major}.${minor}.${patch + 1}`
+  
+  throw new Error('Invalid bump type')
+}
+
+function getNextRcVersion(baseVersion) {
+  try {
+    // Get all tags matching this base version
+    const tags = execSync(`git tag --list 'v${baseVersion}-rc.*'`, { encoding: 'utf-8' })
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+    
+    if (tags.length === 0) {
+      return `${baseVersion}-rc.1`
+    }
+    
+    // Extract RC numbers and find the highest
+    const rcNumbers = tags.map(tag => {
+      const match = tag.match(/v\d+\.\d+\.\d+-rc\.(\d+)/)
+      return match ? parseInt(match[1], 10) : 0
+    })
+    
+    const maxRc = Math.max(...rcNumbers)
+    return `${baseVersion}-rc.${maxRc + 1}`
+  } catch (err) {
+    // If git command fails, assume this is the first RC
+    return `${baseVersion}-rc.1`
+  }
+}
+
+function updateVersionFiles(version) {
+  // Update package.json
+  const pkgPath = 'package.json'
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'))
+  pkg.version = version
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
+  
+  // Update tauri.conf.json
+  const tauriPath = 'src-tauri/tauri.conf.json'
+  const tauri = JSON.parse(fs.readFileSync(tauriPath, 'utf-8'))
+  tauri.version = version
+  fs.writeFileSync(tauriPath, JSON.stringify(tauri, null, 2) + '\n')
+  
+  // Update Cargo.toml
+  const cargoPath = 'src-tauri/Cargo.toml'
+  const cargoContent = fs.readFileSync(cargoPath, 'utf-8')
+  const updatedCargo = cargoContent.replace(
+    /^version = ".*"$/m,
+    `version = "${version}"`
+  )
+  fs.writeFileSync(cargoPath, updatedCargo)
+  
+  process.stdout.write(`Updated version to ${version} in:\n`)
+  process.stdout.write(`  - package.json\n`)
+  process.stdout.write(`  - src-tauri/tauri.conf.json\n`)
+  process.stdout.write(`  - src-tauri/Cargo.toml\n\n`)
+}
+
+function promptAgent(version) {
+  process.stdout.write(`Version files updated to ${version}.\n\n`)
+  process.stdout.write(`Please complete the following tasks:\n\n`)
+  process.stdout.write(`1. Update CHANGELOG.md with an entry for version ${version}\n`)
+  process.stdout.write(`   - List all fixes, features, and deprecations/removals since the last version tag\n`)
+  process.stdout.write(`   - Use git log to find changes since the last tag\n\n`)
+  process.stdout.write(`2. Commit the changes with title: "bump: version ${version}"\n`)
+  process.stdout.write(`   - Include package.json, src-tauri/tauri.conf.json, src-tauri/Cargo.toml, and CHANGELOG.md\n\n`)
+  process.stdout.write(`3. Tag the commit with: v${version}\n\n`)
+  process.stdout.write(`4. DO NOT PUSH commits or tags - they should remain local for review\n`)
+}
