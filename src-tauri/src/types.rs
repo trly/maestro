@@ -146,6 +146,7 @@ pub enum CiStatus {
 	Failed,
 	Skipped,
 	NotConfigured,
+	NotPushed,
 }
 
 impl FromSql for CiStatus {
@@ -156,6 +157,7 @@ impl FromSql for CiStatus {
 			"failed" => Ok(CiStatus::Failed),
 			"skipped" => Ok(CiStatus::Skipped),
 			"not_configured" => Ok(CiStatus::NotConfigured),
+			"not_pushed" => Ok(CiStatus::NotPushed),
 			other => Err(FromSqlError::Other(
 				format!("Invalid CiStatus: {}", other).into(),
 			)),
@@ -171,6 +173,7 @@ impl ToSql for CiStatus {
 			CiStatus::Failed => "failed",
 			CiStatus::Skipped => "skipped",
 			CiStatus::NotConfigured => "not_configured",
+			CiStatus::NotPushed => "not_pushed",
 		};
 		Ok(ToSqlOutput::from(s))
 	}

@@ -48,7 +48,7 @@ export type PromptStatus = 'passed' | 'failed' | null;
 
 export type CommitStatus = 'none' | 'uncommitted' | 'committed';
 
-export type CiStatus = 'pending' | 'passed' | 'failed' | 'skipped' | 'not_configured';
+export type CiStatus = 'pending' | 'passed' | 'failed' | 'skipped' | 'not_configured' | 'not_pushed';
 
 export interface Execution {
 	id: string;

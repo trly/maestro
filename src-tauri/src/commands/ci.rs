@@ -5,6 +5,8 @@ use crate::ci::{CiContext, check_ci_once};
 use crate::commands::executor_events;
 use crate::db::store::{Store, ExecutionUpdates};
 use crate::types::CiStatus;
+use crate::util::paths::admin_repo_path;
+use crate::Paths;
 
 /// Start CI checking for an execution (spawns background polling)
 #[tauri::command]
@@ -12,6 +14,7 @@ pub async fn start_ci_check(
 	execution_id: String,
 	app: AppHandle,
 	store: tauri::State<'_, Mutex<Store>>,
+	paths: tauri::State<'_, Paths>,
 ) -> Result<(), String> {
 	// Get execution details
 	let execution = {
@@ -43,6 +46,26 @@ pub async fn start_ci_check(
 	// Parse owner/repo from provider_id
 	let (owner, repo_name) = crate::util::git::parse_provider_id(&repository.provider_id)
 		.map_err(|e| format!("Failed to parse provider ID: {}", e))?;
+	
+	// Check if commit has been pushed to remote
+	let repo_path = admin_repo_path(&paths, &owner, &repo_name);
+	let is_pushed = crate::git::is_commit_pushed(&repo_path, &commit_sha)
+	.unwrap_or(false);
+
+	if !is_pushed {
+		// Set status to not_pushed and return
+		let store = store.lock().unwrap();
+		store.update_execution(
+			&execution_id,
+			ExecutionUpdates {
+				ci_status: Some(CiStatus::NotPushed),
+				..Default::default()
+			},
+		).map_err(|e| format!("Failed to update status: {}", e))?;
+		
+		executor_events::emit_execution_ci(&app, &execution_id, "not_pushed", None);
+		return Ok(());
+	}
 	
 	// Create CI provider using the provider trait
 	let provider = crate::ci::provider::create_ci_provider(&repository.provider, &repository.provider_id)
@@ -103,6 +126,7 @@ pub async fn refresh_ci_status(
 	execution_id: String,
 	app: AppHandle,
 	store: tauri::State<'_, Mutex<Store>>,
+	paths: tauri::State<'_, Paths>,
 ) -> Result<(), String> {
 	// Get execution details
 	let execution = {
@@ -135,6 +159,26 @@ pub async fn refresh_ci_status(
 	let (owner, repo_name) = crate::util::git::parse_provider_id(&repository.provider_id)
 		.map_err(|e| format!("Failed to parse provider ID: {}", e))?;
 	
+	// Check if commit has been pushed to remote
+	let repo_path = admin_repo_path(&paths, &owner, &repo_name);
+	let is_pushed = crate::git::is_commit_pushed(&repo_path, &commit_sha)
+	.unwrap_or(false);
+
+	if !is_pushed {
+		// Set status to not_pushed and return
+		let store = store.lock().unwrap();
+		store.update_execution(
+			&execution_id,
+			ExecutionUpdates {
+				ci_status: Some(CiStatus::NotPushed),
+				..Default::default()
+			},
+		).map_err(|e| format!("Failed to update status: {}", e))?;
+		
+		executor_events::emit_execution_ci(&app, &execution_id, "not_pushed", None);
+		return Ok(());
+	}
+
 	// Create CI provider using the provider trait
 	let provider = crate::ci::provider::create_ci_provider(&repository.provider, &repository.provider_id)
 		.await

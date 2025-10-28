@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { CiStatus } from '../../types';
 	import UiTooltip from './UiTooltip.svelte';
-	import { CircleCheck, CircleX, LoaderCircle, CircleMinus } from 'lucide-svelte';
+	import { CircleCheck, CircleX, LoaderCircle, CircleMinus, CloudOff } from 'lucide-svelte';
 	import { openInBrowser } from '$lib/utils/browser';
 
 	let props: {
@@ -19,6 +19,7 @@
 			case 'failed': return { Icon: CircleX, class: 'text-destructive', label: 'CI failed' };
 			case 'skipped': return { Icon: CircleMinus, class: 'text-muted-foreground', label: 'No CI configured for this branch' };
 			case 'not_configured': return { Icon: CircleMinus, class: 'text-muted-foreground', label: 'No CI configured' };
+			case 'not_pushed': return { Icon: CloudOff, class: 'text-muted-foreground', label: 'Commit not pushed to remote' };
 			default: return null;
 		}
 	});
@@ -33,7 +34,7 @@
 </script>
 
 {#if icon}
-	<UiTooltip content={props.isRefreshing ? "Refreshing..." : props.ciUrl ? `${icon.label} - Click to view` : (props.onRefresh && props.ciStatus !== 'skipped' && props.ciStatus !== 'not_configured') ? `${icon.label} - Click to refresh` : icon.label}>
+	<UiTooltip content={props.isRefreshing ? "Refreshing..." : props.ciUrl ? `${icon.label} - Click to view` : (props.onRefresh && props.ciStatus !== 'skipped' && props.ciStatus !== 'not_configured' && props.ciStatus !== 'not_pushed') ? `${icon.label} - Click to refresh` : icon.label}>
 		{#snippet children({ props: triggerProps })}
 			{@const Icon = props.isRefreshing ? LoaderCircle : icon.Icon}
 			{@const iconClass = props.isRefreshing ? 'text-primary animate-spin' : icon.class}

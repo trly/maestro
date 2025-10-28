@@ -151,5 +151,47 @@ impl GitService {
 
 		remote.push(&[&refspec], Some(&mut push_options))?;
 		Ok(())
+}
+}
+
+/// Check if a commit exists on the remote
+/// 
+/// # Arguments
+/// * `repo` - Repository to check
+/// * `remote_name` - Name of remote (usually "origin")
+/// * `commit_sha` - SHA of the commit to check
+pub(crate) fn is_commit_on_remote(
+	repo: &Repository,
+	remote_name: &str,
+	commit_sha: &str,
+) -> Result<bool, Git2Error> {
+	let remote = repo.find_remote(remote_name)?;
+	let remote_name_str = remote.name().ok_or_else(|| Git2Error::from_str("Invalid remote name"))?;
+	
+	// Try to find the commit in any remote tracking branch
+	let branches = repo.branches(Some(git2::BranchType::Remote))?;
+	
+	for branch_result in branches {
+		let (branch, _) = branch_result?;
+		let branch_name = branch.name()?.unwrap_or("");
+		
+		// Only check branches for this remote
+		if !branch_name.starts_with(&format!("{}/", remote_name_str)) {
+			continue;
+		}
+		
+		if let Some(oid) = branch.get().target() {
+			// Walk the commit history of this remote branch
+			let mut revwalk = repo.revwalk()?;
+			revwalk.push(oid)?;
+			
+			for rev_oid in revwalk {
+				if rev_oid?.to_string() == commit_sha {
+					return Ok(true);
+				}
+			}
+		}
 	}
+	
+	Ok(false)
 }

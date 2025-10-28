@@ -38,6 +38,7 @@ pub async fn check_ci_once(
 			CiStatus::Passed => has_passed = true,
 			CiStatus::Skipped => {}, // Skipped doesn't affect overall status
 			CiStatus::NotConfigured => {}, // Not configured doesn't affect overall status
+			CiStatus::NotPushed => {}, // Not pushed doesn't affect overall status
 		}
 	}
 	
@@ -99,17 +100,17 @@ pub async fn poll_ci_until_terminal(
 				
 				// Check if terminal
 				match status {
-					CiStatus::Passed | CiStatus::Failed | CiStatus::Skipped | CiStatus::NotConfigured => {
-						log::info!(
-							"CI reached terminal state {:?} for execution {}",
-							status,
-							execution_id
-						);
-						return Ok(());
-					}
-					CiStatus::Pending => {
-						log::info!("CI still pending for execution {}, will retry", execution_id);
-					}
+				CiStatus::Passed | CiStatus::Failed | CiStatus::Skipped | CiStatus::NotConfigured | CiStatus::NotPushed => {
+				log::info!(
+				"CI reached terminal state {:?} for execution {}",
+				status,
+				execution_id
+				);
+				return Ok(());
+				}
+				CiStatus::Pending => {
+				log::info!("CI still pending for execution {}, will retry", execution_id);
+				}
 				}
 			}
 			Ok((None, ci_url)) => {
