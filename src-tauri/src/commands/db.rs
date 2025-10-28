@@ -25,7 +25,12 @@ pub async fn sync_repository_metadata(store: StoreState<'_>, id: String) -> Resu
     let (owner, repo) = crate::util::git::parse_provider_id(&repository.provider_id)
         .map_err(|e| format!("Failed to parse provider ID: {}", e))?;
 
-    let ctx = GitProviderContext { owner, repo };
+    let ctx = GitProviderContext {
+        provider_cfg: serde_json::json!({
+            "owner": owner,
+            "repo": repo,
+        }),
+    };
 
     // Fetch default branch from provider
     let default_branch = provider
@@ -59,8 +64,10 @@ pub async fn create_repository(
     {
         if let Ok((owner, repo_name)) = crate::util::git::parse_provider_id(&provider_id) {
             let ctx = GitProviderContext {
-                owner,
-                repo: repo_name,
+                provider_cfg: serde_json::json!({
+                    "owner": owner,
+                    "repo": repo_name,
+                }),
             };
             if let Ok(default_branch) = git_provider.fetch_default_branch(&ctx).await {
                 store

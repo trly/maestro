@@ -29,8 +29,10 @@ async fn fetch_default_branch_from_github(owner: &str, repo: &str) -> Result<Str
 
     let provider = GitHubGitProvider::new(github_token)?;
     let ctx = GitProviderContext {
-        owner: owner.to_string(),
-        repo: repo.to_string(),
+        provider_cfg: serde_json::json!({
+            "owner": owner,
+            "repo": repo,
+        }),
     };
 
     let metadata = provider.get_repo_metadata(&ctx).await?;
@@ -1494,15 +1496,16 @@ pub async fn push_commit(
             crate::util::git::parse_provider_id(&provider_id).unwrap_or_default();
 
         let ctx = CiContext {
-            owner,
-            repo: repo_name,
             commit_sha: commit_sha.clone(),
             branch: branch.clone(),
-            provider_cfg: serde_json::json!({}),
+            provider_cfg: serde_json::json!({
+                "owner": owner,
+                "repo": repo_name,
+            }),
         };
 
         // Check if CI is configured by polling once
-        let ci_url = provider.get_commit_url(&commit_sha);
+        let ci_url = provider.get_commit_url(&ctx).map_err(|e| e.to_string())?;
         let ci_status = match provider.poll(&ctx).await {
             Ok(checks) if checks.is_empty() => {
                 // No CI configured

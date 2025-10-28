@@ -2,6 +2,13 @@ use super::git_provider::{GitProvider, GitProviderContext, RepoMetadata};
 use anyhow::Result;
 use octocrab::Octocrab;
 
+/// GitHub-specific configuration
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct GitHubGitConfig {
+    pub owner: String,
+    pub repo: String,
+}
+
 #[derive(Clone)]
 pub struct GitHubGitProvider {
     octocrab: Octocrab,
@@ -25,7 +32,8 @@ impl GitProvider for GitHubGitProvider {
     }
 
     async fn get_repo_metadata(&self, ctx: &GitProviderContext) -> Result<RepoMetadata> {
-        let repo_info = self.octocrab.repos(&ctx.owner, &ctx.repo).get().await?;
+        let cfg: GitHubGitConfig = ctx.cfg()?;
+        let repo_info = self.octocrab.repos(&cfg.owner, &cfg.repo).get().await?;
 
         Ok(RepoMetadata {
             default_branch: repo_info

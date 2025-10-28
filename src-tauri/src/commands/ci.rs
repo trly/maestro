@@ -75,15 +75,16 @@ pub async fn start_ci_check(
             .map_err(|e| format!("Failed to create CI provider: {}", e))?;
 
     let ctx = CiContext {
-        owner,
-        repo: repo_name,
         commit_sha: commit_sha.clone(),
         branch: branch.clone(),
-        provider_cfg: serde_json::json!({}),
+        provider_cfg: serde_json::json!({
+            "owner": owner,
+            "repo": repo_name,
+        }),
     };
 
     // Get initial CI URL from provider
-    let ci_url = provider.get_commit_url(&commit_sha);
+    let ci_url = provider.get_commit_url(&ctx).map_err(|e| e.to_string())?;
 
     // Emit initial pending status
     executor_events::emit_execution_ci(&app, &execution_id, "pending", Some(&ci_url));
@@ -182,11 +183,12 @@ pub async fn refresh_ci_status(
             .map_err(|e| format!("Failed to create CI provider: {}", e))?;
 
     let ctx = CiContext {
-        owner,
-        repo: repo_name,
         commit_sha: commit_sha.clone(),
         branch,
-        provider_cfg: serde_json::json!({}),
+        provider_cfg: serde_json::json!({
+            "owner": owner,
+            "repo": repo_name,
+        }),
     };
 
     // Check CI once

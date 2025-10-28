@@ -4,6 +4,19 @@ use anyhow::Result;
 use octocrab::models::checks::CheckRun;
 use octocrab::Octocrab;
 
+/// GitHub-specific configuration
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct GitHubCiConfig {
+    pub owner: String,
+    pub repo: String,
+    #[serde(default = "default_github_web_base")]
+    pub web_base_url: String,
+}
+
+fn default_github_web_base() -> String {
+    "https://github.com".to_string()
+}
+
 #[derive(Clone)]
 pub struct GitHubCiProvider {
     octocrab: Octocrab,
@@ -24,9 +37,7 @@ impl GitHubCiProvider {
             Ok(mut statuses) => checks.append(&mut statuses),
             Err(e) => {
                 log::warn!(
-                    "Failed to fetch commit statuses for {}/{} @ {}: {:?}",
-                    ctx.owner,
-                    ctx.repo,
+                    "Failed to fetch commit statuses for commit {}: {:?}",
                     ctx.commit_sha,
                     e
                 );
@@ -38,9 +49,7 @@ impl GitHubCiProvider {
             Ok(mut runs) => checks.append(&mut runs),
             Err(e) => {
                 log::warn!(
-                    "Failed to fetch check runs for {}/{} @ {}: {:?}",
-                    ctx.owner,
-                    ctx.repo,
+                    "Failed to fetch check runs for commit {}: {:?}",
                     ctx.commit_sha,
                     e
                 );
@@ -56,9 +65,10 @@ impl GitHubCiProvider {
     }
 
     async fn get_commit_statuses(&self, ctx: &CiContext) -> Result<Vec<CiCheck>> {
+        let cfg: GitHubCiConfig = ctx.cfg()?;
         let route = format!(
             "/repos/{}/{}/commits/{}/status",
-            ctx.owner, ctx.repo, ctx.commit_sha
+            cfg.owner, cfg.repo, ctx.commit_sha
         );
 
         #[derive(serde::Deserialize)]
@@ -108,9 +118,10 @@ impl GitHubCiProvider {
     }
 
     async fn get_check_runs(&self, ctx: &CiContext) -> Result<Vec<CiCheck>> {
+        let cfg: GitHubCiConfig = ctx.cfg()?;
         let route = format!(
             "/repos/{}/{}/commits/{}/check-runs",
-            ctx.owner, ctx.repo, ctx.commit_sha
+            cfg.owner, cfg.repo, ctx.commit_sha
         );
 
         #[derive(serde::Deserialize)]
@@ -154,8 +165,15 @@ impl CiProvider for GitHubCiProvider {
         self.get_all_checks(ctx).await
     }
 
-    fn get_commit_url(&self, commit_sha: &str) -> String {
-        format!("https://github.com/commit/{}", commit_sha)
+    fn get_commit_url(&self, ctx: &CiContext) -> Result<String> {
+        let cfg: GitHubCiConfig = ctx.cfg()?;
+        Ok(format!(
+            "{}/{}/{}/commit/{}",
+            cfg.web_base_url.trim_end_matches('/'),
+            cfg.owner,
+            cfg.repo,
+            ctx.commit_sha
+        ))
     }
 }
 

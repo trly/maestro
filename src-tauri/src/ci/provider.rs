@@ -5,13 +5,17 @@ use std::sync::Arc;
 /// Context passed to CI providers for polling
 #[derive(Clone, Debug)]
 pub struct CiContext {
-    pub owner: String,
-    pub repo: String,
     pub commit_sha: String,
-    #[allow(dead_code)]
     pub branch: String,
-    #[allow(dead_code)]
     pub provider_cfg: serde_json::Value,
+}
+
+impl CiContext {
+    /// Deserialize provider-specific configuration from provider_cfg
+    pub fn cfg<T: serde::de::DeserializeOwned>(&self) -> Result<T> {
+        serde_json::from_value(self.provider_cfg.clone())
+            .map_err(|e| anyhow::anyhow!("Invalid provider_cfg: {}", e))
+    }
 }
 
 /// A single CI check result from a provider
@@ -49,7 +53,7 @@ pub trait CiProvider: Send + Sync {
     async fn poll(&self, ctx: &CiContext) -> Result<Vec<CiCheck>>;
 
     /// Get URL for viewing commit CI status
-    fn get_commit_url(&self, commit_sha: &str) -> String;
+    fn get_commit_url(&self, ctx: &CiContext) -> Result<String>;
 }
 
 /// Factory function to create a CI provider

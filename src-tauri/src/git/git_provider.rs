@@ -4,15 +4,21 @@ use anyhow::Result;
 #[derive(Debug, Clone)]
 pub struct RepoMetadata {
     pub default_branch: String,
-    #[allow(dead_code)]
     pub description: Option<String>,
 }
 
 /// Context for git provider operations
 #[derive(Debug, Clone)]
 pub struct GitProviderContext {
-    pub owner: String,
-    pub repo: String,
+    pub provider_cfg: serde_json::Value,
+}
+
+impl GitProviderContext {
+    /// Deserialize provider-specific configuration from provider_cfg
+    pub fn cfg<T: serde::de::DeserializeOwned>(&self) -> Result<T> {
+        serde_json::from_value(self.provider_cfg.clone())
+            .map_err(|e| anyhow::anyhow!("Invalid provider_cfg: {}", e))
+    }
 }
 
 /// Trait for git hosting provider integrations (GitHub, GitLab, etc.)

@@ -14,11 +14,8 @@ pub async fn check_ci_once(
     provider: Arc<dyn CiProvider>,
     ctx: CiContext,
 ) -> Result<(Option<CiStatus>, Option<String>)> {
-    // Always provide the commit checks URL for user clickthrough
-    let ci_url = Some(format!(
-        "https://github.com/{}/{}/commit/{}/checks",
-        ctx.owner, ctx.repo, ctx.commit_sha
-    ));
+    // Get commit URL from provider for user clickthrough
+    let ci_url = provider.get_commit_url(&ctx).ok();
 
     let checks = provider.poll(&ctx).await?;
 
