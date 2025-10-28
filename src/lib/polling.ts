@@ -1,28 +1,28 @@
-import { api } from './api';
-import type { Execution } from './types';
+import { api } from "./api"
+import type { Execution } from "./types"
 
 export function pollExecutions(
 	revisionId: string,
 	onUpdate: (executions: Execution[]) => void,
 	intervalMs = 1500
 ): () => void {
-	let cancelled = false;
+	let cancelled = false
 
 	async function tick() {
-		if (cancelled) return;
+		if (cancelled) return
 		try {
-			const execs = await api.revisions.getExecutions(revisionId);
-			onUpdate(execs);
+			const execs = await api.revisions.getExecutions(revisionId)
+			onUpdate(execs)
 		} catch (err) {
 		} finally {
 			if (!cancelled) {
-				setTimeout(tick, intervalMs);
+				setTimeout(tick, intervalMs)
 			}
 		}
 	}
 
-	tick();
+	tick()
 	return () => {
-		cancelled = true;
-	};
+		cancelled = true
+	}
 }

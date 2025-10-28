@@ -1,16 +1,30 @@
 <script lang="ts">
-	import type { Execution, Repository } from '$lib/types'
-	import { intersectOnce } from '$lib/actions/intersect'
-	import { getExecutionStatusConfig, getValidationStatusConfig, getCommitStatusConfig } from '$lib/utils/statusConfig'
-	import UiTooltip from '$lib/components/ui/UiTooltip.svelte'
-	import IconButton from '$lib/components/ui/IconButton.svelte'
-	import CiStatusBadge from '$lib/components/ui/CiStatusBadge.svelte'
-	import { 
-		CirclePlay, RotateCw, Square, CircleCheck, Code, Copy, Trash2,
-		ExternalLink, FileText, LoaderCircle, Upload, X
-	} from 'lucide-svelte'
-	import { openInBrowser } from '$lib/utils/browser'
-	import { openInEditor, copyWorktreePath } from '$lib/utils/worktree'
+	import type { Execution, Repository } from "$lib/types"
+	import { intersectOnce } from "$lib/actions/intersect"
+	import {
+		getExecutionStatusConfig,
+		getValidationStatusConfig,
+		getCommitStatusConfig,
+	} from "$lib/utils/statusConfig"
+	import UiTooltip from "$lib/components/ui/UiTooltip.svelte"
+	import IconButton from "$lib/components/ui/IconButton.svelte"
+	import CiStatusBadge from "$lib/components/ui/CiStatusBadge.svelte"
+	import {
+		CirclePlay,
+		RotateCw,
+		Square,
+		CircleCheck,
+		Code,
+		Copy,
+		Trash2,
+		ExternalLink,
+		FileText,
+		LoaderCircle,
+		Upload,
+		X,
+	} from "lucide-svelte"
+	import { openInBrowser } from "$lib/utils/browser"
+	import { openInEditor, copyWorktreePath } from "$lib/utils/worktree"
 
 	const props = $props<{
 		id: string
@@ -36,8 +50,10 @@
 	}>()
 
 	let execution = $derived(props.executionsById.get(props.id)!)
-	let repoName = $derived(props.repositories.get(execution.repositoryId)?.providerId || execution.repositoryId)
-	
+	let repoName = $derived(
+		props.repositories.get(execution.repositoryId)?.providerId || execution.repositoryId
+	)
+
 	let executionIcon = $derived(getExecutionStatusConfig(execution.status))
 	let validationIcon = $derived(getValidationStatusConfig(execution.validationStatus ?? null))
 	let commitIcon = $derived(getCommitStatusConfig(execution.commitStatus))
@@ -52,40 +68,40 @@
 	}
 
 	let canStart = $derived(
-		execution.status === 'pending' &&
-		!execution.sessionId &&
-		!execution.threadUrl
+		execution.status === "pending" && !execution.sessionId && !execution.threadUrl
 	)
-	let canStop = $derived(execution.status === 'running')
+	let canStop = $derived(execution.status === "running")
 	let canRestart = $derived(
-		execution.status === 'completed' || 
-		execution.status === 'failed' || 
-		execution.status === 'cancelled'
+		execution.status === "completed" ||
+			execution.status === "failed" ||
+			execution.status === "cancelled"
 	)
 	let canValidate = $derived(
-		props.hasValidationPrompt && 
-		(execution.status === 'completed' || execution.status === 'cancelled') && 
-		!execution.validationStatus
+		props.hasValidationPrompt &&
+			(execution.status === "completed" || execution.status === "cancelled") &&
+			!execution.validationStatus
 	)
 	let canRevalidate = $derived(
 		props.hasValidationPrompt &&
-		execution.validationStatus &&
-		execution.validationStatus !== 'running'
+			execution.validationStatus &&
+			execution.validationStatus !== "running"
 	)
-	let canStopValidation = $derived(execution.validationStatus === 'running')
-	let canPush = $derived(execution.commitStatus === 'committed' && execution.commitSha)
+	let canStopValidation = $derived(execution.validationStatus === "running")
+	let canPush = $derived(execution.commitStatus === "committed" && execution.commitSha)
 
-	let fileCount = $derived((execution.filesAdded || 0) + (execution.filesRemoved || 0) + (execution.filesModified || 0))
+	let fileCount = $derived(
+		(execution.filesAdded || 0) + (execution.filesRemoved || 0) + (execution.filesModified || 0)
+	)
 	let additions = $derived(execution.linesAdded || 0)
 	let deletions = $derived(execution.linesRemoved || 0)
 
-	let rowClass = $derived(props.selected ? 'bg-primary/10 border-l-4 border-l-primary' : '')
+	let rowClass = $derived(props.selected ? "bg-primary/10 border-l-4 border-l-primary" : "")
 
 	async function handleOpenInEditor() {
 		try {
 			await openInEditor(execution)
 		} catch (error) {
-			console.error('Failed to open in editor:', error)
+			console.error("Failed to open in editor:", error)
 		}
 	}
 
@@ -93,13 +109,13 @@
 		try {
 			await copyWorktreePath(execution)
 		} catch (error) {
-			console.error('Failed to copy worktree path:', error)
+			console.error("Failed to copy worktree path:", error)
 		}
 	}
 </script>
 
 <div
-	use:intersectOnce={{ rootMargin: '200px', onEnter: onVisible }}
+	use:intersectOnce={{ rootMargin: "200px", onEnter: onVisible }}
 	class="grid gap-3 px-4 py-2.5 border-b border-border/10 bg-card hover:bg-muted/30 transition-all group items-center {rowClass}
 	       [grid-template-columns:auto_minmax(0,_2fr)_minmax(0,_1fr)_minmax(0,_1fr)_minmax(0,_1.5fr)_minmax(0,_1fr)_minmax(0,_1fr)]"
 >
@@ -107,8 +123,10 @@
 	<button
 		type="button"
 		onclick={props.onToggleSelected}
-		class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded border-2 {props.selected ? 'border-primary bg-primary' : 'border-muted-foreground/30 hover:border-primary/50'} transition-colors"
-		aria-label={props.selected ? 'Deselect' : 'Select'}
+		class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded border-2 {props.selected
+			? 'border-primary bg-primary'
+			: 'border-muted-foreground/30 hover:border-primary/50'} transition-colors"
+		aria-label={props.selected ? "Deselect" : "Select"}
 	>
 		{#if props.selected}
 			<CircleCheck class="w-4 h-4 text-primary-foreground" />
@@ -133,11 +151,26 @@
 			</UiTooltip>
 
 			{#if canStart}
-				<IconButton icon={CirclePlay} tooltip="Start execution" onclick={props.onStart} variant="success" />
+				<IconButton
+					icon={CirclePlay}
+					tooltip="Start execution"
+					onclick={props.onStart}
+					variant="success"
+				/>
 			{:else if canStop}
-				<IconButton icon={Square} tooltip="Stop execution" onclick={props.onStop} variant="warning" />
+				<IconButton
+					icon={Square}
+					tooltip="Stop execution"
+					onclick={props.onStop}
+					variant="warning"
+				/>
 			{:else if canRestart}
-				<IconButton icon={RotateCw} tooltip="Restart execution" onclick={props.onRestart} variant="primary" />
+				<IconButton
+					icon={RotateCw}
+					tooltip="Restart execution"
+					onclick={props.onRestart}
+					variant="primary"
+				/>
 			{/if}
 		</div>
 
@@ -166,11 +199,26 @@
 				</UiTooltip>
 
 				{#if canStopValidation}
-					<IconButton icon={X} tooltip="Stop validation" onclick={props.onStopValidation} variant="warning" />
+					<IconButton
+						icon={X}
+						tooltip="Stop validation"
+						onclick={props.onStopValidation}
+						variant="warning"
+					/>
 				{:else if canValidate}
-					<IconButton icon={CircleCheck} tooltip="Start validation" onclick={props.onValidate} variant="success" />
+					<IconButton
+						icon={CircleCheck}
+						tooltip="Start validation"
+						onclick={props.onValidate}
+						variant="success"
+					/>
 				{:else if canRevalidate}
-					<IconButton icon={RotateCw} tooltip="Revalidate" onclick={props.onValidate} variant="primary" />
+					<IconButton
+						icon={RotateCw}
+						tooltip="Revalidate"
+						onclick={props.onValidate}
+						variant="primary"
+					/>
 				{/if}
 			</div>
 
@@ -202,7 +250,9 @@
 					class="flex items-center gap-2 hover:text-primary transition-colors cursor-pointer"
 				>
 					{#if fileCount > 0}
-						<UiTooltip content={`Click to view ${fileCount} file${fileCount !== 1 ? 's' : ''} changed`}>
+						<UiTooltip
+							content={`Click to view ${fileCount} file${fileCount !== 1 ? "s" : ""} changed`}
+						>
 							{#snippet children({ props: slotProps })}
 								<div {...slotProps} class="flex items-center gap-1">
 									<FileText class="w-3.5 h-3.5 text-muted-foreground" />
@@ -219,14 +269,14 @@
 			{/if}
 
 			{#if canPush}
-			<IconButton 
-			icon={Upload} 
-			tooltip={props.pushing ? "Pushing..." : "Push to remote"} 
-			onclick={props.onPush} 
-			variant="primary" 
-			disabled={props.pushing} 
-			loading={props.pushing} 
-			/>
+				<IconButton
+					icon={Upload}
+					tooltip={props.pushing ? "Pushing..." : "Push to remote"}
+					onclick={props.onPush}
+					variant="primary"
+					disabled={props.pushing}
+					loading={props.pushing}
+				/>
 			{/if}
 		</div>
 
@@ -240,7 +290,9 @@
 						</div>
 					{/snippet}
 				</UiTooltip>
-				<span class="text-xs font-mono text-muted-foreground">{execution.commitSha.slice(0, 7)}</span>
+				<span class="text-xs font-mono text-muted-foreground"
+					>{execution.commitSha.slice(0, 7)}</span
+				>
 			</div>
 		{/if}
 	</div>
@@ -248,13 +300,13 @@
 	<!-- CI Status -->
 	<div class="flex items-center gap-2">
 		{#if execution.ciStatus}
-			<CiStatusBadge 
-				ciStatus={execution.ciStatus} 
+			<CiStatusBadge
+				ciStatus={execution.ciStatus}
 				ciUrl={execution.ciUrl}
 				onRefresh={props.onRefreshCi}
 				isRefreshing={props.refreshingCi}
 			/>
-		{:else if execution.commitStatus === 'committed'}
+		{:else if execution.commitStatus === "committed"}
 			<button
 				onclick={props.onRefreshCi}
 				class="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -268,8 +320,18 @@
 
 	<!-- Actions -->
 	<div class="flex items-center gap-1 justify-end">
-		<IconButton icon={Code} tooltip="Open in editor" onclick={handleOpenInEditor} variant="primary" />
+		<IconButton
+			icon={Code}
+			tooltip="Open in editor"
+			onclick={handleOpenInEditor}
+			variant="primary"
+		/>
 		<IconButton icon={Copy} tooltip="Copy worktree path" onclick={handleCopyPath} variant="ghost" />
-		<IconButton icon={Trash2} tooltip="Delete execution" onclick={props.onDelete} variant="destructive" />
+		<IconButton
+			icon={Trash2}
+			tooltip="Delete execution"
+			onclick={props.onDelete}
+			variant="destructive"
+		/>
 	</div>
 </div>

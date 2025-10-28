@@ -1,27 +1,31 @@
 <script lang="ts">
-	import { ChevronDown, Check } from 'lucide-svelte'
-	import { Select } from 'bits-ui'
-	
+	import { ChevronDown, Check } from "lucide-svelte"
+	import { Select } from "bits-ui"
+
 	const props = $props<{
 		value?: string
 		options: Array<{ value: string; label: string }>
 		placeholder?: string
 		onValueChange: (value: string) => void
 	}>()
-	
+
 	// Local value bound to Select; keep in sync with parent
-	let value = $state(props.value || 'all')
-	$effect(() => { value = props.value || 'all' })
-	$effect(() => { 
-		if (value !== undefined && value !== (props.value || 'all')) {
+	let value = $state(props.value || "all")
+	$effect(() => {
+		value = props.value || "all"
+	})
+	$effect(() => {
+		if (value !== undefined && value !== (props.value || "all")) {
 			props.onValueChange(value)
 		}
 	})
-	
+
 	let displayValue = $derived(
-		value 
-			? props.options.find((o: { value: string; label: string }) => o.value === value)?.label || props.placeholder || 'Select...'
-			: props.placeholder || 'Select...'
+		value
+			? props.options.find((o: { value: string; label: string }) => o.value === value)?.label ||
+					props.placeholder ||
+					"Select..."
+			: props.placeholder || "Select..."
 	)
 </script>
 

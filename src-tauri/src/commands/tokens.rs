@@ -1,6 +1,6 @@
 use keyring::Entry;
-use serde::{Serialize, Deserialize};
-use std::sync::{Arc, RwLock, OnceLock};
+use serde::{Deserialize, Serialize};
+use std::sync::{Arc, OnceLock, RwLock};
 use zeroize::Zeroize;
 
 const SERVICE_NAME: &str = "dev.trly.maestro";
@@ -32,16 +32,16 @@ fn load_all_tokens_from_keyring() -> Result<AllTokens, String> {
                 .map_err(|e| format!("Failed to parse tokens JSON: {}", e))?;
             json_str.zeroize(); // Wipe plaintext JSON after use
             Ok(tokens)
-        },
+        }
         Err(keyring::Error::NoEntry) => Ok(AllTokens::default()),
-        Err(e) => Err(format!("Failed to retrieve tokens: {}", e))
+        Err(e) => Err(format!("Failed to retrieve tokens: {}", e)),
     }
 }
 
 /// Internal helper to save all tokens to keyring
 fn save_all_tokens_to_keyring(tokens: &AllTokens) -> Result<(), String> {
     let entry = get_tokens_entry()?;
-    
+
     // If all tokens are empty, delete the entry instead of storing empty JSON
     if tokens == &AllTokens::default() {
         return match entry.delete_credential() {
@@ -49,10 +49,11 @@ fn save_all_tokens_to_keyring(tokens: &AllTokens) -> Result<(), String> {
             Err(e) => Err(format!("Failed to delete tokens from keyring: {}", e)),
         };
     }
-    
-    let mut json_str = serde_json::to_string(tokens)
-        .map_err(|e| format!("Failed to serialize tokens: {}", e))?;
-    let res = entry.set_password(&json_str)
+
+    let mut json_str =
+        serde_json::to_string(tokens).map_err(|e| format!("Failed to serialize tokens: {}", e))?;
+    let res = entry
+        .set_password(&json_str)
         .map_err(|e| format!("Failed to save tokens to keyring: {}", e));
     json_str.zeroize(); // Wipe plaintext JSON after storage
     res
@@ -67,12 +68,14 @@ pub fn init_token_cache() -> Result<(), String> {
 
 /// Internal helper to get token value from cache
 pub(crate) fn get_token_value(key: &str) -> Result<Option<String>, String> {
-    let cache = CREDENTIAL_CACHE.get()
+    let cache = CREDENTIAL_CACHE
+        .get()
         .ok_or_else(|| "Token cache not initialized".to_string())?;
-    
-    let tokens = cache.read()
+
+    let tokens = cache
+        .read()
         .map_err(|e| format!("Failed to read token cache: {}", e))?;
-    
+
     match key {
         "amp_token" => Ok(tokens.amp_token.clone()),
         "github_token" => Ok(tokens.github_token.clone()),
@@ -80,135 +83,143 @@ pub(crate) fn get_token_value(key: &str) -> Result<Option<String>, String> {
         "sourcegraph_token" => Ok(tokens.sourcegraph_token.clone()),
         "amp_client_id" => Ok(tokens.amp_client_id.clone()),
         "amp_client_secret" => Ok(tokens.amp_client_secret.clone()),
-        _ => Err(format!("Unknown token key: {}", key))
+        _ => Err(format!("Unknown token key: {}", key)),
     }
 }
 
 #[tauri::command]
 pub fn set_token(key: String, value: String) -> Result<(), String> {
-    let cache = CREDENTIAL_CACHE.get()
+    let cache = CREDENTIAL_CACHE
+        .get()
         .ok_or_else(|| "Token cache not initialized".to_string())?;
-    
-    let mut tokens = cache.write()
+
+    let mut tokens = cache
+        .write()
         .map_err(|e| format!("Failed to lock token cache: {}", e))?;
-    
+
     // Clone original state for rollback on save failure
     let original = tokens.clone();
-    
+
     // Update the specific token, zeroizing old values
     match key.as_str() {
         "amp_token" => {
             if let Some(mut old) = tokens.amp_token.replace(value) {
                 old.zeroize();
             }
-        },
+        }
         "github_token" => {
             if let Some(mut old) = tokens.github_token.replace(value) {
                 old.zeroize();
             }
-        },
+        }
         "sourcegraph_endpoint" => {
             let _ = tokens.sourcegraph_endpoint.replace(value);
-        },
+        }
         "sourcegraph_token" => {
             if let Some(mut old) = tokens.sourcegraph_token.replace(value) {
                 old.zeroize();
             }
-        },
+        }
         "amp_client_id" => {
             let _ = tokens.amp_client_id.replace(value);
-        },
+        }
         "amp_client_secret" => {
             if let Some(mut old) = tokens.amp_client_secret.replace(value) {
                 old.zeroize();
             }
-        },
-        _ => return Err(format!("Unknown token key: {}", key))
+        }
+        _ => return Err(format!("Unknown token key: {}", key)),
     }
-    
+
     // Save entire bundle to keyring; revert on failure to keep cache consistent
     if let Err(e) = save_all_tokens_to_keyring(&tokens) {
         *tokens = original;
         return Err(e);
     }
-    
+
     Ok(())
 }
 
 #[tauri::command]
 pub fn delete_token(key: String) -> Result<(), String> {
-    let cache = CREDENTIAL_CACHE.get()
+    let cache = CREDENTIAL_CACHE
+        .get()
         .ok_or_else(|| "Token cache not initialized".to_string())?;
-    
-    let mut tokens = cache.write()
+
+    let mut tokens = cache
+        .write()
         .map_err(|e| format!("Failed to lock token cache: {}", e))?;
-    
+
     // Clone original state for rollback on save failure
     let original = tokens.clone();
-    
+
     // Clear the specific token, zeroizing removed values
     match key.as_str() {
         "amp_token" => {
             if let Some(mut s) = tokens.amp_token.take() {
                 s.zeroize();
             }
-        },
+        }
         "github_token" => {
             if let Some(mut s) = tokens.github_token.take() {
                 s.zeroize();
             }
-        },
+        }
         "sourcegraph_endpoint" => {
             let _ = tokens.sourcegraph_endpoint.take();
-        },
+        }
         "sourcegraph_token" => {
             if let Some(mut s) = tokens.sourcegraph_token.take() {
                 s.zeroize();
             }
-        },
+        }
         "amp_client_id" => {
             let _ = tokens.amp_client_id.take();
-        },
+        }
         "amp_client_secret" => {
             if let Some(mut s) = tokens.amp_client_secret.take() {
                 s.zeroize();
             }
-        },
-        _ => return Err(format!("Unknown token key: {}", key))
+        }
+        _ => return Err(format!("Unknown token key: {}", key)),
     }
-    
+
     // Save entire bundle to keyring; revert on failure to keep cache consistent
     if let Err(e) = save_all_tokens_to_keyring(&tokens) {
         *tokens = original;
         return Err(e);
     }
-    
+
     Ok(())
 }
 
 #[tauri::command]
 pub fn get_all_tokens() -> Result<AllTokens, String> {
-    let cache = CREDENTIAL_CACHE.get()
+    let cache = CREDENTIAL_CACHE
+        .get()
         .ok_or_else(|| "Token cache not initialized".to_string())?;
-    
-    let tokens = cache.read()
+
+    let tokens = cache
+        .read()
         .map_err(|e| format!("Failed to read token cache: {}", e))?;
-    
+
     Ok(tokens.clone())
 }
 
 #[tauri::command]
 pub fn get_all_tokens_masked() -> Result<AllTokens, String> {
-    let cache = CREDENTIAL_CACHE.get()
+    let cache = CREDENTIAL_CACHE
+        .get()
         .ok_or_else(|| "Token cache not initialized".to_string())?;
-    
-    let tokens = cache.read()
+
+    let tokens = cache
+        .read()
         .map_err(|e| format!("Failed to read token cache: {}", e))?;
-    
+
     let mask = |token: &Option<String>| -> Option<String> {
         token.as_ref().map(|password| {
             if password.len() > 8 {
-                format!("{}...{}", &password[..4], &password[password.len()-4..])
+                format!("{}...{}", &password[..4], &password[password.len() - 4..])
             } else if !password.is_empty() {
                 "••••••••".to_string()
             } else {
@@ -216,7 +227,7 @@ pub fn get_all_tokens_masked() -> Result<AllTokens, String> {
             }
         })
     };
-    
+
     Ok(AllTokens {
         amp_token: mask(&tokens.amp_token),
         github_token: mask(&tokens.github_token),

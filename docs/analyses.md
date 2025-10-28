@@ -5,6 +5,7 @@ Maestro's failure analysis feature aggregates multiple failed executions or vali
 ## Overview
 
 When executions or validations fail across multiple repositories, the analysis feature:
+
 1. Fetches full thread history from Amp V2 API (via OAuth2)
 2. Aggregates all failure threads into a single analysis prompt
 3. Creates a new Amp thread to analyze and categorize failures
@@ -53,6 +54,7 @@ enum AnalysisStatus {
 ### Tables
 
 **analyses** - Main analysis records:
+
 ```sql
 CREATE TABLE analyses (
     id TEXT PRIMARY KEY,
@@ -72,6 +74,7 @@ CREATE TABLE analyses (
 ```
 
 **analysis_executions** - Join table linking analyses to executions:
+
 ```sql
 CREATE TABLE analysis_executions (
     analysis_id TEXT NOT NULL,
@@ -108,6 +111,7 @@ let access_token = client.get_access_token().await?;
 ```
 
 **Required OAuth2 Scopes:**
+
 - `amp.api:workspace.threads.meta:view` - View thread metadata
 - `amp.api:workspace.threads.contents:view` - View thread messages
 
@@ -135,15 +139,16 @@ let formatted = AmpV2Client::format_messages_for_analysis(&messages);
 User clicks "Analyze failed executions" or "Analyze failed validations" in the RevisionDetail UI.
 
 **Frontend:**
+
 ```typescript
 async function handleAnalyzeExecutions() {
-  const failed = executions.filter(e => e.status === 'failed');
-  const analysisId = await createAnalysis(
-    revision.id,
-    'execution',
-    failed.map(e => e.id)
-  );
-  await runAnalysis(analysisId);
+	const failed = executions.filter((e) => e.status === "failed")
+	const analysisId = await createAnalysis(
+		revision.id,
+		"execution",
+		failed.map((e) => e.id)
+	)
+	await runAnalysis(analysisId)
 }
 ```
 
@@ -152,6 +157,7 @@ async function handleAnalyzeExecutions() {
 **Command:** `create_analysis(revision_id, analysis_type, execution_ids)`
 
 **Backend:**
+
 ```rust
 // Create analysis with pending status
 let analysis = store.create_analysis(id, revision_id, analysis_type, prompt)?;
@@ -165,12 +171,13 @@ store.add_analysis_executions(&id, &execution_ids)?;
 **Command:** `run_analysis(analysis_id)`
 
 **Backend (spawns tokio task):**
+
 ```rust
 tokio::spawn(async move {
     // 1. Get OAuth2 credentials
     let client_id = get_token_value("amp_client_id")?;
     let client_secret = get_token_value("amp_client_secret")?;
-    
+
     // 2. Fetch all thread messages
     let mut client = AmpV2Client::new(client_id, client_secret);
     for execution in executions {
@@ -182,16 +189,16 @@ tokio::spawn(async move {
         let messages = client.get_thread_messages(&thread_id).await?;
         all_threads.push(format_messages_for_analysis(&messages));
     }
-    
+
     // 3. Create analysis prompt
     let prompt = format!(
         "Analyze the following failed {} threads and categorize common failure patterns:\n\n{}",
         analysis_type, all_threads.join("\n\n---\n\n")
     );
-    
+
     // 4. Execute via Amp SDK
     let output = execute_analysis_with_amp(&prompt).await?;
-    
+
     // 5. Update analysis record
     store.update_analysis_result(
         analysis_id,
@@ -208,7 +215,7 @@ tokio::spawn(async move {
 Analysis results stored in database and linked to revision:
 
 ```typescript
-const analyses = await getAnalysesByRevision(revision.id, 'execution');
+const analyses = await getAnalysesByRevision(revision.id, "execution")
 // Display results in UI
 ```
 
@@ -221,17 +228,17 @@ Located in [RevisionDetail.svelte](file:///Users/trly/src/github.com/trly/maestr
 ```svelte
 <!-- Execution column header -->
 {#if hasFailedExecutions}
-  <UiTooltip content="Analyze failed executions">
-    {#snippet children({ props })}
-      <button
-        {...props}
-        onclick={onAnalyzeExecutions}
-        class="text-purple-600 hover:text-purple-700"
-      >
-        <ScanSearch class="w-3.5 h-3.5" />
-      </button>
-    {/snippet}
-  </UiTooltip>
+	<UiTooltip content="Analyze failed executions">
+		{#snippet children({ props })}
+			<button
+				{...props}
+				onclick={onAnalyzeExecutions}
+				class="text-purple-600 hover:text-purple-700"
+			>
+				<ScanSearch class="w-3.5 h-3.5" />
+			</button>
+		{/snippet}
+	</UiTooltip>
 {/if}
 ```
 
@@ -274,17 +281,20 @@ src-tauri/src/
 ### Key Components
 
 **AmpV2Client** (`src-tauri/src/amp/v2_client.rs`):
+
 - OAuth2 token management (with caching)
 - Thread message fetching (with pagination)
 - Message formatting for analysis
 
 **Analysis Commands** (`src-tauri/src/commands/analysis.rs`):
+
 - `create_analysis()` - Creates analysis record
 - `run_analysis()` - Spawns background task
 - `get_analysis()` - Retrieves analysis by ID
 - `get_analyses_by_revision()` - Lists analyses for revision
 
 **Store Methods** (`src-tauri/src/db/store.rs`):
+
 - `create_analysis()` - Insert analysis record
 - `update_analysis_status()` - Update status/error
 - `update_analysis_result()` - Store result/completion
@@ -296,8 +306,8 @@ src-tauri/src/
 ### Get Latest Analysis for Revision
 
 ```typescript
-const analyses = await getAnalysesByRevision(revision.id, 'execution');
-const latest = analyses.sort((a, b) => b.createdAt - a.createdAt)[0];
+const analyses = await getAnalysesByRevision(revision.id, "execution")
+const latest = analyses.sort((a, b) => b.createdAt - a.createdAt)[0]
 ```
 
 ### Get All Executions in Analysis
@@ -309,8 +319,8 @@ let executions = store.get_analysis_executions(&analysis_id)?;
 ### Get Analyses by Status
 
 ```sql
-SELECT * FROM analyses 
-WHERE status = 'completed' 
+SELECT * FROM analyses
+WHERE status = 'completed'
 ORDER BY created_at DESC;
 ```
 
@@ -376,6 +386,7 @@ Potential improvements:
 **Cause:** `amp_client_id` or `amp_client_secret` missing from keyring
 
 **Solution:**
+
 1. Go to Settings → API Tokens
 2. Enter Amp OAuth2 Client ID
 3. Enter Amp OAuth2 Client Secret
@@ -384,12 +395,14 @@ Potential improvements:
 ### "Failed to fetch thread messages"
 
 **Possible causes:**
+
 - Invalid OAuth2 credentials
 - Thread URL malformed
 - Network connectivity issues
 - Rate limiting
 
 **Solution:**
+
 1. Verify credentials in Settings
 2. Check thread URL format: `https://ampcode.com/threads/T-{uuid}`
 3. Check network logs for API errors
@@ -399,6 +412,7 @@ Potential improvements:
 **Cause:** Error during Amp execution or thread fetching
 
 **Solution:**
+
 1. Check `error_message` field in analysis record
 2. Verify Amp SDK is available (`bun run` works)
 3. Check if executions have valid thread URLs
@@ -411,14 +425,15 @@ Displays individual analysis results with status, timestamps, and results:
 
 ```svelte
 <!-- src/lib/components/ui/AnalysisResult.svelte -->
-<AnalysisResult 
-  {analysis}
-  onDelete={() => deleteAnalysis(analysis.id)}
-  onRerun={() => rerunAnalysis(analysis)}
+<AnalysisResult
+	{analysis}
+	onDelete={() => deleteAnalysis(analysis.id)}
+	onRerun={() => rerunAnalysis(analysis)}
 />
 ```
 
 **Features:**
+
 - Status badges with icons (completed, failed, running, pending)
 - Creation and completion timestamps
 - External link to Amp thread
@@ -428,12 +443,14 @@ Displays individual analysis results with status, timestamps, and results:
 - Re-run button (rotate icon) to re-execute completed/failed analyses
 
 **Status Display:**
+
 - **Completed**: Green badge with CheckCircle2 icon
 - **Failed**: Red badge with AlertCircle icon and error message
 - **Running**: Blue badge with animated Loader2 spinner
 - **Pending**: Gray badge with Clock icon
 
 **Actions:**
+
 - **Delete**: Available for all analyses, removes analysis record from database
 - **Re-run**: Available for completed/failed analyses, re-executes the same analysis with same execution set
 
@@ -444,20 +461,20 @@ Analyses are displayed between the prompt console and executions table:
 ```svelte
 <!-- Analysis Results Section -->
 {#if analyses.length > 0}
-  <div class="flex-shrink-0 border-b border-border/20 bg-card">
-    <div class="px-4 py-3">
-      <h3 class="text-sm font-semibold text-card-foreground mb-3">Failure Analysis</h3>
-      <div class="space-y-3">
-        {#each analyses as analysis (analysis.id)}
-          <AnalysisResult 
-            {analysis}
-            onDelete={() => handleDeleteAnalysis(analysis.id)}
-            onRerun={() => handleRerunAnalysis(analysis)}
-          />
-        {/each}
-      </div>
-    </div>
-  </div>
+	<div class="flex-shrink-0 border-b border-border/20 bg-card">
+		<div class="px-4 py-3">
+			<h3 class="text-sm font-semibold text-card-foreground mb-3">Failure Analysis</h3>
+			<div class="space-y-3">
+				{#each analyses as analysis (analysis.id)}
+					<AnalysisResult
+						{analysis}
+						onDelete={() => handleDeleteAnalysis(analysis.id)}
+						onRerun={() => handleRerunAnalysis(analysis)}
+					/>
+				{/each}
+			</div>
+		</div>
+	</div>
 {/if}
 ```
 
@@ -474,12 +491,14 @@ Analyses are displayed between the prompt console and executions table:
 ## Implementation Reference
 
 **Backend:**
+
 - `src-tauri/src/amp/v2_client.rs` - Amp V2 API client
 - `src-tauri/src/commands/analysis.rs` - Analysis commands
 - `src-tauri/src/db/store.rs` - Analysis CRUD
 - `src-tauri/src/db/migrations.rs` - Migration 13
 
 **Frontend:**
+
 - `src/lib/ipc.ts` - IPC wrappers (`createAnalysis`, `runAnalysis`, `getAnalysesByRevision`, `deleteAnalysis`)
 - `src/lib/types.ts` - TypeScript types
 - `src/lib/components/ui/AnalysisResult.svelte` - Result display component with delete/rerun actions

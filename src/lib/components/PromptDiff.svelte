@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { processTextDiff } from '$lib/diff'
-	import DiffUnified from './diff/DiffUnified.svelte'
+	import { processTextDiff } from "$lib/diff"
+	import DiffUnified from "./diff/DiffUnified.svelte"
 
 	interface Props {
 		oldText: string
@@ -34,7 +34,8 @@
 		const target = e.target as HTMLDivElement
 		if (editorScrollElement) {
 			const scrollPercentage = target.scrollTop / (target.scrollHeight - target.clientHeight)
-			editorScrollElement.scrollTop = scrollPercentage * (editorScrollElement.scrollHeight - editorScrollElement.clientHeight)
+			editorScrollElement.scrollTop =
+				scrollPercentage * (editorScrollElement.scrollHeight - editorScrollElement.clientHeight)
 		}
 	}
 
@@ -42,7 +43,8 @@
 		const target = e.target as HTMLTextAreaElement
 		if (diffScrollElement) {
 			const scrollPercentage = target.scrollTop / (target.scrollHeight - target.clientHeight)
-			diffScrollElement.scrollTop = scrollPercentage * (diffScrollElement.scrollHeight - diffScrollElement.clientHeight)
+			diffScrollElement.scrollTop =
+				scrollPercentage * (diffScrollElement.scrollHeight - diffScrollElement.clientHeight)
 		}
 	}
 </script>
@@ -66,7 +68,11 @@
 		<div class="bg-muted/50 px-4 py-2 border-b border-border/10">
 			<h4 class="text-xs font-medium text-muted-foreground">Changes from Previous Version</h4>
 		</div>
-		<div bind:this={diffScrollElement} onscroll={handleDiffScroll} class="h-96 bg-muted/30 overflow-auto px-4 py-3">
+		<div
+			bind:this={diffScrollElement}
+			onscroll={handleDiffScroll}
+			class="h-96 bg-muted/30 overflow-auto px-4 py-3"
+		>
 			<div class="font-mono text-sm">
 				<DiffUnified items={diffItems} />
 			</div>

@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { Dialog } from 'bits-ui'
-	import type { Snippet } from 'svelte'
+	import { Dialog } from "bits-ui"
+	import type { Snippet } from "svelte"
 
 	let {
 		open = $bindable(false),
 		title,
 		children,
-		footer
+		footer,
 	}: {
 		open?: boolean
 		title: string
@@ -20,7 +20,7 @@
 		<Dialog.Overlay class="fixed inset-0 z-50 bg-black/50" />
 		<Dialog.Content
 			class="fixed inset-4 z-50 bg-background rounded-lg shadow-2xl border border-border/30 flex flex-col"
->
+		>
 			<Dialog.Title class="px-6 py-4 border-b border-border/10 flex-shrink-0">
 				<h2 class="text-xl font-bold text-foreground">{title}</h2>
 			</Dialog.Title>

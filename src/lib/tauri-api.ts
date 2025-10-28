@@ -1,5 +1,5 @@
-import * as ipc from './ipc'
-import type { Repository, PromptSet, PromptRevision, Execution } from './types'
+import * as ipc from "./ipc"
+import type { Repository, PromptSet, PromptRevision, Execution } from "./types"
 
 export const tauriApi = {
 	repositories: {
@@ -15,7 +15,7 @@ export const tauriApi = {
 		get: async (id: string) => {
 			const repo = await ipc.getRepository(id)
 			if (!repo) {
-				throw new Error('Repository not found')
+				throw new Error("Repository not found")
 			}
 			return repo
 		},
@@ -23,10 +23,10 @@ export const tauriApi = {
 		find: async (provider: string, providerId: string) => {
 			const repo = await ipc.findRepository(provider, providerId)
 			if (!repo) {
-				throw new Error('Repository not found')
+				throw new Error("Repository not found")
 			}
 			return repo
-		}
+		},
 	},
 
 	promptSets: {
@@ -38,34 +38,41 @@ export const tauriApi = {
 		get: async (id: string) => {
 			const promptSet = await ipc.getPromptSet(id)
 			if (!promptSet) {
-				throw new Error('Prompt set not found')
+				throw new Error("Prompt set not found")
 			}
 			return promptSet
 		},
 
-		update: async (id: string, updates: { validationPrompt?: string | null; repositoryIds?: string[] }) => {
-			if ('validationPrompt' in updates) {
+		update: async (
+			id: string,
+			updates: { validationPrompt?: string | null; repositoryIds?: string[] }
+		) => {
+			if ("validationPrompt" in updates) {
 				await ipc.updatePromptSetValidation(id, updates.validationPrompt ?? null)
 			}
-			if ('repositoryIds' in updates && updates.repositoryIds) {
+			if ("repositoryIds" in updates && updates.repositoryIds) {
 				await ipc.updatePromptSetRepositories(id, updates.repositoryIds)
 			}
 			return tauriApi.promptSets.get(id)
 		},
 
-		updateAutoValidate: (id: string, autoValidate: boolean) => ipc.updatePromptSetAutoValidate(id, autoValidate),
+		updateAutoValidate: (id: string, autoValidate: boolean) =>
+			ipc.updatePromptSetAutoValidate(id, autoValidate),
 
 		getRevisions: (id: string) => ipc.getPromptSetRevisions(id),
 
 		getExecutions: (id: string) => ipc.getExecutionsByPromptSet(id),
 
-		createRevision: (promptsetId: string, promptText: string, parentRevisionId: string | null = null) =>
-			ipc.createPromptRevision(promptsetId, promptText, parentRevisionId),
+		createRevision: (
+			promptsetId: string,
+			promptText: string,
+			parentRevisionId: string | null = null
+		) => ipc.createPromptRevision(promptsetId, promptText, parentRevisionId),
 
 		delete: async (id: string) => {
 			const success = await ipc.deletePromptSet(id)
 			return { success }
-		}
+		},
 	},
 
 	revisions: {
@@ -75,7 +82,7 @@ export const tauriApi = {
 		get: async (id: string) => {
 			const revision = await ipc.getPromptRevision(id)
 			if (!revision) {
-				throw new Error('Revision not found')
+				throw new Error("Revision not found")
 			}
 			return revision
 		},
@@ -105,14 +112,14 @@ export const tauriApi = {
 		stopAllValidations: async (id: string) => {
 			const stopped = await ipc.stopAllValidations(id)
 			return { stopped, message: `Stopped ${stopped} validation(s)` }
-		}
+		},
 	},
 
 	executions: {
 		get: async (id: string) => {
 			const execution = await ipc.getExecution(id)
 			if (!execution) {
-				throw new Error('Execution not found')
+				throw new Error("Execution not found")
 			}
 			return execution
 		},
@@ -167,7 +174,7 @@ export const tauriApi = {
 
 		push: async (id: string, force: boolean = false) => {
 			await ipc.pushCommit(id, force)
-		}
+		},
 	},
 
 	ci: {
@@ -177,6 +184,6 @@ export const tauriApi = {
 
 		refreshStatus: async (id: string) => {
 			await ipc.refreshCiStatus(id)
-		}
-	}
+		},
+	},
 }

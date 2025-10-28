@@ -1,21 +1,24 @@
 <script lang="ts">
-	import { ScrollArea } from 'bits-ui';
-	import type { Snippet } from 'svelte';
+	import { ScrollArea } from "bits-ui"
+	import type { Snippet } from "svelte"
 
 	let {
-		class: className = '',
-		viewportClass = '',
+		class: className = "",
+		viewportClass = "",
 		children,
 		...restProps
 	}: {
-		class?: string;
-		viewportClass?: string;
-		children: Snippet;
-		[key: string]: any;
-	} = $props();
+		class?: string
+		viewportClass?: string
+		children: Snippet
+		[key: string]: any
+	} = $props()
 </script>
 
-<ScrollArea.Root class="relative overflow-hidden rounded-md border border-border/20 {className}" {...restProps}>
+<ScrollArea.Root
+	class="relative overflow-hidden rounded-md border border-border/20 {className}"
+	{...restProps}
+>
 	<ScrollArea.Viewport class="h-full w-full rounded-[inherit] {viewportClass}">
 		{@render children()}
 	</ScrollArea.Viewport>

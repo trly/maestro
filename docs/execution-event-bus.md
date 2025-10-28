@@ -56,10 +56,10 @@ Provides derived stores that merge execution data with live updates:
 
 ```typescript
 export function getExecutionWithUpdates(execution: Execution) {
-  return derived(executionStore, $updates => ({
-    ...execution,
-    ...($updates[execution.id] || {})
-  }))
+	return derived(executionStore, ($updates) => ({
+		...execution,
+		...($updates[execution.id] || {}),
+	}))
 }
 ```
 

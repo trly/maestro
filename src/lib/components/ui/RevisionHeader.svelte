@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { Trash2, LoaderCircle, Pencil, FolderGit2 } from 'lucide-svelte';
-	import UiTooltip from './UiTooltip.svelte';
-	import IconButton from './IconButton.svelte';
-	import { toShortHash } from '$lib/utils';
-	import type { PromptRevision, Analysis } from '$lib/types';
-	import { analysisStore } from '$lib/stores/executionBus';
+	import { Trash2, LoaderCircle, Pencil, FolderGit2 } from "lucide-svelte"
+	import UiTooltip from "./UiTooltip.svelte"
+	import IconButton from "./IconButton.svelte"
+	import { toShortHash } from "$lib/utils"
+	import type { PromptRevision, Analysis } from "$lib/types"
+	import { analysisStore } from "$lib/stores/executionBus"
 
 	let {
 		revision,
@@ -12,33 +12,41 @@
 		analyses = [],
 		repositoryCount = 0,
 		onDelete,
-		onEditRepositories
+		onEditRepositories,
 	}: {
-		revision: PromptRevision;
-		stats?: { total: number; running: number; completed: number; validationPassed: number };
-		analyses?: Analysis[];
-		repositoryCount?: number;
-		onDelete: () => void;
-		onEditRepositories?: () => void;
-	} = $props();
-	
+		revision: PromptRevision
+		stats?: { total: number; running: number; completed: number; validationPassed: number }
+		analyses?: Analysis[]
+		repositoryCount?: number
+		onDelete: () => void
+		onEditRepositories?: () => void
+	} = $props()
+
 	// Merge analyses with live updates from event bus
 	let analysesWithUpdates = $derived.by(() => {
-		const updates = $analysisStore;
-		return analyses.map(analysis => {
-			const data = updates.get(analysis.id);
-			if (!data) return analysis;
+		const updates = $analysisStore
+		return analyses.map((analysis) => {
+			const data = updates.get(analysis.id)
+			if (!data) return analysis
 			return {
 				...analysis,
-				...(data.status && { status: data.status })
-			};
-		});
-	});
-	
-	let completionPercent = $derived(stats && stats.total > 0 ? (stats.completed / stats.total) * 100 : 0);
-	let validationPercent = $derived(stats && stats.total > 0 ? (stats.validationPassed / stats.total) * 100 : 0);
-	let hasActiveAnalysis = $derived(analysesWithUpdates.some(a => a.status === 'pending' || a.status === 'running'));
-	let activeAnalysisCount = $derived(analysesWithUpdates.filter(a => a.status === 'pending' || a.status === 'running').length);
+				...(data.status && { status: data.status }),
+			}
+		})
+	})
+
+	let completionPercent = $derived(
+		stats && stats.total > 0 ? (stats.completed / stats.total) * 100 : 0
+	)
+	let validationPercent = $derived(
+		stats && stats.total > 0 ? (stats.validationPassed / stats.total) * 100 : 0
+	)
+	let hasActiveAnalysis = $derived(
+		analysesWithUpdates.some((a) => a.status === "pending" || a.status === "running")
+	)
+	let activeAnalysisCount = $derived(
+		analysesWithUpdates.filter((a) => a.status === "pending" || a.status === "running").length
+	)
 </script>
 
 <div class="h-full flex items-center gap-3 px-4 py-3 bg-card">
@@ -51,9 +59,14 @@
 				{new Date(revision.createdAt).toLocaleString()}
 			</span>
 			{#if repositoryCount > 0}
-				<UiTooltip content="{repositoryCount} {repositoryCount === 1 ? 'repository' : 'repositories'}">
+				<UiTooltip
+					content="{repositoryCount} {repositoryCount === 1 ? 'repository' : 'repositories'}"
+				>
 					{#snippet children({ props })}
-						<div {...props} class="flex items-center gap-1 px-2 py-0.5 bg-muted/40 rounded text-muted-foreground">
+						<div
+							{...props}
+							class="flex items-center gap-1 px-2 py-0.5 bg-muted/40 rounded text-muted-foreground"
+						>
 							<FolderGit2 class="w-3 h-3" />
 							<span class="text-[10px] font-medium">{repositoryCount}</span>
 						</div>
@@ -61,21 +74,39 @@
 				</UiTooltip>
 			{/if}
 			{#if onEditRepositories}
-			<IconButton icon={Pencil} tooltip="Edit repositories" onclick={onEditRepositories} variant="primary" size="sm" />
+				<IconButton
+					icon={Pencil}
+					tooltip="Edit repositories"
+					onclick={onEditRepositories}
+					variant="primary"
+					size="sm"
+				/>
 			{/if}
 			{#if hasActiveAnalysis}
-				<UiTooltip content="{activeAnalysisCount} analysis {activeAnalysisCount === 1 ? 'running' : 'running'}">
+				<UiTooltip
+					content="{activeAnalysisCount} analysis {activeAnalysisCount === 1
+						? 'running'
+						: 'running'}"
+				>
 					{#snippet children({ props })}
-						<div {...props} class="flex items-center gap-1 px-2 py-0.5 bg-accent/10 rounded text-accent">
-						<LoaderCircle class="w-3 h-3 animate-spin" />
+						<div
+							{...props}
+							class="flex items-center gap-1 px-2 py-0.5 bg-accent/10 rounded text-accent"
+						>
+							<LoaderCircle class="w-3 h-3 animate-spin" />
 							<span class="text-[10px] font-medium">{activeAnalysisCount}</span>
 						</div>
 					{/snippet}
 				</UiTooltip>
 			{/if}
-			<IconButton icon={Trash2} tooltip="Delete this revision" onclick={onDelete} variant="destructive" />
+			<IconButton
+				icon={Trash2}
+				tooltip="Delete this revision"
+				onclick={onDelete}
+				variant="destructive"
+			/>
 		</div>
-		
+
 		{#if stats && stats.total > 0}
 			<div class="flex items-center gap-4 text-xs">
 				<!-- Execution Progress -->
@@ -83,26 +114,26 @@
 					<span class="text-muted-foreground">Executions:</span>
 					<div class="flex items-center gap-1.5">
 						<div class="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
-						<div 
-						class="h-full bg-success transition-all duration-300"
-						style="width: {completionPercent}%"
-						></div>
+							<div
+								class="h-full bg-success transition-all duration-300"
+								style="width: {completionPercent}%"
+							></div>
 						</div>
 						<span class="text-foreground font-medium">
 							{stats.completed}/{stats.total}
 						</span>
 					</div>
 				</div>
-				
+
 				<!-- Validation Progress -->
 				<div class="flex items-center gap-2">
 					<span class="text-muted-foreground">Validated:</span>
 					<div class="flex items-center gap-1.5">
 						<div class="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
-						<div 
-						class="h-full bg-primary transition-all duration-300"
-						style="width: {validationPercent}%"
-						></div>
+							<div
+								class="h-full bg-primary transition-all duration-300"
+								style="width: {validationPercent}%"
+							></div>
 						</div>
 						<span class="text-foreground font-medium">
 							{stats.validationPassed}/{stats.total}

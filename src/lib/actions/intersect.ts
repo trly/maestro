@@ -20,14 +20,14 @@ export function intersectOnce(
 		},
 		{
 			root: opts?.root ?? null,
-			rootMargin: opts?.rootMargin ?? '0px',
-			threshold: opts?.threshold ?? 0.1
+			rootMargin: opts?.rootMargin ?? "0px",
+			threshold: opts?.threshold ?? 0.1,
 		}
 	)
 	observer.observe(node)
 	return {
 		destroy() {
 			observer.disconnect()
-		}
+		},
 	}
 }

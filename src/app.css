@@ -1,5 +1,5 @@
-@import 'tailwindcss';
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap');
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap");
 
 @theme {
 	--color-background: #f9f5d7;
@@ -92,7 +92,7 @@
 	body {
 		background-color: var(--color-background);
 		color: var(--color-foreground);
-		font-family: 'JetBrains Mono', monospace;
+		font-family: "JetBrains Mono", monospace;
 		font-size: 0.8125rem;
 		line-height: 1.25rem;
 	}
@@ -151,7 +151,8 @@
 			background: var(--color-muted);
 		}
 
-		& h2, & h3 {
+		& h2,
+		& h3 {
 			font-weight: 600;
 			margin-top: 1rem;
 			margin-bottom: 0.5rem;
@@ -169,7 +170,8 @@
 			margin: 0.5rem 0;
 		}
 
-		& ul, & ol {
+		& ul,
+		& ol {
 			margin: 0.5rem 0;
 			padding-left: 1.5rem;
 		}

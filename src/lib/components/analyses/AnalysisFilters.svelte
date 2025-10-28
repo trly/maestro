@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { ColumnFilters } from './types'
-	import FilterSelect from '$lib/components/ui/FilterSelect.svelte'
+	import type { ColumnFilters } from "./types"
+	import FilterSelect from "$lib/components/ui/FilterSelect.svelte"
 
 	const props = $props<{
 		filters: ColumnFilters
@@ -13,17 +13,17 @@
 	}
 
 	const typeOptions = [
-		{ value: 'all', label: 'All types' },
-		{ value: 'execution', label: 'Execution' },
-		{ value: 'validation', label: 'Validation' }
+		{ value: "all", label: "All types" },
+		{ value: "execution", label: "Execution" },
+		{ value: "validation", label: "Validation" },
 	]
 
 	const statusOptions = [
-		{ value: 'all', label: 'All statuses' },
-		{ value: 'pending', label: 'Pending' },
-		{ value: 'running', label: 'Running' },
-		{ value: 'completed', label: 'Completed' },
-		{ value: 'failed', label: 'Failed' }
+		{ value: "all", label: "All statuses" },
+		{ value: "pending", label: "Pending" },
+		{ value: "running", label: "Running" },
+		{ value: "completed", label: "Completed" },
+		{ value: "failed", label: "Failed" },
 	]
 </script>
 
@@ -31,20 +31,20 @@
 	<!-- Type Filter -->
 	<div class="w-36">
 		<FilterSelect
-			value={props.filters.type || 'all'}
+			value={props.filters.type || "all"}
 			options={typeOptions}
 			placeholder="Type"
-			onValueChange={(v) => update('type', v as any)}
+			onValueChange={(v) => update("type", v as any)}
 		/>
 	</div>
 
 	<!-- Status Filter -->
 	<div class="w-36">
 		<FilterSelect
-			value={props.filters.status || 'all'}
+			value={props.filters.status || "all"}
 			options={statusOptions}
 			placeholder="Status"
-			onValueChange={(v) => update('status', v as any)}
+			onValueChange={(v) => update("status", v as any)}
 		/>
 	</div>
 

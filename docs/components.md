@@ -28,6 +28,7 @@ src/lib/components/
 **Purpose:** Top-level container that manages filtering, sorting, selection, and bulk operations.
 
 **Responsibilities:**
+
 - Filter state management and normalization
 - Sort state management (key + direction)
 - Selection state via `useSelection` composable
@@ -35,6 +36,7 @@ src/lib/components/
 - Data transformation (filtering, sorting)
 
 **Key Props:**
+
 ```typescript
 {
   executions: Execution[]
@@ -56,6 +58,7 @@ src/lib/components/
 ```
 
 **State Management:**
+
 - Filters reset when `revisionId` changes
 - Selection cleared after bulk operations
 - Maintains `filteredSortedIds` for list rendering
@@ -65,12 +68,14 @@ src/lib/components/
 **Purpose:** Filter controls for repository search and status filters.
 
 **Responsibilities:**
+
 - Repository text search (debounced)
 - Status dropdowns (execution, validation, CI)
 - Changes filter (has-changes/no-changes)
 - Filter normalization (converts 'all' to undefined)
 
 **Key Props:**
+
 ```typescript
 {
   filters: ColumnFilters
@@ -79,6 +84,7 @@ src/lib/components/
 ```
 
 **UI Components:**
+
 - `FilterInput` - Text search with clear button
 - `FilterSelect` - bits-ui Select wrapper
 
@@ -87,12 +93,14 @@ src/lib/components/
 **Purpose:** Virtualized list container with header and rows.
 
 **Responsibilities:**
+
 - Render table header with sort controls
 - Virtual scrolling for performance (uses intersection observer)
 - Pass through action handlers to rows
 - Coordinate select-all checkbox
 
 **Key Props:**
+
 ```typescript
 {
   ids: string[]                          // Filtered + sorted IDs
@@ -113,6 +121,7 @@ src/lib/components/
 ```
 
 **Virtual Scrolling:**
+
 - Uses `intersect` action (intersection observer)
 - Only renders visible rows + buffer
 - Maintains scroll position during updates
@@ -122,6 +131,7 @@ src/lib/components/
 **Purpose:** Individual execution row with status indicators and actions.
 
 **Columns:**
+
 1. **Checkbox** - Multi-select
 2. **Repository** - Provider ID (e.g., "owner/repo")
 3. **Status** - Execution status with icon
@@ -132,6 +142,7 @@ src/lib/components/
 8. **Actions** - Context menu with available actions
 
 **Action Buttons:**
+
 - Start/Stop/Restart execution
 - Validate/Stop validation
 - Review changes (diff viewer)
@@ -141,6 +152,7 @@ src/lib/components/
 - Delete execution
 
 **Loading States:**
+
 - Individual loading spinners for async operations
 - Optimistic UI updates from event bus
 - Disabled state during bulk operations
@@ -152,6 +164,7 @@ src/lib/components/
 Fixed toolbar shown when executions are selected.
 
 **Actions:**
+
 - Bulk Start - Start pending executions
 - Bulk Restart - Resume failed/cancelled executions
 - Bulk Validate - Start validations
@@ -163,12 +176,14 @@ Fixed toolbar shown when executions are selected.
 Consistent button component for actions.
 
 **Variants:**
+
 - Default (primary color)
 - Success (green)
 - Warning (orange)
 - Destructive (red)
 
 **States:**
+
 - Loading (spinner)
 - Disabled
 - Tooltip support
@@ -178,6 +193,7 @@ Consistent button component for actions.
 Text input with clear button.
 
 **Features:**
+
 - Optional debounce
 - Clear button (X)
 - Placeholder text
@@ -187,6 +203,7 @@ Text input with clear button.
 Dropdown filter using bits-ui Select.
 
 **Features:**
+
 - "All" option clears filter
 - Consistent styling
 - Keyboard navigation
@@ -197,11 +214,7 @@ Dropdown filter using bits-ui Select.
 
 ```svelte
 <!-- +page.svelte -->
-<ExecutionTable
-  executions={executionsWithUpdates}
-  repositories={repositories}
-  onStartExecution={handleStart}
-/>
+<ExecutionTable executions={executionsWithUpdates} {repositories} onStartExecution={handleStart} />
 ```
 
 ### Event Bus Integration
@@ -209,11 +222,11 @@ Dropdown filter using bits-ui Select.
 ```typescript
 // Merge live updates from event bus
 let executionsWithUpdates = $derived.by(() => {
-  const updates = $executionStore
-  return executions.map(execution => ({
-    ...execution,
-    ...(updates.get(execution.id))
-  }))
+	const updates = $executionStore
+	return executions.map((execution) => ({
+		...execution,
+		...updates.get(execution.id),
+	}))
 })
 ```
 
@@ -224,12 +237,12 @@ let executionsWithUpdates = $derived.by(() => {
 let pushingExecutions = $state<Set<string>>(new Set())
 
 async function handlePush(execution: Execution) {
-  pushingExecutions.add(execution.id)
-  try {
-    await api.executions.push(execution.id)
-  } finally {
-    pushingExecutions.delete(execution.id)
-  }
+	pushingExecutions.add(execution.id)
+	try {
+		await api.executions.push(execution.id)
+	} finally {
+		pushingExecutions.delete(execution.id)
+	}
 }
 ```
 
@@ -241,9 +254,9 @@ Only render visible rows using intersection observer:
 
 ```svelte
 {#each visibleIds as id}
-  <div use:intersect on:intersect={() => markVisible(id)}>
-    <ExecutionRow ... />
-  </div>
+	<div use:intersect on:intersect={() => markVisible(id)}>
+		<ExecutionRow ... />
+	</div>
 {/each}
 ```
 
@@ -253,11 +266,11 @@ Use `$derived.by()` for expensive computations:
 
 ```typescript
 let filteredExecutions = $derived.by(() => {
-  return executions.filter(e => matchesFilters(e))
+	return executions.filter((e) => matchesFilters(e))
 })
 
 let sortedExecutions = $derived.by(() => {
-  return [...filteredExecutions].sort(comparator)
+	return [...filteredExecutions].sort(comparator)
 })
 ```
 
@@ -267,9 +280,9 @@ Pass lookup maps instead of arrays for O(1) access:
 
 ```typescript
 let executionsById = $derived.by(() => {
-  const map = new Map()
-  for (const e of executions) map.set(e.id, e)
-  return map
+	const map = new Map()
+	for (const e of executions) map.set(e.id, e)
+	return map
 })
 
 // In child component
@@ -284,7 +297,7 @@ const execution = props.executionsById.get(id)
 <!-- ✅ DO: Keep props as object -->
 <script lang="ts">
   const props = $props<{ executions: Execution[] }>()
-  
+
   // Access via props.X everywhere
   let filtered = $derived(props.executions.filter(...))
 </script>
@@ -339,6 +352,7 @@ async function handleLoadStats(id: string) {
 ### Component Isolation
 
 Components should be testable in isolation:
+
 - Accept all data via props
 - Emit events for user actions
 - No direct store access (except composables)
@@ -349,11 +363,11 @@ Create factory functions for test data:
 
 ```typescript
 function mockExecution(overrides?: Partial<Execution>): Execution {
-  return {
-    id: crypto.randomUUID(),
-    status: 'completed',
-    ...overrides
-  }
+	return {
+		id: crypto.randomUUID(),
+		status: "completed",
+		...overrides,
+	}
 }
 ```
 

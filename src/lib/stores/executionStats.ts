@@ -1,4 +1,4 @@
-import * as ipc from '$lib/ipc'
+import * as ipc from "$lib/ipc"
 
 export interface ExecutionStats {
 	filesAdded: number
@@ -22,9 +22,11 @@ export async function fetchExecutionStats(executionId: string): Promise<Executio
 		const diffResponse = await ipc.getExecutionModifiedFiles(executionId)
 
 		const stats: ExecutionStats = {
-			filesAdded: diffResponse.files.filter(f => f.status === 'added').length,
-			filesRemoved: diffResponse.files.filter(f => f.status === 'deleted').length,
-			filesModified: diffResponse.files.filter(f => f.status === 'modified' || f.status === 'renamed').length,
+			filesAdded: diffResponse.files.filter((f) => f.status === "added").length,
+			filesRemoved: diffResponse.files.filter((f) => f.status === "deleted").length,
+			filesModified: diffResponse.files.filter(
+				(f) => f.status === "modified" || f.status === "renamed"
+			).length,
 			linesAdded: diffResponse.files.reduce((sum, f) => sum + (f.additions || 0), 0),
 			linesRemoved: diffResponse.files.reduce((sum, f) => sum + (f.deletions || 0), 0),
 		}

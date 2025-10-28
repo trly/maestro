@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Checkbox } from 'bits-ui'
-	import { Check } from 'lucide-svelte'
+	import { Checkbox } from "bits-ui"
+	import { Check } from "lucide-svelte"
 
 	type FileItem = {
 		path: string
@@ -15,7 +15,7 @@
 		selectedIndex = $bindable<number | null>(null),
 		onselect,
 		ontoggle,
-		readonly = false
+		readonly = false,
 	}: {
 		files: FileItem[]
 		selectedIndex?: number | null
@@ -43,7 +43,7 @@
 		</h3>
 		{#if !readonly}
 			<button class="px-2 py-1 text-xs hover:bg-accent rounded" onclick={toggleAll}>
-				{files.every((f) => f.selected) ? 'Deselect All' : 'Select All'}
+				{files.every((f) => f.selected) ? "Deselect All" : "Select All"}
 			</button>
 		{/if}
 	</div>

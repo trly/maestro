@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { X } from 'lucide-svelte'
-	
+	import { X } from "lucide-svelte"
+
 	const props = $props<{
 		value?: string
 		placeholder?: string
@@ -12,7 +12,7 @@
 <div class="relative">
 	<input
 		type="text"
-		value={props.value || ''}
+		value={props.value || ""}
 		oninput={(e) => props.onValueChange(e.currentTarget.value)}
 		placeholder={props.placeholder}
 		class="w-full px-2 py-1.5 text-xs border border-input-border bg-input-background rounded-[var(--radius-sm)] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all"

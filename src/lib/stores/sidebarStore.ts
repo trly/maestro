@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store'
+import { writable } from "svelte/store"
 
 /**
  * Store to trigger sidebar refresh when prompt sets or revisions change
@@ -12,8 +12,8 @@ function createSidebarStore() {
 		 * Trigger sidebar to refresh its data
 		 */
 		refresh: () => {
-			update(n => n + 1)
-		}
+			update((n) => n + 1)
+		},
 	}
 }
 

@@ -1,17 +1,17 @@
 <script lang="ts">
-	import { Tooltip } from 'bits-ui';
+	import { Tooltip } from "bits-ui"
 
 	let {
 		content,
-		side = 'top',
+		side = "top",
 		delayMs = 300,
-		children
+		children,
 	}: {
-		content: string;
-		side?: 'top' | 'bottom' | 'left' | 'right';
-		delayMs?: number;
-		children: import('svelte').Snippet<[{ props: Record<string, unknown> }]>;
-	} = $props();
+		content: string
+		side?: "top" | "bottom" | "left" | "right"
+		delayMs?: number
+		children: import("svelte").Snippet<[{ props: Record<string, unknown> }]>
+	} = $props()
 </script>
 
 <Tooltip.Provider>
@@ -22,13 +22,13 @@
 			{/snippet}
 		</Tooltip.Trigger>
 		<Tooltip.Portal>
-		<Tooltip.Content
-		 {side}
-		 sideOffset={5}
-		  class="z-50 px-3 py-2 text-xs font-medium bg-popover text-popover-foreground rounded-lg shadow-lg border-0 max-w-xs"
-		>
-		  {content}
-		</Tooltip.Content>
-	</Tooltip.Portal>
+			<Tooltip.Content
+				{side}
+				sideOffset={5}
+				class="z-50 px-3 py-2 text-xs font-medium bg-popover text-popover-foreground rounded-lg shadow-lg border-0 max-w-xs"
+			>
+				{content}
+			</Tooltip.Content>
+		</Tooltip.Portal>
 	</Tooltip.Root>
 </Tooltip.Provider>

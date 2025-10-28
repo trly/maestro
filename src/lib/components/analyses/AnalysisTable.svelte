@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { Analysis } from '$lib/types'
-	import type { SortSpec, ColumnFilters } from './types'
-	import AnalysisFilters from './AnalysisFilters.svelte'
-	import AnalysisList from './AnalysisList.svelte'
+	import type { Analysis } from "$lib/types"
+	import type { SortSpec, ColumnFilters } from "./types"
+	import AnalysisFilters from "./AnalysisFilters.svelte"
+	import AnalysisList from "./AnalysisList.svelte"
 
 	const props = $props<{
 		analyses: Analysis[]
@@ -13,7 +13,7 @@
 	}>()
 
 	let filters = $state<ColumnFilters>({})
-	let sort = $state<SortSpec>({ key: 'createdAt', dir: 'desc' })
+	let sort = $state<SortSpec>({ key: "createdAt", dir: "desc" })
 
 	$effect(() => {
 		props.revisionId
@@ -21,7 +21,7 @@
 	})
 
 	function setFilters(next: ColumnFilters) {
-		const norm = (v?: string | null) => (v == null || v === '' || v === 'all' ? undefined : v)
+		const norm = (v?: string | null) => (v == null || v === "" || v === "all" ? undefined : v)
 		const f = { ...next }
 		f.type = norm(f.type as any) as any
 		f.status = norm(f.status as any) as any
@@ -44,16 +44,16 @@
 		})
 	})
 
-	const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
+	const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" })
 
 	let sortedAnalyses = $derived.by(() => {
 		const s = [...filteredAnalyses]
-		const dir = sort.dir === 'asc' ? 1 : -1
+		const dir = sort.dir === "asc" ? 1 : -1
 		const cmp = {
 			type: (a: Analysis, b: Analysis) => collator.compare(a.type, b.type),
 			status: (a: Analysis, b: Analysis) => collator.compare(a.status, b.status),
 			createdAt: (a: Analysis, b: Analysis) => (a.createdAt || 0) - (b.createdAt || 0),
-			completedAt: (a: Analysis, b: Analysis) => (a.completedAt || 0) - (b.completedAt || 0)
+			completedAt: (a: Analysis, b: Analysis) => (a.completedAt || 0) - (b.completedAt || 0),
 		}[sort.key]
 		s.sort((a, b) => {
 			const r = cmp(a, b)
@@ -64,12 +64,12 @@
 
 	let filteredSortedIds = $derived(sortedAnalyses.map((a) => a.id))
 
-	function handleChangeSort(key: SortSpec['key']) {
+	function handleChangeSort(key: SortSpec["key"]) {
 		if (sort.key === key) {
-			sort.dir = sort.dir === 'asc' ? 'desc' : 'asc'
+			sort.dir = sort.dir === "asc" ? "desc" : "asc"
 		} else {
 			sort.key = key
-			sort.dir = 'asc'
+			sort.dir = "asc"
 		}
 	}
 

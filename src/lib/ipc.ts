@@ -1,5 +1,12 @@
-import { invoke } from '@tauri-apps/api/core'
-import type { Repository, PromptSet, PromptRevision, Execution, Analysis, AnalysisType } from './types'
+import { invoke } from "@tauri-apps/api/core"
+import type {
+	Repository,
+	PromptSet,
+	PromptRevision,
+	Execution,
+	Analysis,
+	AnalysisType,
+} from "./types"
 
 /**
  * Custom error class for Tauri IPC errors
@@ -11,37 +18,27 @@ export class TauriIPCError extends Error {
 		public readonly originalError?: unknown
 	) {
 		super(message)
-		this.name = 'TauriIPCError'
+		this.name = "TauriIPCError"
 	}
 }
 
 /**
  * Generic wrapper for Tauri IPC commands with centralized error handling
- * 
+ *
  * @param cmd - The Tauri command name
  * @param args - Optional command arguments
  * @returns Promise with the typed result
  * @throws TauriIPCError on failure
  */
-export async function invokeCommand<T>(
-	cmd: string,
-	args?: Record<string, unknown>
-): Promise<T> {
+export async function invokeCommand<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
 	try {
 		return await invoke<T>(cmd, args)
 	} catch (error) {
 		// Convert Tauri errors to proper Error objects
-		const errorMessage = typeof error === 'string' 
-			? error 
-			: error instanceof Error 
-				? error.message 
-				: 'Unknown error'
-		
-		throw new TauriIPCError(
-			`Command '${cmd}' failed: ${errorMessage}`,
-			cmd,
-			error
-		)
+		const errorMessage =
+			typeof error === "string" ? error : error instanceof Error ? error.message : "Unknown error"
+
+		throw new TauriIPCError(`Command '${cmd}' failed: ${errorMessage}`, cmd, error)
 	}
 }
 
@@ -52,38 +49,32 @@ export async function invokeCommand<T>(
 /**
  * Create a new repository
  */
-export async function createRepository(
-	provider: string,
-	providerId: string
-): Promise<Repository> {
-	return invokeCommand<Repository>('create_repository', {
+export async function createRepository(provider: string, providerId: string): Promise<Repository> {
+	return invokeCommand<Repository>("create_repository", {
 		provider,
-		providerId
+		providerId,
 	})
 }
 
 /**
  * Update repository name
  */
-export async function updateRepositoryName(
-	id: string,
-	name: string
-): Promise<void> {
-	return invokeCommand<void>('update_repository_name', { id, name })
+export async function updateRepositoryName(id: string, name: string): Promise<void> {
+	return invokeCommand<void>("update_repository_name", { id, name })
 }
 
 /**
  * Sync repository metadata from GitHub API (e.g., default branch)
  */
 export async function syncRepositoryMetadata(id: string): Promise<void> {
-	return invokeCommand<void>('sync_repository_metadata', { id })
+	return invokeCommand<void>("sync_repository_metadata", { id })
 }
 
 /**
  * Get repository by ID
  */
 export async function getRepository(id: string): Promise<Repository | null> {
-	return invokeCommand<Repository | null>('get_repository', { id })
+	return invokeCommand<Repository | null>("get_repository", { id })
 }
 
 /**
@@ -93,9 +84,9 @@ export async function findRepository(
 	provider: string,
 	providerId: string
 ): Promise<Repository | null> {
-	return invokeCommand<Repository | null>('find_repository', {
+	return invokeCommand<Repository | null>("find_repository", {
 		provider,
-		providerId
+		providerId,
 	})
 }
 
@@ -103,14 +94,14 @@ export async function findRepository(
  * Get all repositories
  */
 export async function getAllRepositories(): Promise<Repository[]> {
-	return invokeCommand<Repository[]>('get_all_repositories')
+	return invokeCommand<Repository[]>("get_all_repositories")
 }
 
 /**
  * Delete repository by ID
  */
 export async function deleteRepository(id: string): Promise<boolean> {
-	return invokeCommand<boolean>('delete_repository', { id })
+	return invokeCommand<boolean>("delete_repository", { id })
 }
 
 // ============================================================================
@@ -126,11 +117,11 @@ export async function createPromptSet(
 	validationPrompt?: string | null,
 	autoValidate: boolean = false
 ): Promise<PromptSet> {
-	return invokeCommand<PromptSet>('create_promptset', {
+	return invokeCommand<PromptSet>("create_promptset", {
 		name,
 		repositoryIds,
 		validationPrompt,
-		autoValidate
+		autoValidate,
 	})
 }
 
@@ -138,14 +129,14 @@ export async function createPromptSet(
  * Get all prompt sets
  */
 export async function getAllPromptSets(): Promise<PromptSet[]> {
-	return invokeCommand<PromptSet[]>('get_all_promptsets')
+	return invokeCommand<PromptSet[]>("get_all_promptsets")
 }
 
 /**
  * Get prompt set by ID
  */
 export async function getPromptSet(id: string): Promise<PromptSet | null> {
-	return invokeCommand<PromptSet | null>('get_promptset', { id })
+	return invokeCommand<PromptSet | null>("get_promptset", { id })
 }
 
 /**
@@ -155,9 +146,9 @@ export async function updatePromptSetValidation(
 	id: string,
 	validationPrompt: string | null
 ): Promise<void> {
-	return invokeCommand<void>('update_promptset_validation', {
+	return invokeCommand<void>("update_promptset_validation", {
 		id,
-		validationPrompt
+		validationPrompt,
 	})
 }
 
@@ -168,9 +159,9 @@ export async function updatePromptSetAutoValidate(
 	id: string,
 	autoValidate: boolean
 ): Promise<void> {
-	return invokeCommand<void>('update_promptset_auto_validate', {
+	return invokeCommand<void>("update_promptset_auto_validate", {
 		id,
-		autoValidate
+		autoValidate,
 	})
 }
 
@@ -181,9 +172,9 @@ export async function updatePromptSetRepositories(
 	id: string,
 	repositoryIds: string[]
 ): Promise<void> {
-	return invokeCommand<void>('update_promptset_repositories', {
+	return invokeCommand<void>("update_promptset_repositories", {
 		id,
-		repositoryIds
+		repositoryIds,
 	})
 }
 
@@ -191,28 +182,24 @@ export async function updatePromptSetRepositories(
  * Delete prompt set by ID
  */
 export async function deletePromptSet(id: string): Promise<boolean> {
-	return invokeCommand<boolean>('delete_promptset', { id })
+	return invokeCommand<boolean>("delete_promptset", { id })
 }
 
 /**
  * Get all revisions for a prompt set
  */
-export async function getPromptSetRevisions(
-	promptsetId: string
-): Promise<PromptRevision[]> {
-	return invokeCommand<PromptRevision[]>('get_promptset_revisions', {
-		promptsetId
+export async function getPromptSetRevisions(promptsetId: string): Promise<PromptRevision[]> {
+	return invokeCommand<PromptRevision[]>("get_promptset_revisions", {
+		promptsetId,
 	})
 }
 
 /**
  * Get all executions for a prompt set
  */
-export async function getExecutionsByPromptSet(
-	promptsetId: string
-): Promise<Execution[]> {
-	return invokeCommand<Execution[]>('get_executions_by_promptset', {
-		promptsetId
+export async function getExecutionsByPromptSet(promptsetId: string): Promise<Execution[]> {
+	return invokeCommand<Execution[]>("get_executions_by_promptset", {
+		promptsetId,
 	})
 }
 
@@ -228,37 +215,33 @@ export async function createPromptRevision(
 	promptText: string,
 	parentRevisionId: string | null = null
 ): Promise<PromptRevision> {
-	return invokeCommand<PromptRevision>('create_prompt_revision', {
+	return invokeCommand<PromptRevision>("create_prompt_revision", {
 		promptsetId,
 		promptText,
-		parentRevisionId
+		parentRevisionId,
 	})
 }
 
 /**
  * Get prompt revision by ID
  */
-export async function getPromptRevision(
-	id: string
-): Promise<PromptRevision | null> {
-	return invokeCommand<PromptRevision | null>('get_prompt_revision', { id })
+export async function getPromptRevision(id: string): Promise<PromptRevision | null> {
+	return invokeCommand<PromptRevision | null>("get_prompt_revision", { id })
 }
 
 /**
  * Delete prompt revision by ID
  */
 export async function deletePromptRevision(id: string): Promise<boolean> {
-	return invokeCommand<boolean>('delete_prompt_revision', { id })
+	return invokeCommand<boolean>("delete_prompt_revision", { id })
 }
 
 /**
  * Get all executions for a revision
  */
-export async function getExecutionsByRevision(
-	revisionId: string
-): Promise<Execution[]> {
-	return invokeCommand<Execution[]>('get_executions_by_revision', {
-		revisionId
+export async function getExecutionsByRevision(revisionId: string): Promise<Execution[]> {
+	return invokeCommand<Execution[]>("get_executions_by_revision", {
+		revisionId,
 	})
 }
 
@@ -270,10 +253,10 @@ export async function prepareExecutions(
 	revisionId: string,
 	repositoryIds?: string[]
 ): Promise<string[]> {
-	return invokeCommand<string[]>('prepare_executions', {
+	return invokeCommand<string[]>("prepare_executions", {
 		promptsetId,
 		revisionId,
-		repositoryIds
+		repositoryIds,
 	})
 }
 
@@ -285,10 +268,10 @@ export async function executePromptSet(
 	revisionId: string,
 	repositoryIds?: string[]
 ): Promise<string[]> {
-	return invokeCommand<string[]>('execute_promptset', {
+	return invokeCommand<string[]>("execute_promptset", {
 		promptsetId,
 		revisionId,
-		repositoryIds
+		repositoryIds,
 	})
 }
 
@@ -296,14 +279,14 @@ export async function executePromptSet(
  * Stop all executions for a revision
  */
 export async function stopAllExecutions(revisionId: string): Promise<number> {
-	return invokeCommand<number>('stop_all_executions', { revisionId })
+	return invokeCommand<number>("stop_all_executions", { revisionId })
 }
 
 /**
  * Stop all validations for a revision
  */
 export async function stopAllValidations(revisionId: string): Promise<number> {
-	return invokeCommand<number>('stop_all_validations', { revisionId })
+	return invokeCommand<number>("stop_all_validations", { revisionId })
 }
 
 // ============================================================================
@@ -314,17 +297,15 @@ export async function stopAllValidations(revisionId: string): Promise<number> {
  * Get execution by ID
  */
 export async function getExecution(id: string): Promise<Execution | null> {
-	return invokeCommand<Execution | null>('get_execution', { id })
+	return invokeCommand<Execution | null>("get_execution", { id })
 }
 
 /**
  * Find execution by ID prefix (short hash)
  */
-export async function findExecutionByPrefix(
-	idPrefix: string
-): Promise<Execution | null> {
-	return invokeCommand<Execution | null>('find_execution_by_prefix', {
-		idPrefix
+export async function findExecutionByPrefix(idPrefix: string): Promise<Execution | null> {
+	return invokeCommand<Execution | null>("find_execution_by_prefix", {
+		idPrefix,
 	})
 }
 
@@ -336,10 +317,10 @@ export async function createExecution(
 	revisionId: string,
 	repositoryId: string
 ): Promise<Execution> {
-	return invokeCommand<Execution>('create_execution', {
+	return invokeCommand<Execution>("create_execution", {
 		promptsetId,
 		revisionId,
-		repositoryId
+		repositoryId,
 	})
 }
 
@@ -347,42 +328,42 @@ export async function createExecution(
  * Delete execution by ID
  */
 export async function deleteExecution(id: string): Promise<boolean> {
-	return invokeCommand<boolean>('delete_execution', { id })
+	return invokeCommand<boolean>("delete_execution", { id })
 }
 
 /**
  * Start an execution (new or restart)
  */
 export async function startExecution(executionId: string): Promise<void> {
-	return invokeCommand<void>('execute_prompt', { executionId })
+	return invokeCommand<void>("execute_prompt", { executionId })
 }
 
 /**
  * Validate an execution
  */
 export async function validateExecution(executionId: string): Promise<void> {
-	return invokeCommand<void>('validate_execution', { executionId })
+	return invokeCommand<void>("validate_execution", { executionId })
 }
 
 /**
  * Stop a running execution
  */
 export async function stopExecution(executionId: string): Promise<boolean> {
-	return invokeCommand<boolean>('stop_execution', { executionId })
+	return invokeCommand<boolean>("stop_execution", { executionId })
 }
 
 /**
  * Stop a running validation
  */
 export async function stopValidation(executionId: string): Promise<boolean> {
-	return invokeCommand<boolean>('stop_validation', { executionId })
+	return invokeCommand<boolean>("stop_validation", { executionId })
 }
 
 /**
  * Resume a paused execution
  */
 export async function resumeExecution(executionId: string): Promise<void> {
-	return invokeCommand<void>('resume_execution', { executionId })
+	return invokeCommand<void>("resume_execution", { executionId })
 }
 
 /**
@@ -398,32 +379,26 @@ export async function getExecutionModifiedFiles(executionId: string): Promise<{
 	source: string
 	commitSha: string | null
 }> {
-	return invokeCommand('get_execution_modified_files', { executionId })
+	return invokeCommand("get_execution_modified_files", { executionId })
 }
 
 /**
  * Get file diff for an execution
  */
-export async function getExecutionFileDiff(
-	executionId: string,
-	file: string
-): Promise<string> {
-	return invokeCommand<string>('get_execution_file_diff', {
+export async function getExecutionFileDiff(executionId: string, file: string): Promise<string> {
+	return invokeCommand<string>("get_execution_file_diff", {
 		executionId,
-		file
+		file,
 	})
 }
 
 /**
  * Commit changes for an execution
  */
-export async function commitChanges(
-	executionId: string,
-	files?: string[]
-): Promise<void> {
-	return invokeCommand<void>('commit_changes', {
+export async function commitChanges(executionId: string, files?: string[]): Promise<void> {
+	return invokeCommand<void>("commit_changes", {
 		executionId,
-		files: files || null
+		files: files || null,
 	})
 }
 
@@ -431,27 +406,33 @@ export async function commitChanges(
  * Cleanup execution worktree
  */
 export async function cleanupExecution(executionId: string): Promise<void> {
-	return invokeCommand<void>('cleanup_execution', { executionId })
+	return invokeCommand<void>("cleanup_execution", { executionId })
 }
 
 // ============================================================================
 // Token Commands
 // ============================================================================
 
-export type TokenKey = 'amp_token' | 'github_token' | 'sourcegraph_endpoint' | 'sourcegraph_token' | 'amp_client_id' | 'amp_client_secret'
+export type TokenKey =
+	| "amp_token"
+	| "github_token"
+	| "sourcegraph_endpoint"
+	| "sourcegraph_token"
+	| "amp_client_id"
+	| "amp_client_secret"
 
 /**
  * Set a token in the system keyring
  */
 export async function setToken(key: TokenKey, value: string): Promise<void> {
-	return invokeCommand<void>('set_token', { key, value })
+	return invokeCommand<void>("set_token", { key, value })
 }
 
 /**
  * Delete a token from the system keyring
  */
 export async function deleteToken(key: TokenKey): Promise<void> {
-	return invokeCommand<void>('delete_token', { key })
+	return invokeCommand<void>("delete_token", { key })
 }
 
 export interface AllTokens {
@@ -467,14 +448,14 @@ export interface AllTokens {
  * Get all tokens from the system keyring (single keychain prompt)
  */
 export async function getAllTokens(): Promise<AllTokens> {
-	return invokeCommand<AllTokens>('get_all_tokens')
+	return invokeCommand<AllTokens>("get_all_tokens")
 }
 
 /**
  * Get all tokens masked (single keychain prompt)
  */
 export async function getAllTokensMasked(): Promise<AllTokens> {
-	return invokeCommand<AllTokens>('get_all_tokens_masked')
+	return invokeCommand<AllTokens>("get_all_tokens_masked")
 }
 
 // ============================================================================
@@ -510,9 +491,9 @@ export async function searchSourcegraphRepositories(
 	query: string,
 	limit?: number
 ): Promise<RepositorySearchResult> {
-	return invokeCommand<RepositorySearchResult>('search_sourcegraph_repositories', {
+	return invokeCommand<RepositorySearchResult>("search_sourcegraph_repositories", {
 		query,
-		limit
+		limit,
 	})
 }
 
@@ -530,7 +511,7 @@ export interface ConfigPaths {
  * Get configuration paths
  */
 export async function getConfigPaths(): Promise<ConfigPaths> {
-	return invokeCommand<ConfigPaths>('get_config_paths')
+	return invokeCommand<ConfigPaths>("get_config_paths")
 }
 
 /**
@@ -541,10 +522,10 @@ export async function openWorktreeInEditor(
 	executionId: string,
 	editorCommand: string
 ): Promise<void> {
-	return invokeCommand<void>('open_worktree_in_editor', {
+	return invokeCommand<void>("open_worktree_in_editor", {
 		promptsetId,
 		executionId,
-		editorCommand
+		editorCommand,
 	})
 }
 
@@ -557,11 +538,11 @@ export async function openWorktreeWithTerminal(
 	editorCommand: string,
 	terminalCommand: string
 ): Promise<void> {
-	return invokeCommand<void>('open_worktree_with_terminal', {
+	return invokeCommand<void>("open_worktree_with_terminal", {
 		promptsetId,
 		executionId,
 		editorCommand,
-		terminalCommand
+		terminalCommand,
 	})
 }
 
@@ -573,21 +554,21 @@ export async function openWorktreeWithTerminal(
  * Start CI checking for an execution (spawns background polling)
  */
 export async function startCiCheck(executionId: string): Promise<void> {
-	return invokeCommand<void>('start_ci_check', { executionId })
+	return invokeCommand<void>("start_ci_check", { executionId })
 }
 
 /**
  * Refresh CI status once (no polling)
  */
 export async function refreshCiStatus(executionId: string): Promise<void> {
-	return invokeCommand<void>('refresh_ci_status', { executionId })
+	return invokeCommand<void>("refresh_ci_status", { executionId })
 }
 
 /**
  * Push committed changes to remote
  */
 export async function pushCommit(executionId: string, force: boolean = false): Promise<void> {
-	return invokeCommand<void>('push_commit', { executionId, force })
+	return invokeCommand<void>("push_commit", { executionId, force })
 }
 
 // ============================================================================
@@ -598,28 +579,28 @@ export async function pushCommit(executionId: string, force: boolean = false): P
  * Get a setting value by key
  */
 export async function getSetting(key: string): Promise<string | null> {
-	return invokeCommand<string | null>('get_setting', { key })
+	return invokeCommand<string | null>("get_setting", { key })
 }
 
 /**
  * Set a setting value
  */
 export async function setSetting(key: string, value: string): Promise<void> {
-	return invokeCommand<void>('set_setting', { key, value })
+	return invokeCommand<void>("set_setting", { key, value })
 }
 
 /**
  * Get the CI stuck threshold in minutes (how long before pending CI is marked as skipped)
  */
 export async function getCiStuckThresholdMinutes(): Promise<number> {
-	return invokeCommand<number>('get_ci_stuck_threshold_minutes', {})
+	return invokeCommand<number>("get_ci_stuck_threshold_minutes", {})
 }
 
 /**
  * Get the maximum number of concurrent executions allowed
  */
 export async function getMaxConcurrentExecutions(): Promise<number> {
-	return invokeCommand<number>('get_max_concurrent_executions', {})
+	return invokeCommand<number>("get_max_concurrent_executions", {})
 }
 
 // ============================================================================
@@ -641,21 +622,21 @@ export interface TerminalInfo {
  * Get list of available/installed editors
  */
 export async function getAvailableEditors(): Promise<AppInfo[]> {
-	return invokeCommand<AppInfo[]>('get_available_editors')
+	return invokeCommand<AppInfo[]>("get_available_editors")
 }
 
 /**
  * Get list of available/installed terminal apps
  */
 export async function getAvailableTerminals(): Promise<TerminalInfo[]> {
-	return invokeCommand<TerminalInfo[]>('get_available_terminals')
+	return invokeCommand<TerminalInfo[]>("get_available_terminals")
 }
 
 /**
  * Check if a specific app/command is installed
  */
 export async function checkAppInstalled(command: string): Promise<boolean> {
-	return invokeCommand<boolean>('check_app_installed', { command })
+	return invokeCommand<boolean>("check_app_installed", { command })
 }
 
 // ============================================================================
@@ -670,10 +651,10 @@ export async function createAnalysis(
 	analysisType: AnalysisType,
 	executionIds: string[]
 ): Promise<string> {
-	return invokeCommand<string>('create_analysis', {
+	return invokeCommand<string>("create_analysis", {
 		revisionId,
 		analysisType,
-		executionIds
+		executionIds,
 	})
 }
 
@@ -681,14 +662,14 @@ export async function createAnalysis(
  * Run an analysis
  */
 export async function runAnalysis(analysisId: string): Promise<void> {
-	return invokeCommand<void>('run_analysis', { analysisId })
+	return invokeCommand<void>("run_analysis", { analysisId })
 }
 
 /**
  * Get analysis by ID
  */
 export async function getAnalysis(analysisId: string): Promise<Analysis | null> {
-	return invokeCommand<Analysis | null>('get_analysis', { analysisId })
+	return invokeCommand<Analysis | null>("get_analysis", { analysisId })
 }
 
 /**
@@ -698,9 +679,9 @@ export async function getAnalysesByRevision(
 	revisionId: string,
 	analysisType?: AnalysisType
 ): Promise<Analysis[]> {
-	return invokeCommand<Analysis[]>('get_analyses_by_revision', {
+	return invokeCommand<Analysis[]>("get_analyses_by_revision", {
 		revisionId,
-		analysisType
+		analysisType,
 	})
 }
 
@@ -708,5 +689,5 @@ export async function getAnalysesByRevision(
  * Delete an analysis
  */
 export async function deleteAnalysis(analysisId: string): Promise<boolean> {
-	return invokeCommand<boolean>('delete_analysis', { analysisId })
+	return invokeCommand<boolean>("delete_analysis", { analysisId })
 }

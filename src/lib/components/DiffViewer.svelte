@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { api } from '$lib/api'
-	import { processPatchDiff } from '$lib/diff'
-	import { fetchDiff, fetchFileDiff, clearDiffCache } from '$lib/stores/diffStore'
-	import Modal from '$lib/components/ui/Modal.svelte'
-	import Badge from '$lib/components/ui/Badge.svelte'
-	import FileList from '$lib/components/diff/FileList.svelte'
-	import DiffTabs from '$lib/components/diff/DiffTabs.svelte'
+	import { api } from "$lib/api"
+	import { processPatchDiff } from "$lib/diff"
+	import { fetchDiff, fetchFileDiff, clearDiffCache } from "$lib/stores/diffStore"
+	import Modal from "$lib/components/ui/Modal.svelte"
+	import Badge from "$lib/components/ui/Badge.svelte"
+	import FileList from "$lib/components/diff/FileList.svelte"
+	import DiffTabs from "$lib/components/diff/DiffTabs.svelte"
 
 	type ModifiedFile = {
 		status: string
@@ -17,11 +17,11 @@
 
 	let files = $state<ModifiedFile[]>([])
 	let selectedFileIndex = $state<number | null>(null)
-	let diff = $state<string>('')
+	let diff = $state<string>("")
 	let loading = $state(false)
 	let committing = $state(false)
 	let hasSessionId = $state(false)
-	let commitStatus = $state<'uncommitted' | 'committed'>('uncommitted')
+	let commitStatus = $state<"uncommitted" | "committed">("uncommitted")
 	let commitSha = $state<string | null>(null)
 	let parentSha = $state<string | null>(null)
 	let branch = $state<string | null>(null)
@@ -30,21 +30,21 @@
 	let selectedFile = $derived(
 		selectedFileIndex !== null && selectedFileIndex >= 0 ? files[selectedFileIndex] : null
 	)
-	let isBinaryFile = $derived(diff.includes('Binary files') || diff.includes('GIT binary patch'))
+	let isBinaryFile = $derived(diff.includes("Binary files") || diff.includes("GIT binary patch"))
 
 	async function loadFiles() {
 		loading = true
 		try {
 			const [filesData, executionData] = await Promise.all([
 				fetchDiff(executionId),
-				api.executions.get(executionId)
+				api.executions.get(executionId),
 			])
 
 			files = filesData.files.map((f: any) => ({ ...f, selected: true }))
 			hasSessionId = !!executionData.sessionId
-			commitStatus = (
-				filesData.source === 'committed' ? 'committed' : 'uncommitted'
-			) as 'committed' | 'uncommitted'
+			commitStatus = (filesData.source === "committed" ? "committed" : "uncommitted") as
+				| "committed"
+				| "uncommitted"
 			commitSha = filesData.commitSha || null
 			parentSha = executionData.parentSha || null
 			branch = executionData.branch || null
@@ -67,7 +67,7 @@
 		try {
 			diff = await fetchFileDiff(executionId, file.path)
 		} catch (error) {
-			diff = ''
+			diff = ""
 		} finally {
 			loading = false
 		}
@@ -83,7 +83,7 @@
 	async function commitSelectedFiles() {
 		const selectedFiles = files.filter((f) => f.selected).map((f) => f.path)
 		if (selectedFiles.length === 0) {
-			alert('Please select at least one file to commit')
+			alert("Please select at least one file to commit")
 			return
 		}
 
@@ -94,7 +94,7 @@
 			await api.executions.commit(executionId, selectedFiles)
 			clearDiffCache(executionId)
 		} catch (error) {
-			alert('Failed to commit files')
+			alert("Failed to commit files")
 		} finally {
 			committing = false
 		}
@@ -110,12 +110,12 @@
 <Modal bind:open title="Review Changes">
 	{#snippet children()}
 		<div class="flex-1 flex flex-row min-h-0">
-			<FileList 
-				bind:files 
-				bind:selectedIndex={selectedFileIndex} 
-				onselect={selectFile} 
+			<FileList
+				bind:files
+				bind:selectedIndex={selectedFileIndex}
+				onselect={selectFile}
 				ontoggle={toggleFile}
-				readonly={commitStatus === 'committed'}
+				readonly={commitStatus === "committed"}
 			/>
 
 			<div class="flex-1 flex flex-col min-w-0 overflow-hidden p-6">
@@ -124,13 +124,10 @@
 						{#if selectedFile}
 							<h3 class="font-semibold">{selectedFile.path}</h3>
 						{/if}
-						{#if commitStatus === 'uncommitted'}
+						{#if commitStatus === "uncommitted"}
 							<Badge type="uncommitted" text="Uncommitted changes" />
 						{:else}
-							<Badge
-								type="committed"
-								text="Committed {commitSha ? commitSha.slice(0, 7) : ''}"
-							/>
+							<Badge type="committed" text="Committed {commitSha ? commitSha.slice(0, 7) : ''}" />
 						{/if}
 					</div>
 					<div class="flex items-center gap-4 text-xs text-muted-foreground">
@@ -155,10 +152,16 @@
 					{:else if loading}
 						<p class="text-sm text-muted-foreground">Loading diff...</p>
 					{:else if diffItems.length > 0}
-						<DiffTabs items={diffItems} {commitStatus} {parentSha} {commitSha} fileStatus={selectedFile?.status} />
+						<DiffTabs
+							items={diffItems}
+							{commitStatus}
+							{parentSha}
+							{commitSha}
+							fileStatus={selectedFile?.status}
+						/>
 					{:else}
 						<p class="text-sm text-muted-foreground">
-							No changes to display{isBinaryFile ? ' (binary file)' : ''}
+							No changes to display{isBinaryFile ? " (binary file)" : ""}
 						</p>
 					{/if}
 				</div>
@@ -168,9 +171,8 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-2">
-			<button
-				class="px-4 py-2 border rounded hover:bg-muted"
-				onclick={() => (open = false)}>Close</button
+			<button class="px-4 py-2 border rounded hover:bg-muted" onclick={() => (open = false)}
+				>Close</button
 			>
 			{#if hasSessionId}
 				<button
@@ -178,10 +180,12 @@
 					onclick={commitSelectedFiles}
 					disabled={committing ||
 						files.filter((f) => f.selected).length === 0 ||
-						commitStatus === 'committed'}
-					title={commitStatus === 'committed' ? 'Changes already committed' : ''}
+						commitStatus === "committed"}
+					title={commitStatus === "committed" ? "Changes already committed" : ""}
 				>
-					{committing ? 'Committing...' : `Commit ${files.filter((f) => f.selected).length} file(s)`}
+					{committing
+						? "Committing..."
+						: `Commit ${files.filter((f) => f.selected).length} file(s)`}
 				</button>
 			{/if}
 		</div>

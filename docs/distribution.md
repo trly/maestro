@@ -5,6 +5,7 @@
 ### Apple Developer Account
 
 You need a **paid Apple Developer account** ($99/year) to:
+
 - Sign apps with "Developer ID Application" certificate
 - Notarize apps for distribution outside the App Store
 - Prevent "unverified developer" warnings on user machines
@@ -12,6 +13,7 @@ You need a **paid Apple Developer account** ($99/year) to:
 ### Required Certificates
 
 Create a **Developer ID Application** certificate:
+
 1. Generate a Certificate Signing Request (CSR) on your Mac:
    - Open Keychain Access → Certificate Assistant → Request a Certificate from a Certificate Authority
    - Save the CSR file
@@ -55,14 +57,14 @@ For notarization, you need an app-specific password:
 
 Add these secrets to your GitHub repository (Settings → Secrets and variables → Actions):
 
-| Secret Name | Value | Description |
-|-------------|-------|-------------|
-| `APPLE_CERTIFICATE` | Content of `certificate-base64.txt` | Base64-encoded .p12 file |
-| `APPLE_CERTIFICATE_PASSWORD` | Your .p12 password | Password set when exporting |
-| `KEYCHAIN_PASSWORD` | Any strong password | Temporary keychain password for CI |
-| `APPLE_ID` | your.email@example.com | Your Apple ID email |
-| `APPLE_PASSWORD` | xxxx-xxxx-xxxx-xxxx | App-specific password |
-| `APPLE_TEAM_ID` | XXXXXXXXXX | Find at [Membership Details](https://developer.apple.com/account#MembershipDetailsCard) |
+| Secret Name                  | Value                               | Description                                                                             |
+| ---------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------- |
+| `APPLE_CERTIFICATE`          | Content of `certificate-base64.txt` | Base64-encoded .p12 file                                                                |
+| `APPLE_CERTIFICATE_PASSWORD` | Your .p12 password                  | Password set when exporting                                                             |
+| `KEYCHAIN_PASSWORD`          | Any strong password                 | Temporary keychain password for CI                                                      |
+| `APPLE_ID`                   | your.email@example.com              | Your Apple ID email                                                                     |
+| `APPLE_PASSWORD`             | xxxx-xxxx-xxxx-xxxx                 | App-specific password                                                                   |
+| `APPLE_TEAM_ID`              | XXXXXXXXXX                          | Find at [Membership Details](https://developer.apple.com/account#MembershipDetailsCard) |
 
 ### Step 4: Trigger a Release
 
@@ -74,6 +76,7 @@ git push origin v0.1.0
 ```
 
 This will:
+
 1. Build for macOS (Apple Silicon + Intel) and Linux
 2. Code sign the macOS builds
 3. Notarize the macOS builds with Apple
@@ -86,19 +89,21 @@ This will:
 For local builds that you want to distribute:
 
 1. **Set signing identity** in [tauri.conf.json](../src-tauri/tauri.conf.json):
+
    ```json
    {
-     "bundle": {
-       "macOS": {
-         "signingIdentity": "Developer ID Application: Your Name (TEAMID)"
-       }
-     }
+   	"bundle": {
+   		"macOS": {
+   			"signingIdentity": "Developer ID Application: Your Name (TEAMID)"
+   		}
+   	}
    }
    ```
 
 2. **Set notarization credentials** (choose one method):
 
    **Option A: Apple ID** (easier, less secure)
+
    ```bash
    export APPLE_ID="your.email@example.com"
    export APPLE_PASSWORD="xxxx-xxxx-xxxx-xxxx"  # App-specific password
@@ -106,6 +111,7 @@ For local builds that you want to distribute:
    ```
 
    **Option B: App Store Connect API** (more secure)
+
    ```bash
    export APPLE_API_ISSUER="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
    export APPLE_API_KEY="XXXXXXXXXX"
@@ -138,6 +144,7 @@ The `.deb` package will be in `src-tauri/target/release/bundle/deb/`.
 ### "Notarization failed"
 
 **Possible causes:**
+
 - Invalid Apple ID or app-specific password
 - Wrong Team ID
 - Certificate doesn't match Team ID
@@ -165,11 +172,13 @@ The `.deb` package will be in `src-tauri/target/release/bundle/deb/`.
 Users download `.dmg` (macOS) or `.deb` (Linux) from GitHub Releases page.
 
 **Pros:**
+
 - Simple, no approval process
 - Direct control over releases
 - Fast iteration
 
 **Cons:**
+
 - Users must manually check for updates
 - No built-in update mechanism
 

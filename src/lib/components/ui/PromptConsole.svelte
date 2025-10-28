@@ -1,126 +1,131 @@
 <script lang="ts">
-	import { X, Pencil, Save } from 'lucide-svelte';
-	import { Switch } from 'bits-ui';
-	import type { PromptRevision } from '$lib/types';
+	import { X, Pencil, Save } from "lucide-svelte"
+	import { Switch } from "bits-ui"
+	import type { PromptRevision } from "$lib/types"
 
 	let {
 		revision,
 		validationPrompt = null,
 		autoValidate = false,
-		onSaveValidation
+		onSaveValidation,
 	}: {
-		revision: PromptRevision;
-		validationPrompt?: string | null;
-		autoValidate?: boolean;
-		onSaveValidation: (prompt: string, autoValidate: boolean) => Promise<void>;
-	} = $props();
+		revision: PromptRevision
+		validationPrompt?: string | null
+		autoValidate?: boolean
+		onSaveValidation: (prompt: string, autoValidate: boolean) => Promise<void>
+	} = $props()
 
-	let promptHeight = $state(256);
-	let isResizing = $state(false);
-	let isEditingValidation = $state(false);
-	let editedValidationPrompt = $state(validationPrompt || '');
-	let editedAutoValidate = $state(autoValidate);
-	let isSaving = $state(false);
-	let manuallyResized = $state(false);
-	let promptContentRef = $state<HTMLPreElement | null>(null);
-	let validationContentRef = $state<HTMLElement | null>(null);
-	let startY = $state(0);
-	let startHeight = $state(0);
+	let promptHeight = $state(256)
+	let isResizing = $state(false)
+	let isEditingValidation = $state(false)
+	let editedValidationPrompt = $state(validationPrompt || "")
+	let editedAutoValidate = $state(autoValidate)
+	let isSaving = $state(false)
+	let manuallyResized = $state(false)
+	let promptContentRef = $state<HTMLPreElement | null>(null)
+	let validationContentRef = $state<HTMLElement | null>(null)
+	let startY = $state(0)
+	let startHeight = $state(0)
 
 	function handleResizeStart(e: MouseEvent) {
-		isResizing = true;
-		manuallyResized = true;
-		startY = e.clientY;
-		startHeight = promptHeight;
-		e.preventDefault();
+		isResizing = true
+		manuallyResized = true
+		startY = e.clientY
+		startHeight = promptHeight
+		e.preventDefault()
 	}
 
 	function handleResizeMove(e: MouseEvent) {
-		if (!isResizing) return;
-		const delta = e.clientY - startY;
-		const newHeight = startHeight + delta;
-		const minHeight = 100;
-		const maxHeight = window.innerHeight * 0.7;
-		promptHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
+		if (!isResizing) return
+		const delta = e.clientY - startY
+		const newHeight = startHeight + delta
+		const minHeight = 100
+		const maxHeight = window.innerHeight * 0.7
+		promptHeight = Math.max(minHeight, Math.min(maxHeight, newHeight))
 	}
 
 	function handleResizeEnd() {
-		isResizing = false;
+		isResizing = false
 	}
 
 	function calculateAutoHeight(): number {
-		if (manuallyResized) return promptHeight;
-		
+		if (manuallyResized) return promptHeight
+
 		// Calculate based on content height
-		const promptContentHeight = promptContentRef?.scrollHeight || 0;
-		const validationContentHeight = validationContentRef?.scrollHeight || 0;
-		const maxContentHeight = Math.max(promptContentHeight, validationContentHeight);
-		
+		const promptContentHeight = promptContentRef?.scrollHeight || 0
+		const validationContentHeight = validationContentRef?.scrollHeight || 0
+		const maxContentHeight = Math.max(promptContentHeight, validationContentHeight)
+
 		// Add padding and header space (approx 48px for header)
-		const neededHeight = maxContentHeight + 48;
-		
+		const neededHeight = maxContentHeight + 48
+
 		// Cap at 50% of viewport height
-		const maxViewportHeight = Math.floor(window.innerHeight * 0.5);
-		
+		const maxViewportHeight = Math.floor(window.innerHeight * 0.5)
+
 		// Use at least 200px, cap at 50% viewport or content height (whichever is smaller)
-		return Math.max(200, Math.min(neededHeight, maxViewportHeight));
+		return Math.max(200, Math.min(neededHeight, maxViewportHeight))
 	}
 
-	let computedHeight = $derived(calculateAutoHeight());
+	let computedHeight = $derived(calculateAutoHeight())
 
 	$effect(() => {
 		if (isResizing) {
-			document.addEventListener('mousemove', handleResizeMove);
-			document.addEventListener('mouseup', handleResizeEnd);
+			document.addEventListener("mousemove", handleResizeMove)
+			document.addEventListener("mouseup", handleResizeEnd)
 			return () => {
-				document.removeEventListener('mousemove', handleResizeMove);
-				document.removeEventListener('mouseup', handleResizeEnd);
-			};
+				document.removeEventListener("mousemove", handleResizeMove)
+				document.removeEventListener("mouseup", handleResizeEnd)
+			}
 		}
-	});
+	})
 
 	function startEditingValidation() {
-		editedValidationPrompt = validationPrompt || '';
-		editedAutoValidate = autoValidate;
-		isEditingValidation = true;
+		editedValidationPrompt = validationPrompt || ""
+		editedAutoValidate = autoValidate
+		isEditingValidation = true
 	}
 
 	function cancelEditingValidation() {
-		isEditingValidation = false;
-		editedValidationPrompt = validationPrompt || '';
-		editedAutoValidate = autoValidate;
+		isEditingValidation = false
+		editedValidationPrompt = validationPrompt || ""
+		editedAutoValidate = autoValidate
 	}
 
 	async function saveValidation() {
-		isSaving = true;
+		isSaving = true
 		try {
-			await onSaveValidation(editedValidationPrompt, editedAutoValidate);
-			isEditingValidation = false;
+			await onSaveValidation(editedValidationPrompt, editedAutoValidate)
+			isEditingValidation = false
 		} finally {
-			isSaving = false;
+			isSaving = false
 		}
 	}
 
 	$effect(() => {
-		editedValidationPrompt = validationPrompt || '';
-		editedAutoValidate = autoValidate;
-	});
+		editedValidationPrompt = validationPrompt || ""
+		editedAutoValidate = autoValidate
+	})
 </script>
 
 <div class="flex-shrink-0">
 	<!-- Prompt Content -->
 	<div class="border-b border-border/20 overflow-hidden bg-card">
-		<div class="flex divide-x divide-border/20" style="height: {manuallyResized ? promptHeight : computedHeight}px;">
+		<div
+			class="flex divide-x divide-border/20"
+			style="height: {manuallyResized ? promptHeight : computedHeight}px;"
+		>
 			<!-- Revision Prompt (Left) -->
 			<div class="flex-1 flex flex-col min-w-0">
 				<div class="px-4 py-2 bg-muted/10 border-b border-border/10">
 					<h3 class="text-xs font-semibold text-muted-foreground">Revision Prompt</h3>
 				</div>
 				<div class="flex-1 overflow-auto">
-					<pre bind:this={promptContentRef} class="px-6 py-6 text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground">{revision.promptText}</pre>
+					<pre
+						bind:this={promptContentRef}
+						class="px-6 py-6 text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground">{revision.promptText}</pre>
 				</div>
 			</div>
-			
+
 			<!-- Validation Prompt (Right) -->
 			{#if !validationPrompt && !isEditingValidation}
 				<div class="flex-1 flex flex-col min-w-0 items-center justify-center">
@@ -133,7 +138,9 @@
 				</div>
 			{:else if validationPrompt || isEditingValidation}
 				<div class="flex-1 flex flex-col min-w-0">
-					<div class="px-4 py-2 bg-muted/10 border-b border-border/10 flex items-center justify-between gap-3">
+					<div
+						class="px-4 py-2 bg-muted/10 border-b border-border/10 flex items-center justify-between gap-3"
+					>
 						<h3 class="text-xs font-semibold text-muted-foreground">Validation Prompt</h3>
 						<div class="flex items-center gap-3">
 							<div class="flex items-center gap-2">
@@ -148,7 +155,7 @@
 									/>
 								</Switch.Root>
 							</div>
-							
+
 							{#if isEditingValidation}
 								<button
 									onclick={cancelEditingValidation}
@@ -159,37 +166,39 @@
 									<X class="w-4 h-4" />
 								</button>
 								<button
-								onclick={saveValidation}
-								disabled={isSaving}
-								class="text-success hover:text-success/90 transition-colors disabled:opacity-50"
-								aria-label="Save validation prompt"
+									onclick={saveValidation}
+									disabled={isSaving}
+									class="text-success hover:text-success/90 transition-colors disabled:opacity-50"
+									aria-label="Save validation prompt"
 								>
-								<Save class="w-4 h-4" />
+									<Save class="w-4 h-4" />
 								</button>
-								{:else}
+							{:else}
 								<button
-								onclick={startEditingValidation}
-								class="text-primary hover:text-primary/90 transition-colors"
-								aria-label="Edit validation prompt"
+									onclick={startEditingValidation}
+									class="text-primary hover:text-primary/90 transition-colors"
+									aria-label="Edit validation prompt"
 								>
-								<Pencil class="w-4 h-4" />
+									<Pencil class="w-4 h-4" />
 								</button>
 							{/if}
 						</div>
 					</div>
 					<div class="flex-1 overflow-auto">
-					{#if isEditingValidation}
-					<textarea
-					bind:this={validationContentRef}
-					bind:value={editedValidationPrompt}
-					disabled={isSaving}
-					placeholder="Enter a prompt to validate each execution after it completes..."
-					 class="w-full h-full px-6 py-6 text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground bg-transparent border-none outline-none resize-none disabled:opacity-50"
-					 ></textarea>
-					{:else}
-					 <pre bind:this={validationContentRef} class="px-6 py-6 text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground">{validationPrompt}</pre>
-					 {/if}
-				</div>
+						{#if isEditingValidation}
+							<textarea
+								bind:this={validationContentRef}
+								bind:value={editedValidationPrompt}
+								disabled={isSaving}
+								placeholder="Enter a prompt to validate each execution after it completes..."
+								class="w-full h-full px-6 py-6 text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground bg-transparent border-none outline-none resize-none disabled:opacity-50"
+							></textarea>
+						{:else}
+							<pre
+								bind:this={validationContentRef}
+								class="px-6 py-6 text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground">{validationPrompt}</pre>
+						{/if}
+					</div>
 				</div>
 			{/if}
 		</div>

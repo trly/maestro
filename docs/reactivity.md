@@ -25,15 +25,16 @@ Use `$state` for all component-local reactive data:
 
 ```svelte
 <script>
-  let count = $state(0);
-  let user = $state({ name: 'Alice', age: 30 });
-  let items = $state([{ id: 1, text: 'Task 1' }]);
+	let count = $state(0)
+	let user = $state({ name: "Alice", age: 30 })
+	let items = $state([{ id: 1, text: "Task 1" }])
 </script>
 
 <button onclick={() => count++}>Count: {count}</button>
 ```
 
 **Key Features:**
+
 - Deep reactivity for objects and arrays
 - Automatic proxy creation for nested properties
 - Mutations trigger UI updates
@@ -44,11 +45,11 @@ Use `$derived` for values that depend on other reactive state:
 
 ```svelte
 <script>
-  let firstName = $state('John');
-  let lastName = $state('Doe');
-  
-  // Automatically recomputes when firstName or lastName changes
-  let fullName = $derived(`${firstName} ${lastName}`);
+	let firstName = $state("John")
+	let lastName = $state("Doe")
+
+	// Automatically recomputes when firstName or lastName changes
+	let fullName = $derived(`${firstName} ${lastName}`)
 </script>
 ```
 
@@ -60,7 +61,7 @@ Use `$props()` to define component props. **CRITICAL:** Never destructure props 
 <script>
   // ✅ DO: Keep props as object
   const props: { execution: Execution; onDelete: () => void } = $props();
-  
+
   // Access via props.X
   let status = $derived(props.execution.status);
 </script>
@@ -79,27 +80,28 @@ Use `$props()` to define component props. **CRITICAL:** Never destructure props 
 Maestro uses a centralized event bus (`executionStore`) for real-time execution updates. The pattern for integrating event bus updates with component state is:
 
 ```typescript
-import { executionStore } from '$lib/stores/executionBus';
+import { executionStore } from "$lib/stores/executionBus"
 
-let executions = $state<Execution[]>([]);
+let executions = $state<Execution[]>([])
 
 // Merge static data with live updates
 let executionsWithUpdates = $derived(
-  executions.map(execution => {
-    const updates = $executionStore.get(execution.id);
-    if (!updates) return execution;
-    return {
-      ...execution,
-      ...(updates.sessionId && { sessionId: updates.sessionId }),
-      ...(updates.status && { status: updates.status }),
-      ...(updates.validationStatus && { validationStatus: updates.validationStatus }),
-      // ... other fields
-    };
-  })
-);
+	executions.map((execution) => {
+		const updates = $executionStore.get(execution.id)
+		if (!updates) return execution
+		return {
+			...execution,
+			...(updates.sessionId && { sessionId: updates.sessionId }),
+			...(updates.status && { status: updates.status }),
+			...(updates.validationStatus && { validationStatus: updates.validationStatus }),
+			// ... other fields
+		}
+	})
+)
 ```
 
 **Why This Works:**
+
 - `$executionStore` is a store subscription at the top level (allowed)
 - `$derived` recomputes when `$executionStore` changes
 - No per-item store subscriptions (not allowed in runes mode)
@@ -111,21 +113,23 @@ Use `$derived` to compute aggregate statistics from reactive arrays:
 
 ```typescript
 let revisionStats = $derived(
-  revisions.reduce((acc, revision) => {
-    const revisionExecutions = executionsWithUpdates.filter(
-      e => e.revisionId === revision.id
-    );
-    const total = revisionExecutions.length;
-    const running = revisionExecutions.filter(e => e.status === 'running').length;
-    const completed = revisionExecutions.filter(e => e.status === 'completed').length;
-    
-    acc[revision.id] = { total, running, completed };
-    return acc;
-  }, {} as Record<string, Stats>)
-);
+	revisions.reduce(
+		(acc, revision) => {
+			const revisionExecutions = executionsWithUpdates.filter((e) => e.revisionId === revision.id)
+			const total = revisionExecutions.length
+			const running = revisionExecutions.filter((e) => e.status === "running").length
+			const completed = revisionExecutions.filter((e) => e.status === "completed").length
+
+			acc[revision.id] = { total, running, completed }
+			return acc
+		},
+		{} as Record<string, Stats>
+	)
+)
 ```
 
 **Benefits:**
+
 - Automatically updates when `executionsWithUpdates` changes
 - Efficient - only recomputes when dependencies change
 - Type-safe with TypeScript
@@ -134,22 +138,23 @@ let revisionStats = $derived(
 
 ```svelte
 {#each executionsWithUpdates as execution (execution.id)}
-  <div>
-    <h3>{execution.name}</h3>
-    <StatusBadge status={execution.status} />
-    
-    {#if execution.status === 'running'}
-      <button onclick={() => stop(execution)}>Stop</button>
-    {/if}
-    
-    {#if execution.status === 'completed' && execution.validationStatus !== 'running'}
-      <button onclick={() => validate(execution)}>Validate</button>
-    {/if}
-  </div>
+	<div>
+		<h3>{execution.name}</h3>
+		<StatusBadge status={execution.status} />
+
+		{#if execution.status === "running"}
+			<button onclick={() => stop(execution)}>Stop</button>
+		{/if}
+
+		{#if execution.status === "completed" && execution.validationStatus !== "running"}
+			<button onclick={() => validate(execution)}>Validate</button>
+		{/if}
+	</div>
 {/each}
 ```
 
 **Key Points:**
+
 - Use keyed `{#each}` blocks with `(execution.id)` for efficient updates
 - Conditionals (`{#if}`) automatically re-evaluate when reactive state changes
 - No manual subscriptions needed - Svelte handles it
@@ -162,8 +167,8 @@ let revisionStats = $derived(
 
 ```svelte
 {#each items as item}
-  {@const itemStore = getStoreForItem(item)}
-  <div>{$itemStore.value}</div>
+	{@const itemStore = getStoreForItem(item)}
+	<div>{$itemStore.value}</div>
 {/each}
 ```
 
@@ -173,16 +178,16 @@ let revisionStats = $derived(
 
 ```svelte
 <script>
-  let itemsWithUpdates = $derived(
-    items.map(item => {
-      const updates = $globalStore.get(item.id);
-      return updates ? { ...item, ...updates } : item;
-    })
-  );
+	let itemsWithUpdates = $derived(
+		items.map((item) => {
+			const updates = $globalStore.get(item.id)
+			return updates ? { ...item, ...updates } : item
+		})
+	)
 </script>
 
 {#each itemsWithUpdates as item (item.id)}
-  <div>{item.value}</div>
+	<div>{item.value}</div>
 {/each}
 ```
 
@@ -192,10 +197,10 @@ let revisionStats = $derived(
 
 ```svelte
 {#if condition}
-  {#await promise}
-    {@const store = createStore()}
-    <div>{$store.value}</div>
-  {/await}
+	{#await promise}
+		{@const store = createStore()}
+		<div>{$store.value}</div>
+	{/await}
 {/if}
 ```
 
@@ -205,11 +210,11 @@ let revisionStats = $derived(
 
 ```svelte
 <script>
-  let storeValue = $state(null);
-  
-  $effect(() => {
-    // Handle store subscription in effect at top level
-  });
+	let storeValue = $state(null)
+
+	$effect(() => {
+		// Handle store subscription in effect at top level
+	})
 </script>
 ```
 
@@ -219,17 +224,17 @@ let revisionStats = $derived(
 
 ```svelte
 <script>
-  import { onMount } from 'svelte';
-  import { settingsStore } from '$lib/stores/settingsStore';
-  
-  let localValue = $state('');
-  
-  onMount(() => {
-    settingsStore.subscribe(settings => {
-      localValue = settings.someValue;
-      // No unsubscribe = memory leak!
-    });
-  });
+	import { onMount } from "svelte"
+	import { settingsStore } from "$lib/stores/settingsStore"
+
+	let localValue = $state("")
+
+	onMount(() => {
+		settingsStore.subscribe((settings) => {
+			localValue = settings.someValue
+			// No unsubscribe = memory leak!
+		})
+	})
 </script>
 ```
 
@@ -239,15 +244,15 @@ let revisionStats = $derived(
 
 ```svelte
 <script>
-  import { settingsStore } from '$lib/stores/settingsStore';
-  
-  let localValue = $state('');
-  
-  // Automatically subscribes and cleans up
-  $effect(() => {
-    const settings = $settingsStore;
-    localValue = settings.someValue;
-  });
+	import { settingsStore } from "$lib/stores/settingsStore"
+
+	let localValue = $state("")
+
+	// Automatically subscribes and cleans up
+	$effect(() => {
+		const settings = $settingsStore
+		localValue = settings.someValue
+	})
 </script>
 ```
 
@@ -257,8 +262,8 @@ let revisionStats = $derived(
 
 ```svelte
 <script>
-  import { writable } from 'svelte/store';
-  const count = writable(0);
+	import { writable } from "svelte/store"
+	const count = writable(0)
 </script>
 
 <button onclick={() => $count++}>Count: {$count}</button>
@@ -268,7 +273,7 @@ let revisionStats = $derived(
 
 ```svelte
 <script>
-  let count = $state(0);
+	let count = $state(0)
 </script>
 
 <button onclick={() => count++}>Count: {count}</button>
@@ -280,13 +285,13 @@ let revisionStats = $derived(
 
 ```svelte
 <script>
-  let debounceTimer: number;
-  
-  function search(query: string) {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => doSearch(query), 300);
-  }
-  // No cleanup - timer may run after component unmounts!
+	let debounceTimer: number
+
+	function search(query: string) {
+		clearTimeout(debounceTimer)
+		debounceTimer = setTimeout(() => doSearch(query), 300)
+	}
+	// No cleanup - timer may run after component unmounts!
 </script>
 ```
 
@@ -294,18 +299,18 @@ let revisionStats = $derived(
 
 ```svelte
 <script>
-  import { onDestroy } from 'svelte';
-  
-  let debounceTimer: number;
-  
-  function search(query: string) {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => doSearch(query), 300);
-  }
-  
-  onDestroy(() => {
-    clearTimeout(debounceTimer);
-  });
+	import { onDestroy } from "svelte"
+
+	let debounceTimer: number
+
+	function search(query: string) {
+		clearTimeout(debounceTimer)
+		debounceTimer = setTimeout(() => doSearch(query), 300)
+	}
+
+	onDestroy(() => {
+		clearTimeout(debounceTimer)
+	})
 </script>
 ```
 
@@ -313,10 +318,10 @@ let revisionStats = $derived(
 
 ```svelte
 <script>
-  $effect(() => {
-    const timer = setTimeout(() => doSomething(), 1000);
-    return () => clearTimeout(timer); // Cleanup function
-  });
+	$effect(() => {
+		const timer = setTimeout(() => doSomething(), 1000)
+		return () => clearTimeout(timer) // Cleanup function
+	})
 </script>
 ```
 
@@ -326,19 +331,20 @@ bits-ui components expose `$bindable` props for state management:
 
 ```svelte
 <script>
-  import { Accordion } from "bits-ui";
-  
-  let value = $state(["item-1"]);
+	import { Accordion } from "bits-ui"
+
+	let value = $state(["item-1"])
 </script>
 
-<Accordion.Root bind:value={value}>
-  <Accordion.Item value="item-1">
-    <!-- content -->
-  </Accordion.Item>
+<Accordion.Root bind:value>
+	<Accordion.Item value="item-1">
+		<!-- content -->
+	</Accordion.Item>
 </Accordion.Root>
 ```
 
 **Pattern:**
+
 - Declare `$state` for the value you want to control
 - Use `bind:value` to two-way bind with bits-ui component
 - Component updates reflect in your state automatically
@@ -349,21 +355,21 @@ bits-ui components expose `$bindable` props for state management:
 
 ```svelte
 <script>
-  let todos = $state([
-    { id: 1, text: 'Learn Svelte', done: false },
-    { id: 2, text: 'Build app', done: false }
-  ]);
-  
-  function toggle(id) {
-    // Direct mutation works - $state creates deep proxy
-    const todo = todos.find(t => t.id === id);
-    if (todo) todo.done = !todo.done;
-  }
-  
-  function add() {
-    // Array methods work reactively
-    todos.push({ id: Date.now(), text: 'New task', done: false });
-  }
+	let todos = $state([
+		{ id: 1, text: "Learn Svelte", done: false },
+		{ id: 2, text: "Build app", done: false },
+	])
+
+	function toggle(id) {
+		// Direct mutation works - $state creates deep proxy
+		const todo = todos.find((t) => t.id === id)
+		if (todo) todo.done = !todo.done
+	}
+
+	function add() {
+		// Array methods work reactively
+		todos.push({ id: Date.now(), text: "New task", done: false })
+	}
 </script>
 ```
 
@@ -371,30 +377,30 @@ bits-ui components expose `$bindable` props for state management:
 
 If you encounter legacy Svelte 4 store patterns, migrate to runes:
 
-| Svelte 4 | Svelte 5 Runes |
-|----------|----------------|
-| `const count = writable(0)` | `let count = $state(0)` |
+| Svelte 4                                       | Svelte 5 Runes                      |
+| ---------------------------------------------- | ----------------------------------- |
+| `const count = writable(0)`                    | `let count = $state(0)`             |
 | `const doubled = derived(count, $c => $c * 2)` | `let doubled = $derived(count * 2)` |
-| `$count++` (auto-subscribe) | `count++` (native reactivity) |
-| `export let prop` | `let { prop } = $props()` |
+| `$count++` (auto-subscribe)                    | `count++` (native reactivity)       |
+| `export let prop`                              | `let { prop } = $props()`           |
 
 ## Testing Reactive Components
 
 When testing components with reactive state:
 
 ```typescript
-import { render, fireEvent } from '@testing-library/svelte';
-import MyComponent from './MyComponent.svelte';
+import { render, fireEvent } from "@testing-library/svelte"
+import MyComponent from "./MyComponent.svelte"
 
-test('reactive state updates', async () => {
-  const { getByRole } = render(MyComponent);
-  const button = getByRole('button');
-  
-  await fireEvent.click(button);
-  
-  // State updates are synchronous in runes mode
-  expect(button.textContent).toBe('Count: 1');
-});
+test("reactive state updates", async () => {
+	const { getByRole } = render(MyComponent)
+	const button = getByRole("button")
+
+	await fireEvent.click(button)
+
+	// State updates are synchronous in runes mode
+	expect(button.textContent).toBe("Count: 1")
+})
 ```
 
 ## Performance Considerations
@@ -410,20 +416,20 @@ Use Svelte DevTools to inspect reactive state:
 
 ```svelte
 <script>
-  let count = $state(0);
-  
-  // Log when derived value recomputes
-  let doubled = $derived.by(() => {
-    console.log('Recomputing doubled');
-    return count * 2;
-  });
+	let count = $state(0)
+
+	// Log when derived value recomputes
+	let doubled = $derived.by(() => {
+		console.log("Recomputing doubled")
+		return count * 2
+	})
 </script>
 ```
 
 ## Summary
 
 - ✅ Use `$state` for reactive component state
-- ✅ Use `$derived` for computed values  
+- ✅ Use `$derived` for computed values
 - ✅ Use `$props()` for component inputs
 - ✅ Merge event bus updates at top level with `$derived`
 - ✅ Use keyed `{#each}` blocks for arrays

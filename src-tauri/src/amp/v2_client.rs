@@ -33,7 +33,7 @@ pub struct ThreadMessagesResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Message {
-    pub role: String, // "user", "assistant", "info"
+    pub role: String,                    // "user", "assistant", "info"
     pub content: Vec<serde_json::Value>, // Flexible content blocks
 }
 
@@ -66,7 +66,10 @@ impl AmpV2Client {
         // Request new token
         let params = [
             ("grant_type", "client_credentials"),
-            ("scope", "amp.api:workspace.threads.meta:view amp.api:workspace.threads.contents:view"),
+            (
+                "scope",
+                "amp.api:workspace.threads.meta:view amp.api:workspace.threads.contents:view",
+            ),
         ];
 
         let response = self
@@ -137,7 +140,11 @@ impl AmpV2Client {
 
             if !response.status().is_success() {
                 let error_text = response.text().await?;
-                anyhow::bail!("Failed to fetch messages for thread {}: {}", thread_id, error_text);
+                anyhow::bail!(
+                    "Failed to fetch messages for thread {}: {}",
+                    thread_id,
+                    error_text
+                );
             }
 
             let page: ThreadMessagesResponse = response.json().await?;
@@ -163,10 +170,10 @@ impl AmpV2Client {
     /// Format messages as text for analysis prompt
     pub fn format_messages_for_analysis(messages: &[Message]) -> String {
         let mut output = String::new();
-        
+
         for (i, msg) in messages.iter().enumerate() {
             output.push_str(&format!("\n=== Message {} ({}) ===\n", i + 1, msg.role));
-            
+
             for content in &msg.content {
                 if let Some(text) = content.get("text").and_then(|v| v.as_str()) {
                     output.push_str(text);
@@ -181,7 +188,10 @@ impl AmpV2Client {
                     if let Some(name) = tool_use.get("name").and_then(|v| v.as_str()) {
                         output.push_str(&format!("[Tool use: {}]\n", name));
                         if let Some(input) = tool_use.get("input") {
-                            output.push_str(&format!("Input: {}\n", serde_json::to_string_pretty(input).unwrap_or_default()));
+                            output.push_str(&format!(
+                                "Input: {}\n",
+                                serde_json::to_string_pretty(input).unwrap_or_default()
+                            ));
                         }
                     }
                 } else if let Some(tool_result) = content.get("type").and_then(|t| {
@@ -203,7 +213,7 @@ impl AmpV2Client {
                 }
             }
         }
-        
+
         output
     }
 }

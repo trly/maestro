@@ -1,5 +1,5 @@
 export interface DiffItem {
-	type: 'added' | 'removed' | 'unchanged' | 'modified'
+	type: "added" | "removed" | "unchanged" | "modified"
 	oldLine?: string
 	newLine?: string
 	oldLineNumber?: number

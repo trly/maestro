@@ -1,16 +1,14 @@
 {
-  "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "enables the default permissions",
-  "windows": [
-    "main"
-  ],
-  "permissions": [
-    "core:default",
-    "core:window:allow-set-theme",
-    "notification:default",
-    "log:default",
-    "shell:allow-open",
-    "shell:allow-execute"
-  ]
+	"$schema": "../gen/schemas/desktop-schema.json",
+	"identifier": "default",
+	"description": "enables the default permissions",
+	"windows": ["main"],
+	"permissions": [
+		"core:default",
+		"core:window:allow-set-theme",
+		"notification:default",
+		"log:default",
+		"shell:allow-open",
+		"shell:allow-execute"
+	]
 }

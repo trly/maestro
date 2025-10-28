@@ -2,7 +2,7 @@
  * Composable for managing multi-select state in lists
  * Follows Svelte 5 runes pattern for reactive state management
  */
-import { SvelteSet } from 'svelte/reactivity'
+import { SvelteSet } from "svelte/reactivity"
 
 export interface SelectionState {
 	selectedIds: SvelteSet<string>
@@ -21,12 +21,12 @@ export function useSelection(): SelectionState {
 			return
 		}
 
-		const allCurrentlySelected = itemIds.every(id => selectedIds.has(id))
+		const allCurrentlySelected = itemIds.every((id) => selectedIds.has(id))
 		if (allCurrentlySelected) {
 			selectedIds.clear()
 		} else {
 			selectedIds.clear()
-			itemIds.forEach(id => selectedIds.add(id))
+			itemIds.forEach((id) => selectedIds.add(id))
 		}
 	}
 
@@ -43,7 +43,7 @@ export function useSelection(): SelectionState {
 	}
 
 	function getSelected<T extends { id: string }>(items: T[]): T[] {
-		return items.filter(item => selectedIds.has(item.id))
+		return items.filter((item) => selectedIds.has(item.id))
 	}
 
 	return {
@@ -51,6 +51,6 @@ export function useSelection(): SelectionState {
 		toggleAll,
 		toggle,
 		clear,
-		getSelected
+		getSelected,
 	}
 }

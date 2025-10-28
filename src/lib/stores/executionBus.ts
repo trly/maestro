@@ -1,6 +1,12 @@
-import { writable, type Writable } from 'svelte/store'
-import type { ExecutionStatus, ValidationStatus, CommitStatus, CiStatus, AnalysisStatus } from '../types'
-import { clearExecutionStats } from './executionStats'
+import { writable, type Writable } from "svelte/store"
+import type {
+	ExecutionStatus,
+	ValidationStatus,
+	CommitStatus,
+	CiStatus,
+	AnalysisStatus,
+} from "../types"
+import { clearExecutionStats } from "./executionStats"
 
 export interface ExecutionSessionEvent {
 	executionId: string
@@ -78,12 +84,12 @@ const analysisStore: Writable<Map<string, AnalysisData>> = writable(new Map())
 let unlisteners: Array<() => void> = []
 
 export async function subscribeToExecutions() {
-	const isTauri = typeof window !== 'undefined' && '__TAURI__' in window
+	const isTauri = typeof window !== "undefined" && "__TAURI__" in window
 	if (!isTauri) return
 
-	const { listen } = await import('@tauri-apps/api/event')
+	const { listen } = await import("@tauri-apps/api/event")
 
-	const unlisten1 = await listen<ExecutionSessionEvent>('execution:session', (event) => {
+	const unlisten1 = await listen<ExecutionSessionEvent>("execution:session", (event) => {
 		const { executionId, sessionId, threadUrl } = event.payload
 		executionStore.update((map) => {
 			const existing = map.get(executionId) || {}
@@ -92,7 +98,7 @@ export async function subscribeToExecutions() {
 		})
 	})
 
-	const unlisten2 = await listen<ExecutionStatusEvent>('execution:status', (event) => {
+	const unlisten2 = await listen<ExecutionStatusEvent>("execution:status", (event) => {
 		const { executionId, status } = event.payload
 		executionStore.update((map) => {
 			const existing = map.get(executionId) || {}
@@ -100,12 +106,12 @@ export async function subscribeToExecutions() {
 			return new Map(map)
 		})
 		// Clear stats cache when execution completes so they can be refetched
-		if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+		if (status === "completed" || status === "failed" || status === "cancelled") {
 			clearExecutionStats(executionId)
 		}
 	})
 
-	const unlisten3 = await listen<ExecutionValidationEvent>('execution:validation', (event) => {
+	const unlisten3 = await listen<ExecutionValidationEvent>("execution:validation", (event) => {
 		const { executionId, validationStatus, validationThreadUrl } = event.payload
 		executionStore.update((map) => {
 			const existing = map.get(executionId) || {}
@@ -114,7 +120,7 @@ export async function subscribeToExecutions() {
 		})
 	})
 
-	const unlisten4 = await listen<ExecutionCommitEvent>('execution:commit', (event) => {
+	const unlisten4 = await listen<ExecutionCommitEvent>("execution:commit", (event) => {
 		const { executionId, commitStatus, commitSha, committedAt } = event.payload
 		executionStore.update((map) => {
 			const existing = map.get(executionId) || {}
@@ -123,7 +129,7 @@ export async function subscribeToExecutions() {
 		})
 	})
 
-	const unlisten5 = await listen<ExecutionProgressEvent>('execution:progress', (event) => {
+	const unlisten5 = await listen<ExecutionProgressEvent>("execution:progress", (event) => {
 		const { executionId, message } = event.payload
 		executionStore.update((map) => {
 			const existing = map.get(executionId) || {}
@@ -132,7 +138,7 @@ export async function subscribeToExecutions() {
 		})
 	})
 
-	const unlisten6 = await listen<ExecutionCiEvent>('execution:ci', (event) => {
+	const unlisten6 = await listen<ExecutionCiEvent>("execution:ci", (event) => {
 		const { executionId, ciStatus, ciUrl } = event.payload
 		executionStore.update((map) => {
 			const existing = map.get(executionId) || {}
@@ -141,7 +147,7 @@ export async function subscribeToExecutions() {
 		})
 	})
 
-	const unlisten7 = await listen<AnalysisStatusEvent>('analysis:status', (event) => {
+	const unlisten7 = await listen<AnalysisStatusEvent>("analysis:status", (event) => {
 		const { analysisId, status, errorMessage } = event.payload
 		analysisStore.update((map) => {
 			const existing = map.get(analysisId) || {}
@@ -150,7 +156,7 @@ export async function subscribeToExecutions() {
 		})
 	})
 
-	const unlisten8 = await listen<AnalysisResultEvent>('analysis:result', (event) => {
+	const unlisten8 = await listen<AnalysisResultEvent>("analysis:result", (event) => {
 		const { analysisId, analysisResult, ampThreadUrl, completedAt } = event.payload
 		analysisStore.update((map) => {
 			const existing = map.get(analysisId) || {}
@@ -159,7 +165,16 @@ export async function subscribeToExecutions() {
 		})
 	})
 
-	unlisteners = [unlisten1, unlisten2, unlisten3, unlisten4, unlisten5, unlisten6, unlisten7, unlisten8]
+	unlisteners = [
+		unlisten1,
+		unlisten2,
+		unlisten3,
+		unlisten4,
+		unlisten5,
+		unlisten6,
+		unlisten7,
+		unlisten8,
+	]
 }
 
 export function unsubscribeFromExecutions() {

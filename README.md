@@ -190,22 +190,22 @@ Maestro uses platform-specific app data directories:
 **Tauri IPC:**
 
 ```typescript
-import { getExecution, executePrompt } from "$lib/ipc";
-const execution = await getExecution(id);
+import { getExecution, executePrompt } from "$lib/ipc"
+const execution = await getExecution(id)
 ```
 
 **Execution Events:**
 
 ```typescript
-import { subscribeToExecutions } from "$lib/stores/executionBus";
-subscribeToExecutions(); // Call once at app init
+import { subscribeToExecutions } from "$lib/stores/executionBus"
+subscribeToExecutions() // Call once at app init
 ```
 
 **Diff Access:**
 
 ```typescript
-import { fetchDiff } from "$lib/stores/diffStore";
-const files = await fetchDiff(executionId);
+import { fetchDiff } from "$lib/stores/diffStore"
+const files = await fetchDiff(executionId)
 ```
 
 ## Troubleshooting

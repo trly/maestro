@@ -1,5 +1,5 @@
-import { diffLines, diffWords, parsePatch } from 'diff'
-import type { DiffItem } from './types/diff'
+import { diffLines, diffWords, parsePatch } from "diff"
+import type { DiffItem } from "./types/diff"
 
 export type DiffSegment = {
 	value: string
@@ -16,32 +16,34 @@ export function processTextDiff(oldText: string, newText: string): DiffItem[] {
 		const change = changes[i]
 
 		if (change.removed && i + 1 < changes.length && changes[i + 1].added) {
-			const oldLines = change.value.split('\n').filter((_, idx, arr) => idx < arr.length - 1 || _)
-			const newLines = changes[i + 1].value.split('\n').filter((_, idx, arr) => idx < arr.length - 1 || _)
+			const oldLines = change.value.split("\n").filter((_, idx, arr) => idx < arr.length - 1 || _)
+			const newLines = changes[i + 1].value
+				.split("\n")
+				.filter((_, idx, arr) => idx < arr.length - 1 || _)
 
 			const maxLen = Math.max(oldLines.length, newLines.length)
 			for (let j = 0; j < maxLen; j++) {
-				const oldLine = oldLines[j] || ''
-				const newLine = newLines[j] || ''
+				const oldLine = oldLines[j] || ""
+				const newLine = newLines[j] || ""
 				result.push({
-					type: 'modified',
+					type: "modified",
 					oldLine,
 					newLine,
-					segments: diffWords(oldLine, newLine)
+					segments: diffWords(oldLine, newLine),
 				})
 			}
 			i += 2
 		} else if (change.added) {
-			const lines = change.value.split('\n').filter((_, idx, arr) => idx < arr.length - 1 || _)
-			lines.forEach((line) => result.push({ type: 'added', newLine: line }))
+			const lines = change.value.split("\n").filter((_, idx, arr) => idx < arr.length - 1 || _)
+			lines.forEach((line) => result.push({ type: "added", newLine: line }))
 			i++
 		} else if (change.removed) {
-			const lines = change.value.split('\n').filter((_, idx, arr) => idx < arr.length - 1 || _)
-			lines.forEach((line) => result.push({ type: 'removed', oldLine: line }))
+			const lines = change.value.split("\n").filter((_, idx, arr) => idx < arr.length - 1 || _)
+			lines.forEach((line) => result.push({ type: "removed", oldLine: line }))
 			i++
 		} else {
-			const lines = change.value.split('\n').filter((_, idx, arr) => idx < arr.length - 1 || _)
-			lines.forEach((line) => result.push({ type: 'unchanged', oldLine: line, newLine: line }))
+			const lines = change.value.split("\n").filter((_, idx, arr) => idx < arr.length - 1 || _)
+			lines.forEach((line) => result.push({ type: "unchanged", oldLine: line, newLine: line }))
 			i++
 		}
 	}
@@ -74,45 +76,45 @@ export function processPatchDiff(patchText: string): DiffItem[] {
 				const prefix = line[0]
 				const content = line.slice(1)
 
-				if (prefix === '-' && i + 1 < hunk.lines.length && hunk.lines[i + 1][0] === '+') {
+				if (prefix === "-" && i + 1 < hunk.lines.length && hunk.lines[i + 1][0] === "+") {
 					const oldContent = content
 					const newContent = hunk.lines[i + 1].slice(1)
 
 					result.push({
-						type: 'modified',
+						type: "modified",
 						oldLine: oldContent,
 						newLine: newContent,
 						segments: diffWords(oldContent, newContent),
 						oldLineNumber: oldLineNum,
-						newLineNumber: newLineNum
+						newLineNumber: newLineNum,
 					})
 
 					oldLineNum++
 					newLineNum++
 					i += 2
-				} else if (prefix === '+') {
+				} else if (prefix === "+") {
 					result.push({
-						type: 'added',
+						type: "added",
 						newLine: content,
-						newLineNumber: newLineNum
+						newLineNumber: newLineNum,
 					})
 					newLineNum++
 					i++
-				} else if (prefix === '-') {
+				} else if (prefix === "-") {
 					result.push({
-						type: 'removed',
+						type: "removed",
 						oldLine: content,
-						oldLineNumber: oldLineNum
+						oldLineNumber: oldLineNum,
 					})
 					oldLineNum++
 					i++
 				} else {
 					result.push({
-						type: 'unchanged',
+						type: "unchanged",
 						oldLine: content,
 						newLine: content,
 						oldLineNumber: oldLineNum,
-						newLineNumber: newLineNum
+						newLineNumber: newLineNum,
 					})
 					oldLineNum++
 					newLineNum++

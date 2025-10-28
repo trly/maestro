@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    branches: ["**"]
   pull_request:
-    branches: ['**']
+    branches: ["**"]
 
 permissions:
   contents: read
@@ -41,6 +41,10 @@ jobs:
 
       - name: Cargo clippy
         run: cargo clippy -- -D warnings
+        working-directory: src-tauri
+
+      - name: Cargo fmt
+        run: cargo fmt -- --check
         working-directory: src-tauri
 
   build:

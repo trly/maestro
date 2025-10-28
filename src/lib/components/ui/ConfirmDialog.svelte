@@ -1,12 +1,14 @@
 <script lang="ts">
-	import { AlertDialog } from 'bits-ui';
-	import { confirmState, confirmYes, confirmNo } from '$lib/ui/confirm';
+	import { AlertDialog } from "bits-ui"
+	import { confirmState, confirmYes, confirmNo } from "$lib/ui/confirm"
 </script>
 
 <AlertDialog.Root open={$confirmState.isOpen}>
 	<AlertDialog.Portal>
 		<AlertDialog.Overlay class="fixed inset-0 z-50 bg-black/40" />
-		<AlertDialog.Content class="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-background rounded-md shadow-2xl border border-border/30 p-6">
+		<AlertDialog.Content
+			class="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-background rounded-md shadow-2xl border border-border/30 p-6"
+		>
 			{#if $confirmState.isOpen}
 				<AlertDialog.Title class="text-xl font-bold text-foreground mb-3">
 					{$confirmState.title}
@@ -19,13 +21,13 @@
 						onclick={confirmNo}
 						class="px-5 py-2.5 border border-border/30 text-foreground rounded-md hover:bg-muted transition-all font-semibold"
 					>
-						{$confirmState.cancelText || 'Cancel'}
+						{$confirmState.cancelText || "Cancel"}
 					</AlertDialog.Cancel>
 					<AlertDialog.Action
 						onclick={confirmYes}
 						class="px-5 py-2.5 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-all font-semibold"
 					>
-						{$confirmState.confirmText || 'Confirm'}
+						{$confirmState.confirmText || "Confirm"}
 					</AlertDialog.Action>
 				</div>
 			{/if}

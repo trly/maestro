@@ -17,16 +17,18 @@ ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
 ```
 
 Default locations:
+
 - ED25519: `~/.ssh/id_ed25519` (private), `~/.ssh/id_ed25519.pub` (public)
 - RSA: `~/.ssh/id_rsa` (private), `~/.ssh/id_rsa.pub` (public)
 
 ### 2. Add Public Key to GitHub
 
 1. Copy your public key:
+
    ```bash
    # ED25519
    cat ~/.ssh/id_ed25519.pub | pbcopy
-   
+
    # Or RSA
    cat ~/.ssh/id_rsa.pub | pbcopy
    ```
@@ -61,6 +63,7 @@ ssh -T git@github.com
 ### Clone Operation
 
 When cloning a repository, Maestro:
+
 1. Converts repo to SSH URL format: `git@github.com:owner/repo.git`
 2. Uses `git2::Cred::ssh_key_from_agent()` to authenticate
 3. Retrieves credentials from ssh-agent (no manual key path needed)
@@ -76,6 +79,7 @@ All fetch operations use the same SSH authentication mechanism through the git2 
 **Cause**: SSH key not added to ssh-agent or not on GitHub
 
 **Solution**:
+
 ```bash
 # 1. Check if key is in agent
 ssh-add -l
@@ -92,6 +96,7 @@ ssh -T git@github.com
 **Cause**: Public key not added to GitHub account or wrong key in agent
 
 **Solution**:
+
 1. Verify public key is on GitHub (Settings → SSH and GPG keys)
 2. Ensure correct key is in ssh-agent (`ssh-add -l`)
 3. Test connection: `ssh -T git@github.com`
@@ -101,6 +106,7 @@ ssh -T git@github.com
 If you have multiple SSH keys for different GitHub accounts:
 
 1. Configure `~/.ssh/config`:
+
    ```
    Host github.com
        HostName github.com
@@ -121,15 +127,13 @@ If you have multiple SSH keys for different GitHub accounts:
 
 1. **Clone Request** (`commands/executor.rs`):
    - `ensure_admin_repo_and_fetch()` → `GitService::clone_repo()`
-   
 2. **SSH Authentication** (`git/service.rs`):
    ```rust
    callbacks.credentials(|_url, username_from_url, _allowed_types| {
        git2::Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
    });
    ```
-   
-3. **Key Retrieval**: 
+3. **Key Retrieval**:
    - git2 library queries ssh-agent for loaded keys
    - Tries keys sequentially until one succeeds
    - No manual file path or passphrase needed
@@ -144,6 +148,7 @@ If you have multiple SSH keys for different GitHub accounts:
 ## Future Enhancements
 
 Potential improvements:
+
 - HTTPS fallback with PAT for environments without SSH
 - Config option to choose auth method per repository
 - Better error messages with specific setup instructions

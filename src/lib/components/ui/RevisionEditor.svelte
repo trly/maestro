@@ -1,31 +1,31 @@
 <script lang="ts">
-	import PromptDiff from '$lib/components/PromptDiff.svelte';
-	import FormField from '$lib/components/ui/FormField.svelte';
-	import UiTextarea from '$lib/components/ui/UiTextarea.svelte';
-	
+	import PromptDiff from "$lib/components/PromptDiff.svelte"
+	import FormField from "$lib/components/ui/FormField.svelte"
+	import UiTextarea from "$lib/components/ui/UiTextarea.svelte"
+
 	let {
-		promptText = $bindable(''),
+		promptText = $bindable(""),
 		oldPromptText = null,
-		validationPromptText = $bindable(''),
+		validationPromptText = $bindable(""),
 		showValidationPrompt = false,
 		isProcessing = false,
 		hasChanges = true,
 		onCreateOnly,
 		onCreateAndExecute,
-		onCancel
+		onCancel,
 	} = $props<{
-		promptText: string;
-		oldPromptText?: string | null;
-		validationPromptText?: string;
-		showValidationPrompt?: boolean;
-		isProcessing?: boolean;
-		hasChanges?: boolean;
-		onCreateOnly: () => void;
-		onCreateAndExecute: () => void;
-		onCancel: () => void;
-	}>();
-	
-	let isDisabled = $derived(isProcessing || !promptText.trim() || !hasChanges);
+		promptText: string
+		oldPromptText?: string | null
+		validationPromptText?: string
+		showValidationPrompt?: boolean
+		isProcessing?: boolean
+		hasChanges?: boolean
+		onCreateOnly: () => void
+		onCreateAndExecute: () => void
+		onCancel: () => void
+	}>()
+
+	let isDisabled = $derived(isProcessing || !promptText.trim() || !hasChanges)
 </script>
 
 <div class="space-y-5">
@@ -34,7 +34,7 @@
 		<PromptDiff
 			oldText={oldPromptText}
 			newText={promptText}
-			onupdate={(text) => promptText = text}
+			onupdate={(text) => (promptText = text)}
 		/>
 	{:else}
 		<FormField
@@ -51,7 +51,7 @@
 			/>
 		</FormField>
 	{/if}
-	
+
 	<!-- Validation Prompt (optional) -->
 	{#if showValidationPrompt}
 		<FormField
@@ -67,24 +67,24 @@
 			/>
 		</FormField>
 	{/if}
-	
+
 	<!-- Action Buttons -->
 	<div class="flex flex-col sm:flex-row gap-3">
 		<button
 			onclick={onCreateOnly}
 			disabled={isDisabled}
 			class="w-full sm:w-auto px-6 py-3.5 border border-primary/50 text-primary rounded-md hover:bg-primary/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-			title={!hasChanges ? 'No changes to prompt text' : ''}
+			title={!hasChanges ? "No changes to prompt text" : ""}
 		>
-			{isProcessing ? 'Creating...' : 'Create Only'}
+			{isProcessing ? "Creating..." : "Create Only"}
 		</button>
 		<button
 			onclick={onCreateAndExecute}
 			disabled={isDisabled}
 			class="flex-1 px-8 py-3.5 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-			title={!hasChanges ? 'No changes to prompt text' : ''}
+			title={!hasChanges ? "No changes to prompt text" : ""}
 		>
-			{isProcessing ? 'Creating...' : 'Create & Execute'}
+			{isProcessing ? "Creating..." : "Create & Execute"}
 		</button>
 		<button
 			onclick={onCancel}

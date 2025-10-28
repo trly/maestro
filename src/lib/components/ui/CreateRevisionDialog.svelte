@@ -1,40 +1,40 @@
 <script lang="ts">
-	import { Dialog } from 'bits-ui';
-	import PromptDiff from '$lib/components/PromptDiff.svelte';
+	import { Dialog } from "bits-ui"
+	import PromptDiff from "$lib/components/PromptDiff.svelte"
 
 	let {
 		open = $bindable(false),
-		parentPromptText = '',
-		onSave
+		parentPromptText = "",
+		onSave,
 	}: {
-		open?: boolean;
-		parentPromptText?: string;
-		onSave: (prompt: string) => void;
-	} = $props();
+		open?: boolean
+		parentPromptText?: string
+		onSave: (prompt: string) => void
+	} = $props()
 
-	let localPrompt = $state(parentPromptText);
+	let localPrompt = $state(parentPromptText)
 
 	// Reset to parent prompt text when dialog opens
 	$effect(() => {
 		if (open) {
-			localPrompt = parentPromptText;
+			localPrompt = parentPromptText
 		}
-	});
+	})
 
 	function handleSave() {
 		if (!localPrompt.trim()) {
-			return;
+			return
 		}
-		onSave(localPrompt);
-		open = false;
+		onSave(localPrompt)
+		open = false
 	}
 
 	function handleCancel() {
-		open = false;
+		open = false
 	}
 
 	function handleUpdate(text: string) {
-		localPrompt = text;
+		localPrompt = text
 	}
 </script>
 
@@ -47,18 +47,15 @@
 			<Dialog.Title class="px-6 py-4 border-b border-border/10 flex-shrink-0">
 				<h2 class="text-xl font-bold text-foreground">Create New Revision</h2>
 				<p class="text-sm text-muted-foreground mt-1">
-					Edit the prompt on the left. Changes from the parent revision are highlighted on the right.
+					Edit the prompt on the left. Changes from the parent revision are highlighted on the
+					right.
 				</p>
 			</Dialog.Title>
-			
+
 			<div class="flex-1 min-h-0 overflow-hidden px-6 py-4">
-				<PromptDiff
-					oldText={parentPromptText}
-					newText={localPrompt}
-					onupdate={handleUpdate}
-				/>
+				<PromptDiff oldText={parentPromptText} newText={localPrompt} onupdate={handleUpdate} />
 			</div>
-			
+
 			<div class="px-6 py-4 border-t border-border/10 flex-shrink-0 flex justify-end gap-3">
 				<button
 					onclick={handleCancel}

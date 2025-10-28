@@ -12,12 +12,12 @@ Maestro provides user-configurable settings for development tools, CI monitoring
 
 ### Available Settings
 
-| Setting Key | Type | Default | Description |
-|-------------|------|---------|-------------|
-| `ci_stuck_threshold_minutes` | `i64` | `10` | Minutes before pending CI is marked as "not_configured" |
-| `editor_command` | `string` | `"code"` | Command for opening worktrees (legacy, use `selected_editor`) |
-| `selected_editor` | `string` | `"code"` | Preferred editor from available options |
-| `selected_terminal` | `string` | `""` | Terminal app for vim/nvim (macOS only) |
+| Setting Key                  | Type     | Default  | Description                                                   |
+| ---------------------------- | -------- | -------- | ------------------------------------------------------------- |
+| `ci_stuck_threshold_minutes` | `i64`    | `10`     | Minutes before pending CI is marked as "not_configured"       |
+| `editor_command`             | `string` | `"code"` | Command for opening worktrees (legacy, use `selected_editor`) |
+| `selected_editor`            | `string` | `"code"` | Preferred editor from available options                       |
+| `selected_terminal`          | `string` | `""`     | Terminal app for vim/nvim (macOS only)                        |
 
 ### Backend Storage
 
@@ -35,15 +35,15 @@ CREATE TABLE settings (
 ```rust
 // src-tauri/src/commands/settings.rs
 #[tauri::command]
-pub fn get_setting(key: String, store: State<Mutex<Store>>) 
+pub fn get_setting(key: String, store: State<Mutex<Store>>)
     -> Result<Option<String>, String>
 
 #[tauri::command]
-pub fn set_setting(key: String, value: String, store: State<Mutex<Store>>) 
+pub fn set_setting(key: String, value: String, store: State<Mutex<Store>>)
     -> Result<(), String>
 
 #[tauri::command]
-pub fn get_ci_stuck_threshold_minutes(store: State<Mutex<Store>>) 
+pub fn get_ci_stuck_threshold_minutes(store: State<Mutex<Store>>)
     -> Result<i64, String>
 ```
 
@@ -84,20 +84,20 @@ pub fn get_available_terminals() -> Vec<TerminalInfo> {
 
 ### Supported Editors
 
-| Editor | Command | Terminal Required | Platform |
-|--------|---------|-------------------|----------|
-| Vim | `vim` | ✅ Yes | All |
-| Neovim | `nvim` | ✅ Yes | All |
-| VS Code | `code` | ❌ No | All |
-| Cursor | `cursor` | ❌ No | All |
-| Zed | `zed` | ❌ No | All |
+| Editor  | Command  | Terminal Required | Platform |
+| ------- | -------- | ----------------- | -------- |
+| Vim     | `vim`    | ✅ Yes            | All      |
+| Neovim  | `nvim`   | ✅ Yes            | All      |
+| VS Code | `code`   | ❌ No             | All      |
+| Cursor  | `cursor` | ❌ No             | All      |
+| Zed     | `zed`    | ❌ No             | All      |
 
 ### Supported Terminals (macOS)
 
-| Terminal | Command | Notes |
-|----------|---------|-------|
-| Terminal.app | `open -a Terminal` | Native macOS terminal |
-| Ghostty | `ghostty` | Modern GPU-accelerated terminal |
+| Terminal     | Command            | Notes                           |
+| ------------ | ------------------ | ------------------------------- |
+| Terminal.app | `open -a Terminal` | Native macOS terminal           |
+| Ghostty      | `ghostty`          | Modern GPU-accelerated terminal |
 
 ## Opening Worktrees in Editor
 
@@ -106,35 +106,31 @@ pub fn get_available_terminals() -> Vec<TerminalInfo> {
 ```typescript
 // src/lib/utils/worktree.ts
 export async function openInEditor(
-  execution: Execution, 
-  editorCommandFallback?: string
+	execution: Execution,
+	editorCommandFallback?: string
 ): Promise<void> {
-  const settings = get(settingsStore);
-  
-  // Use configured editor
-  const selectedEditor = settings.selectedEditor || 'code';
-  const selectedTerminal = settings.selectedTerminal;
-  
-  // Check if editor needs terminal
-  const availableEditors = await ipc.getAvailableEditors();
-  const editorInfo = availableEditors.find(e => e.command === selectedEditor);
-  
-  if (editorInfo?.needsTerminal && selectedTerminal) {
-    // Launch vim/nvim in terminal
-    await ipc.openWorktreeWithTerminal(
-      execution.promptsetId,
-      execution.id,
-      selectedEditor,
-      selectedTerminal
-    );
-  } else {
-    // Direct launch (VS Code, Cursor, Zed)
-    await ipc.openWorktreeInEditor(
-      execution.promptsetId,
-      execution.id,
-      selectedEditor
-    );
-  }
+	const settings = get(settingsStore)
+
+	// Use configured editor
+	const selectedEditor = settings.selectedEditor || "code"
+	const selectedTerminal = settings.selectedTerminal
+
+	// Check if editor needs terminal
+	const availableEditors = await ipc.getAvailableEditors()
+	const editorInfo = availableEditors.find((e) => e.command === selectedEditor)
+
+	if (editorInfo?.needsTerminal && selectedTerminal) {
+		// Launch vim/nvim in terminal
+		await ipc.openWorktreeWithTerminal(
+			execution.promptsetId,
+			execution.id,
+			selectedEditor,
+			selectedTerminal
+		)
+	} else {
+		// Direct launch (VS Code, Cursor, Zed)
+		await ipc.openWorktreeInEditor(execution.promptsetId, execution.id, selectedEditor)
+	}
 }
 ```
 
@@ -150,11 +146,11 @@ pub fn open_worktree_in_editor(
     paths: State<'_, Paths>
 ) -> Result<(), String> {
     let worktree_path = execution_worktree_path(&paths, &promptset_id, &execution_id);
-    
+
     Command::new(&editor_command)
         .arg(worktree_path)
         .spawn()?;
-    
+
     Ok(())
 }
 
@@ -167,7 +163,7 @@ pub fn open_worktree_with_terminal(
     paths: State<'_, Paths>
 ) -> Result<(), String> {
     let worktree_path = execution_worktree_path(&paths, &promptset_id, &execution_id);
-    
+
     match terminal_command.as_str() {
         "ghostty" => {
             Command::new("ghostty")
@@ -187,7 +183,7 @@ pub fn open_worktree_with_terminal(
         },
         _ => return Err(format!("Unsupported terminal: {}", terminal_command))
     }
-    
+
     Ok(())
 }
 ```
@@ -211,11 +207,13 @@ fn get_entry(key: &str) -> Result<Entry, String> {
 ```
 
 **Platform-Specific Storage:**
+
 - **macOS**: Keychain (Keychain Access.app)
 - **Linux**: Secret Service API (GNOME Keyring, KWallet)
 - **Windows**: Credential Manager
 
 **Token Keys:**
+
 - `amp_token` - Amp API authentication token
 - `github_token` - GitHub Personal Access Token
 - `sourcegraph_endpoint` - Sourcegraph instance URL
@@ -257,27 +255,27 @@ pub fn delete_token(key: String) -> Result<(), String> {
 
 ```typescript
 // src/lib/tokenStore.ts
-import * as ipc from '$lib/ipc';
+import * as ipc from "$lib/ipc"
 
-export type TokenKey = 'amp_token' | 'github_token' | 'sourcegraph_endpoint' | 'sourcegraph_token';
+export type TokenKey = "amp_token" | "github_token" | "sourcegraph_endpoint" | "sourcegraph_token"
 
 export const tokenStore = {
-  async getToken(key: TokenKey): Promise<string | null> {
-    return await ipc.getToken(key);
-  },
-  
-  async getTokenMasked(key: TokenKey): Promise<string | null> {
-    return await ipc.getTokenMasked(key);
-  },
-  
-  async setToken(key: TokenKey, value: string): Promise<void> {
-    return await ipc.setToken(key, value);
-  },
-  
-  async deleteToken(key: TokenKey): Promise<void> {
-    return await ipc.deleteToken(key);
-  }
-};
+	async getToken(key: TokenKey): Promise<string | null> {
+		return await ipc.getToken(key)
+	},
+
+	async getTokenMasked(key: TokenKey): Promise<string | null> {
+		return await ipc.getTokenMasked(key)
+	},
+
+	async setToken(key: TokenKey, value: string): Promise<void> {
+		return await ipc.setToken(key, value)
+	},
+
+	async deleteToken(key: TokenKey): Promise<void> {
+		return await ipc.deleteToken(key)
+	},
+}
 ```
 
 ### Security Benefits
@@ -311,33 +309,33 @@ let provider = GitHubProvider::new(github_token)?;
 ```svelte
 <!-- src/lib/components/Settings.svelte -->
 <script lang="ts">
-  import { settingsStore } from '$lib/stores/settingsStore';
-  import * as ipc from '$lib/ipc';
-  
-  let availableEditors = $state<ipc.AppInfo[]>([]);
-  let availableTerminals = $state<ipc.TerminalInfo[]>([]);
-  
-  onMount(async () => {
-    // Load available options
-    availableEditors = await ipc.getAvailableEditors();
-    availableTerminals = await ipc.getAvailableTerminals();
-  });
-  
-  async function handleEditorChange(value: string) {
-    await settingsStore.setSelectedEditor(value);
-  }
+	import { settingsStore } from "$lib/stores/settingsStore"
+	import * as ipc from "$lib/ipc"
+
+	let availableEditors = $state<ipc.AppInfo[]>([])
+	let availableTerminals = $state<ipc.TerminalInfo[]>([])
+
+	onMount(async () => {
+		// Load available options
+		availableEditors = await ipc.getAvailableEditors()
+		availableTerminals = await ipc.getAvailableTerminals()
+	})
+
+	async function handleEditorChange(value: string) {
+		await settingsStore.setSelectedEditor(value)
+	}
 </script>
 
 <!-- Editor dropdown populated with detected editors -->
 <Select.Root
-  value={selectedEditor}
-  onValueChange={handleEditorChange}
-  items={availableEditors.map(e => ({ 
-    value: e.command, 
-    label: e.displayName 
-  }))}
+	value={selectedEditor}
+	onValueChange={handleEditorChange}
+	items={availableEditors.map((e) => ({
+		value: e.command,
+		label: e.displayName,
+	}))}
 >
-  <!-- ... -->
+	<!-- ... -->
 </Select.Root>
 ```
 
@@ -353,17 +351,17 @@ let provider = GitHubProvider::new(github_token)?;
 ### Reading Settings
 
 ```typescript
-import { get } from 'svelte/store';
-import { settingsStore } from '$lib/stores/settingsStore';
+import { get } from "svelte/store"
+import { settingsStore } from "$lib/stores/settingsStore"
 
-const settings = get(settingsStore);
-const threshold = settings.ciStuckThresholdMinutes;
+const settings = get(settingsStore)
+const threshold = settings.ciStuckThresholdMinutes
 ```
 
 ### Updating Settings
 
 ```typescript
-await settingsStore.setSelectedEditor('nvim');
+await settingsStore.setSelectedEditor("nvim")
 // Automatically persists to backend and updates store
 ```
 
@@ -371,10 +369,10 @@ await settingsStore.setSelectedEditor('nvim');
 
 ```svelte
 <script lang="ts">
-  import { settingsStore } from '$lib/stores/settingsStore';
-  
-  // Subscribe to settings changes
-  $: ciThreshold = $settingsStore.ciStuckThresholdMinutes;
+	import { settingsStore } from "$lib/stores/settingsStore"
+
+	// Subscribe to settings changes
+	$: ciThreshold = $settingsStore.ciStuckThresholdMinutes
 </script>
 ```
 
@@ -393,7 +391,7 @@ The CI stuck threshold determines when pending CI checks are marked as "not_conf
 pub fn get_ci_stuck_threshold_minutes(&self) -> Result<i64> {
     let value = self.get_setting("ci_stuck_threshold_minutes")?
         .unwrap_or_else(|| "10".to_string());
-    
+
     value.parse::<i64>()
         .or(Ok(10))  // Default to 10 if invalid
 }
@@ -406,40 +404,45 @@ See [ci-tracking.md](./ci-tracking.md) for how this is used in CI status checkin
 ### Loading Settings
 
 ✅ **DO:** Load settings in `+layout.svelte` on app startup
+
 ```typescript
 onMount(async () => {
-  await settingsStore.load();
-});
+	await settingsStore.load()
+})
 ```
 
 ❌ **DON'T:** Load settings lazily in components
+
 ```typescript
 // This causes race conditions
 onMount(async () => {
-  await settingsStore.load();  // Too late if other components already ran
-  await openInEditor(execution);
-});
+	await settingsStore.load() // Too late if other components already ran
+	await openInEditor(execution)
+})
 ```
 
 ### Editor Detection
 
 ✅ **DO:** Check if editor needs terminal before launching
+
 ```typescript
-const editorInfo = availableEditors.find(e => e.command === selectedEditor);
+const editorInfo = availableEditors.find((e) => e.command === selectedEditor)
 if (editorInfo?.needsTerminal && !selectedTerminal) {
-  throw new Error(`${selectedEditor} requires a terminal`);
+	throw new Error(`${selectedEditor} requires a terminal`)
 }
 ```
 
 ❌ **DON'T:** Assume terminal is available
+
 ```typescript
 // This fails if user hasn't selected a terminal
-await ipc.openWorktreeWithTerminal(id, id, 'nvim', '');
+await ipc.openWorktreeWithTerminal(id, id, "nvim", "")
 ```
 
 ### Fallback Behavior
 
 When settings aren't loaded or are empty, Maestro falls back to:
+
 - Editor: `'code'` (VS Code)
 - Terminal: `''` (none)
 - CI threshold: `10` minutes
@@ -447,12 +450,14 @@ When settings aren't loaded or are empty, Maestro falls back to:
 ## Implementation Reference
 
 **Backend:**
+
 - `src-tauri/src/commands/settings.rs` - Settings commands
 - `src-tauri/src/commands/app_check.rs` - Editor/terminal detection
 - `src-tauri/src/commands/worktree.rs` - Editor launch
 - `src-tauri/src/db/store.rs` - Database operations
 
 **Frontend:**
+
 - `src/lib/stores/settingsStore.ts` - Settings store
 - `src/lib/utils/worktree.ts` - Editor launch logic
 - `src/lib/components/Settings.svelte` - Settings UI

@@ -6,11 +6,20 @@
 
 ### Commands
 
-- `bun run dev` - Start Tauri desktop app in development mode
-- `bun run build` - Build production installer
-- `bun run check` - TypeScript type checking (run before commits)
-- `cargo test` - Run Rust tests in `src-tauri/` directory
-- `cargo test <test_name>` - Run specific Rust test
+**Primary (use these):**
+
+- `make dev` or `cargo tauri dev` - Start Tauri desktop app in development mode
+- `make build` or `cargo tauri build` - Build production installer
+- `make test` or `cd src-tauri && cargo test` - Run Rust test suite
+- `make check` - TypeScript type checking (run before commits)
+- `make icon` or `cargo tauri icon` - Generate app icons
+
+**Advanced:**
+
+- `cargo test <test_name>` - Run specific Rust test in `src-tauri/` directory
+- `make test-watch` - Run Rust tests in watch mode (requires cargo-watch)
+- `make clean` - Clean all build artifacts
+- `make help` - Show all available commands
 
 ### Architecture Overview
 
@@ -46,10 +55,10 @@ Centralized execution events via `src/lib/stores/executionBus.ts`:
 **Usage Pattern:**
 
 ```typescript
-import { getExecutionWithUpdates } from "$lib/stores/executions";
+import { getExecutionWithUpdates } from "$lib/stores/executions"
 
-const executionStore = getExecutionWithUpdates(execution);
-$: status = $executionStore.status; // Auto-updates with events
+const executionStore = getExecutionWithUpdates(execution)
+$: status = $executionStore.status // Auto-updates with events
 ```
 
 ### Diff Architecture

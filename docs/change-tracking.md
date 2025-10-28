@@ -16,17 +16,17 @@ Unified system for tracking file changes (diffs) and statistics from both commit
 
 ```rust
 // Committed changes (from git history)
-get_committed_diff(admin_repo_path, parent_sha, commit_sha) 
+get_committed_diff(admin_repo_path, parent_sha, commit_sha)
   -> Result<ModifiedFilesResponse>
 
-get_committed_file_diff(admin_repo_path, parent_sha, commit_sha, file_path) 
+get_committed_file_diff(admin_repo_path, parent_sha, commit_sha, file_path)
   -> Result<String>
 
 // Worktree changes (uncommitted)
-get_worktree_diff(worktree_path) 
+get_worktree_diff(worktree_path)
   -> Result<ModifiedFilesResponse>
 
-get_worktree_file_diff(worktree_path, file_path) 
+get_worktree_file_diff(worktree_path, file_path)
   -> Result<String>
 ```
 
@@ -94,26 +94,25 @@ invalidateDiff(executionId)
 
 ```typescript
 interface FileDiff {
-    status: 'added' | 'modified' | 'deleted' | 'renamed'
-    path: string
-    additions: number
-    deletions: number
+	status: "added" | "modified" | "deleted" | "renamed"
+	path: string
+	additions: number
+	deletions: number
 }
 
 interface ModifiedFilesResponse {
-    files: FileDiff[]
-    source: 'worktree' | 'committed'
-    commitSha?: string
+	files: FileDiff[]
+	source: "worktree" | "committed"
+	commitSha?: string
 }
 ```
-
-
 
 ## Key Design Decisions
 
 ### Ephemeral Worktrees
 
 Worktrees can be safely deleted after commit because:
+
 - Commit SHA is stored in database
 - Parent SHA is stored before deletion
 - Diffs regenerated via `git diff <parent> <commit>` from admin repo

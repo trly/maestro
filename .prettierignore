@@ -1,0 +1,7 @@
+# Rust code (formatted by cargo fmt)
+src-tauri/
+
+# Build artifacts
+dist/
+.svelte-kit/
+node_modules/

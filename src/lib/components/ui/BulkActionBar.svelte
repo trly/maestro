@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Trash2, Play, RotateCw, Check, CheckCheck } from 'lucide-svelte'
-	import IconButton from './IconButton.svelte'
-	
+	import { Trash2, Play, RotateCw, Check, CheckCheck } from "lucide-svelte"
+	import IconButton from "./IconButton.svelte"
+
 	let {
 		selectedCount,
 		hasValidationPrompt = false,
@@ -15,7 +15,7 @@
 		isRestarting = false,
 		isValidating = false,
 		isRevalidating = false,
-		isDeleting = false
+		isDeleting = false,
 	}: {
 		selectedCount: number
 		hasValidationPrompt?: boolean
@@ -31,16 +31,18 @@
 		isRevalidating?: boolean
 		isDeleting?: boolean
 	} = $props()
-	
+
 	// Determine if any operation is running
-	let anyOperationRunning = $derived(isStarting || isRestarting || isValidating || isRevalidating || isDeleting)
+	let anyOperationRunning = $derived(
+		isStarting || isRestarting || isValidating || isRevalidating || isDeleting
+	)
 </script>
 
 <div class="flex items-center justify-between px-4 py-2 bg-primary/10 border-b border-border/20">
 	<span class="text-sm font-medium text-foreground">
 		{selectedCount} selected
 	</span>
-	
+
 	<div class="flex items-center gap-2 ml-12">
 		<IconButton
 			icon={Play}
@@ -87,7 +89,7 @@
 			loading={isDeleting}
 		/>
 	</div>
-	
+
 	<button
 		type="button"
 		onclick={onClear}

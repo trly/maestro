@@ -7,6 +7,7 @@ How file change statistics are calculated and displayed in Maestro.
 Diff stats (files added/removed/modified, lines added/removed) are **always calculated on-demand** from git state. They are never stored in the database - only the `parent_sha` and `commit_sha` are stored, allowing stats to be regenerated at any time.
 
 This ensures:
+
 - Stats are always accurate and reflect current git state
 - No stale data in database
 - Stats available even after worktree cleanup (for committed changes)
@@ -40,11 +41,13 @@ Stats are displayed in two columns:
 ```svelte
 <!-- src/lib/components/executions/ExecutionRow.svelte -->
 <ExecutionRow
-    {execution}
-    fileCount={(execution.filesAdded || 0) + (execution.filesRemoved || 0) + (execution.filesModified || 0)}
-    additions={execution.linesAdded || 0}
-    deletions={execution.linesRemoved || 0}
-    onReviewChanges={() => openDiffViewer(execution.id)}
+	{execution}
+	fileCount={(execution.filesAdded || 0) +
+		(execution.filesRemoved || 0) +
+		(execution.filesModified || 0)}
+	additions={execution.linesAdded || 0}
+	deletions={execution.linesRemoved || 0}
+	onReviewChanges={() => openDiffViewer(execution.id)}
 />
 ```
 
@@ -54,9 +57,8 @@ When opened, fetches live diff data:
 
 ```svelte
 <!-- src/lib/components/DiffViewer.svelte -->
-const filesData = await fetchDiff(executionId);
-// filesData.files contains per-file stats
-// Aggregated stats calculated from filesData.files
+const filesData = await fetchDiff(executionId); // filesData.files contains per-file stats // Aggregated
+stats calculated from filesData.files
 ```
 
 ## Data Flow
@@ -90,6 +92,7 @@ const filesData = await fetchDiff(executionId);
 ### Why Not Store Stats in Database?
 
 Storing only `parent_sha` and `commit_sha` provides:
+
 - **Always accurate**: Stats calculated from actual git state
 - **No stale data**: Can't get out of sync with git history
 - **Simpler**: No need to update stats on every change
@@ -107,23 +110,23 @@ Storing only `parent_sha` and `commit_sha` provides:
 
 ```typescript
 // Get stats from execution object (from DB)
-const totalFiles = execution.filesAdded + execution.filesRemoved + execution.filesModified;
-const netLines = execution.linesAdded - execution.linesRemoved;
+const totalFiles = execution.filesAdded + execution.filesRemoved + execution.filesModified
+const netLines = execution.linesAdded - execution.linesRemoved
 
 // Or calculate live from diff response
-const diffResponse = await fetchDiff(executionId);
-const totalFiles = diffResponse.files.length;
-const totalAdditions = diffResponse.files.reduce((sum, f) => sum + (f.additions || 0), 0);
+const diffResponse = await fetchDiff(executionId)
+const totalFiles = diffResponse.files.length
+const totalAdditions = diffResponse.files.reduce((sum, f) => sum + (f.additions || 0), 0)
 ```
 
 ### Invalidating Cached Diffs
 
 ```typescript
-import { clearDiffCache } from '$lib/stores/diffStore';
+import { clearDiffCache } from "$lib/stores/diffStore"
 
 // After commit, clear cache to force fresh fetch
-await api.executions.commit(executionId);
-clearDiffCache(executionId);
+await api.executions.commit(executionId)
+clearDiffCache(executionId)
 ```
 
 ## Troubleshooting
@@ -149,10 +152,12 @@ clearDiffCache(executionId);
 ## Implementation Reference
 
 **Backend:**
+
 - `src-tauri/src/git/diff.rs` - `get_committed_diff`, `get_worktree_diff`
 - `src-tauri/src/commands/executor.rs` - `get_execution_modified_files`
 
 **Frontend:**
+
 - `src/lib/stores/executionStats.ts` - On-demand stats fetching and caching
 - `src/lib/stores/diffStore.ts` - Caching layer for diff file lists
 - `src/lib/components/executions/ExecutionRow.svelte` - Stats display

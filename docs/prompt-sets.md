@@ -20,16 +20,17 @@ struct PromptSet {
 ### 1. Creation
 
 ```typescript
-import * as ipc from '$lib/ipc'
+import * as ipc from "$lib/ipc"
 
 const promptSet = await ipc.createPromptSet(
-  'Fix authentication bugs',
-  ['repo-uuid-1', 'repo-uuid-2'],  // Target repositories
-  'Check if authentication works correctly'  // Optional validation prompt
+	"Fix authentication bugs",
+	["repo-uuid-1", "repo-uuid-2"], // Target repositories
+	"Check if authentication works correctly" // Optional validation prompt
 )
 ```
 
 **Database:**
+
 ```sql
 INSERT INTO prompt_sets (id, name, repository_ids, validation_prompt, auto_validate, created_at)
 VALUES (?, ?, ?, ?, ?, ?)
@@ -38,16 +39,14 @@ VALUES (?, ?, ?, ?, ?, ?)
 ### 2. Adding Repositories
 
 ```typescript
-await ipc.updatePromptSetRepositories(
-  promptSet.id,
-  ['repo-uuid-1', 'repo-uuid-2', 'repo-uuid-3']
-)
+await ipc.updatePromptSetRepositories(promptSet.id, ["repo-uuid-1", "repo-uuid-2", "repo-uuid-3"])
 ```
 
 Repositories are stored as a JSON array in SQLite:
+
 ```sql
-UPDATE prompt_sets 
-SET repository_ids = ? 
+UPDATE prompt_sets
+SET repository_ids = ?
 WHERE id = ?
 ```
 
@@ -55,12 +54,13 @@ WHERE id = ?
 
 ```typescript
 await ipc.updatePromptSetValidation(
-  promptSet.id,
-  'Verify all tests pass and no regressions introduced'
+	promptSet.id,
+	"Verify all tests pass and no regressions introduced"
 )
 ```
 
 **Validation Prompt Usage:**
+
 - If set, executions can trigger validation after completion
 - Validation creates a new Amp session with the prompt and diff context
 - Results stored in `validation_status` and `validation_result`
@@ -69,9 +69,9 @@ await ipc.updatePromptSetValidation(
 
 ```typescript
 const revision = await ipc.createPromptRevision(
-  promptSet.id,
-  'Refactor authentication to use JWT tokens',
-  null  // No parent (first revision)
+	promptSet.id,
+	"Refactor authentication to use JWT tokens",
+	null // No parent (first revision)
 )
 ```
 
@@ -84,6 +84,7 @@ await ipc.deletePromptSet(promptSet.id)
 ```
 
 **Cascade Behavior:**
+
 - Deletes all prompt revisions
 - Deletes all executions
 - Does NOT delete repositories (they're independent)
@@ -125,9 +126,9 @@ Revisions can have parent revisions, creating a version history:
 ```typescript
 // Create a child revision from Revision A
 const revisionB = await ipc.createPromptRevision(
-  promptSet.id,
-  'Use JWT tokens instead of sessions',
-  revisionA.id  // Parent
+	promptSet.id,
+	"Use JWT tokens instead of sessions",
+	revisionA.id // Parent
 )
 ```
 
@@ -135,20 +136,18 @@ const revisionB = await ipc.createPromptRevision(
 
 ```typescript
 // Execute against all repositories in the prompt set
-const executionIds = await ipc.executePromptSet(
-  promptSet.id,
-  revision.id
-)
+const executionIds = await ipc.executePromptSet(promptSet.id, revision.id)
 
 // Or execute against a subset
 const executionIds = await ipc.executePromptSet(
-  promptSet.id,
-  revision.id,
-  ['repo-uuid-1']  // Only this repository
+	promptSet.id,
+	revision.id,
+	["repo-uuid-1"] // Only this repository
 )
 ```
 
 **What Happens:**
+
 1. Creates one `Execution` record per target repository
 2. For each execution:
    - Creates git worktree from admin repo
@@ -166,18 +165,19 @@ See [executions.md](./executions.md) for complete execution lifecycle.
 const repos = await ipc.getAllRepositories()
 
 // Display in UI
-repos.forEach(repo => {
-  console.log(`${repo.name || repo.provider_id}`)
+repos.forEach((repo) => {
+	console.log(`${repo.name || repo.provider_id}`)
 })
 ```
 
 ### Adding a Repository
 
 ```typescript
-const repo = await ipc.createRepository('github', 'sourcegraph/maestro')
+const repo = await ipc.createRepository("github", "sourcegraph/maestro")
 ```
 
 **Backend Flow:**
+
 1. Checks if repository already exists (`provider` + `provider_id`)
 2. Creates database record
 3. Clones admin repo to `{app_data_dir}/repos/sourcegraph/maestro/`
@@ -192,7 +192,7 @@ pub fn clone_repo(url: &str, local_path: &Path) -> Result<()> {
     callbacks.credentials(|_url, username, _allowed_types| {
         git2::Cred::ssh_key_from_agent(username.unwrap_or("git"))
     });
-    
+
     Repository::clone(&url, local_path)?;
     Ok(())
 }
@@ -207,7 +207,7 @@ Uses SSH authentication via ssh-agent. See [ssh-authentication.md](./ssh-authent
 ```typescript
 const promptSet = await ipc.getPromptSet(id)
 if (!promptSet) {
-  throw new Error('Prompt set not found')
+	throw new Error("Prompt set not found")
 }
 ```
 
@@ -215,7 +215,7 @@ if (!promptSet) {
 
 ```typescript
 // Find by short hash (e.g., "abc12345")
-const promptSet = await ipc.findPromptSetByPrefix('abc12345')
+const promptSet = await ipc.findPromptSetByPrefix("abc12345")
 ```
 
 Useful for CLI-style references where users type shortened UUIDs.
@@ -226,12 +226,13 @@ Useful for CLI-style references where users type shortened UUIDs.
 const promptSets = await ipc.getAllPromptSets()
 
 // With statistics
-promptSets.forEach(ps => {
-  console.log(`${ps.name}: ${ps.stats?.total_executions} executions`)
+promptSets.forEach((ps) => {
+	console.log(`${ps.name}: ${ps.stats?.total_executions} executions`)
 })
 ```
 
 **Stats included:**
+
 - `total_executions` - Total executions across all revisions
 - `total_completions` - Executions with status "completed"
 - `total_validations` - Executions with validation_status "passed" or "failed"
@@ -243,8 +244,8 @@ promptSets.forEach(ps => {
 const revisions = await ipc.getPromptSetRevisions(promptSet.id)
 
 // Ordered by creation date (newest first)
-revisions.forEach(r => {
-  console.log(`${r.id.substring(0, 8)}: ${r.prompt_text.substring(0, 50)}...`)
+revisions.forEach((r) => {
+	console.log(`${r.id.substring(0, 8)}: ${r.prompt_text.substring(0, 50)}...`)
 })
 ```
 
@@ -255,9 +256,9 @@ const executions = await ipc.getExecutionsByPromptSet(promptSet.id)
 
 // Group by revision
 const byRevision = executions.reduce((acc, ex) => {
-  if (!acc[ex.revision_id]) acc[ex.revision_id] = []
-  acc[ex.revision_id].push(ex)
-  return acc
+	if (!acc[ex.revision_id]) acc[ex.revision_id] = []
+	acc[ex.revision_id].push(ex)
+	return acc
 }, {})
 ```
 
@@ -269,22 +270,22 @@ Displays all prompt sets with statistics:
 
 ```svelte
 <script>
-  import { onMount } from 'svelte'
-  import * as ipc from '$lib/ipc'
-  
-  let promptSets = $state<PromptSet[]>([])
-  
-  onMount(async () => {
-    promptSets = await ipc.getAllPromptSets()
-  })
+	import { onMount } from "svelte"
+	import * as ipc from "$lib/ipc"
+
+	let promptSets = $state<PromptSet[]>([])
+
+	onMount(async () => {
+		promptSets = await ipc.getAllPromptSets()
+	})
 </script>
 
 {#each promptSets as ps (ps.id)}
-  <div>
-    <h3>{ps.name}</h3>
-    <p>{ps.stats?.total_executions} executions</p>
-    <p>{ps.repository_ids.length} repositories</p>
-  </div>
+	<div>
+		<h3>{ps.name}</h3>
+		<p>{ps.stats?.total_executions} executions</p>
+		<p>{ps.repository_ids.length} repositories</p>
+	</div>
 {/each}
 ```
 
@@ -294,21 +295,21 @@ Shows revisions and executions for a specific prompt set:
 
 ```svelte
 <script>
-  import { onMount } from 'svelte'
-  
-  let { promptsetId } = $props<{ promptsetId: string }>()
-  
-  let promptSet = $state<PromptSet | null>(null)
-  let revisions = $state<PromptRevision[]>([])
-  let executions = $state<Execution[]>([])
-  
-  onMount(async () => {
-    [promptSet, revisions, executions] = await Promise.all([
-      ipc.getPromptSet(promptsetId),
-      ipc.getPromptSetRevisions(promptsetId),
-      ipc.getExecutionsByPromptSet(promptsetId)
-    ])
-  })
+	import { onMount } from "svelte"
+
+	let { promptsetId } = $props<{ promptsetId: string }>()
+
+	let promptSet = $state<PromptSet | null>(null)
+	let revisions = $state<PromptRevision[]>([])
+	let executions = $state<Execution[]>([])
+
+	onMount(async () => {
+		;[promptSet, revisions, executions] = await Promise.all([
+			ipc.getPromptSet(promptsetId),
+			ipc.getPromptSetRevisions(promptsetId),
+			ipc.getExecutionsByPromptSet(promptsetId),
+		])
+	})
 </script>
 ```
 
@@ -329,37 +330,45 @@ Shows revisions and executions for a specific prompt set:
 ### Validation Prompts
 
 Good validation prompts:
+
 - ✅ "Check if all tests pass"
 - ✅ "Verify no TypeScript errors introduced"
 - ✅ "Ensure authentication flow works end-to-end"
 
 Poor validation prompts:
+
 - ❌ "Is this good?" (too vague)
 - ❌ "Fix it if broken" (should be separate execution)
 
 ### Revision Strategy
 
 **Linear history:**
+
 ```
 A → B → C → D
 ```
+
 Use when iterating on a single approach.
 
 **Branching:**
+
 ```
     ┌→ B (JWT)
 A ──┤
     └→ C (OAuth)
 ```
+
 Use when exploring multiple approaches.
 
 ## Implementation Reference
 
 **Backend:**
+
 - `src-tauri/src/db/store.rs` - Database operations
 - `src-tauri/src/commands/promptsets.rs` - Tauri commands
 
 **Frontend:**
+
 - `src/lib/ipc.ts` - Type-safe IPC wrappers
 - `src/routes/(app)/promptsets/` - UI routes
 - `src/lib/components/PromptSet*.svelte` - UI components

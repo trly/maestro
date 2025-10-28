@@ -9,13 +9,14 @@ An **Execution** represents running a specific prompt revision against a single 
 ```typescript
 // Execute a revision against selected repositories
 const executionIds = await ipc.executePromptSet(
-  promptSet.id,
-  revision.id,
-  ['repo-uuid-1', 'repo-uuid-2']  // Optional subset
+	promptSet.id,
+	revision.id,
+	["repo-uuid-1", "repo-uuid-2"] // Optional subset
 )
 ```
 
 **Backend Flow:**
+
 1. For each target repository:
    - Creates `Execution` record with status "pending"
    - Acquires repository lock
@@ -32,13 +33,15 @@ ExecutionStatus::Running
 ```
 
 **Events Emitted:**
+
 - `execution:session` - Session ID and thread URL
 - `execution:status` - Status changes
 - `execution:progress` - Progress messages from Amp
 
 **Frontend Reactivity:**
+
 ```typescript
-import { getExecutionWithUpdates } from '$lib/stores'
+import { getExecutionWithUpdates } from "$lib/stores"
 
 const executionStore = getExecutionWithUpdates(execution)
 $: status = $executionStore.status
@@ -52,6 +55,7 @@ ExecutionStatus::Completed
 ```
 
 **What Happens:**
+
 - Change statistics calculated from worktree diff
 - `completed_at` timestamp recorded
 - Auto-validation triggered if `auto_validate: true`
@@ -65,6 +69,7 @@ await ipc.validateExecution(execution.id)
 ```
 
 **Validation Flow:**
+
 1. Fetches worktree diff
 2. Creates new Amp session with validation prompt + diff context
 3. Sets `validation_status: running`
@@ -72,6 +77,7 @@ await ipc.validateExecution(execution.id)
 5. Stores validation result and final status (passed/failed)
 
 **Validation Prompt Example:**
+
 ```
 Check if these changes:
 1. Pass all existing tests
@@ -88,10 +94,11 @@ Check if these changes:
 await ipc.commitChanges(execution.id)
 
 // Or commit specific files
-await ipc.commitChanges(execution.id, ['src/main.ts', 'package.json'])
+await ipc.commitChanges(execution.id, ["src/main.ts", "package.json"])
 ```
 
 **Backend Flow:**
+
 1. Generates commit message (from Amp or custom)
 2. Stages selected files
 3. Creates commit in worktree
@@ -104,10 +111,11 @@ await ipc.commitChanges(execution.id, ['src/main.ts', 'package.json'])
 ### 6. Push & CI Tracking
 
 ```typescript
-await ipc.pushCommit(execution.id, false)  // force = false
+await ipc.pushCommit(execution.id, false) // force = false
 ```
 
 **Backend Flow:**
+
 1. Pushes branch to remote via SSH
 2. Sets `ci_status: pending`
 3. Optionally starts CI polling (manual refresh available)
@@ -121,11 +129,13 @@ await ipc.cleanupExecution(execution.id)
 ```
 
 **Removes:**
+
 - Git worktree
 - File system directory
 - Leaves database record intact
 
 **Safe After:**
+
 - Execution cancelled
 - Execution committed (diff can be regenerated from admin repo)
 
@@ -138,40 +148,40 @@ struct Execution {
     promptset_id: String,
     revision_id: String,
     repository_id: String,
-    
+
     // Amp session
     session_id: Option<String>,       // Amp session UUID
     thread_url: Option<String>,        // ampcode.com/threads/T-...
-    
+
     // Execution state
     status: ExecutionStatus,           // pending, running, completed, failed, cancelled
     prompt_status: Option<PromptStatus>,
     prompt_result: Option<String>,     // Final Amp response
-    
+
     // Validation
     validation_status: Option<ValidationStatus>,  // pending, running, passed, failed
     validation_thread_url: Option<String>,
     validation_result: Option<String>,
-    
+
     // Change tracking
     files_added: i64,
     files_removed: i64,
     files_modified: i64,
     lines_added: i64,
     lines_removed: i64,
-    
+
     // Commit tracking
     commit_status: CommitStatus,       // uncommitted, committed
     commit_sha: Option<String>,
     committed_at: Option<i64>,
     parent_sha: Option<String>,        // SHA before changes
     branch: Option<String>,
-    
+
     // CI tracking
     ci_status: Option<CiStatus>,       // pending, passed, failed, not_configured
     ci_checked_at: Option<i64>,
     ci_url: Option<String>,            // GitHub checks page URL
-    
+
     created_at: i64,
     completed_at: Option<i64>,
 }
@@ -239,6 +249,7 @@ await ipc.stopExecution(execution.id)
 ```
 
 **What Happens:**
+
 - Kills Amp child process (namespace: `exec:{id}`)
 - Sets status to "cancelled"
 - Preserves worktree (can be resumed or cleaned up)
@@ -250,6 +261,7 @@ await ipc.stopValidation(execution.id)
 ```
 
 **What Happens:**
+
 - Kills validation Amp child process (namespace: `val:{id}`)
 - Sets `validation_status` to null
 - Execution state unchanged
@@ -261,11 +273,13 @@ await ipc.resumeExecution(execution.id)
 ```
 
 **Use Cases:**
+
 - Execution was stopped manually
 - Execution failed but worktree is still valid
 - Want to re-run with same context
 
 **Requirements:**
+
 - Worktree must exist
 - Execution status must be "cancelled" or "failed"
 
@@ -298,7 +312,7 @@ const execution = await ipc.getExecution(id)
 ### Find by ID Prefix
 
 ```typescript
-const execution = await ipc.findExecutionByPrefix('abc12345')
+const execution = await ipc.findExecutionByPrefix("abc12345")
 ```
 
 ### Get Executions by Prompt Set
@@ -319,15 +333,15 @@ Subscribe to execution events once at app initialization:
 
 ```typescript
 // +layout.svelte
-import { subscribeToExecutions } from '$lib/stores/executionBus'
-import { onMount, onDestroy } from 'svelte'
+import { subscribeToExecutions } from "$lib/stores/executionBus"
+import { onMount, onDestroy } from "svelte"
 
 onMount(async () => {
-  await subscribeToExecutions()
+	await subscribeToExecutions()
 })
 
 onDestroy(() => {
-  unsubscribeFromExecutions()
+	unsubscribeFromExecutions()
 })
 ```
 
@@ -335,18 +349,18 @@ Components automatically receive updates:
 
 ```svelte
 <script>
-  import { getExecutionWithUpdates } from '$lib/stores'
-  
-  let { execution } = $props()
-  
-  const executionStore = getExecutionWithUpdates(execution)
+	import { getExecutionWithUpdates } from "$lib/stores"
+
+	let { execution } = $props()
+
+	const executionStore = getExecutionWithUpdates(execution)
 </script>
 
 <div>
-  <h3>{$executionStore.status}</h3>
-  {#if $executionStore.threadUrl}
-    <a href={$executionStore.threadUrl}>View in Amp</a>
-  {/if}
+	<h3>{$executionStore.status}</h3>
+	{#if $executionStore.threadUrl}
+		<a href={$executionStore.threadUrl}>View in Amp</a>
+	{/if}
 </div>
 ```
 
@@ -371,6 +385,7 @@ Format: `maestro/{promptsetId:8}/{revisionId:8}/{executionId:8}`
 Example: `maestro/a1b2c3d4/e5f6g7h8/i9j0k1l2`
 
 **Why short hashes?**
+
 - Readable in git logs
 - Shorter branch names
 - Full UUIDs stored in database
@@ -381,7 +396,7 @@ Example: `maestro/a1b2c3d4/e5f6g7h8/i9j0k1l2`
 
 ```rust
 lazy_static! {
-    static ref REPO_LOCKS: Mutex<HashMap<String, Arc<Mutex<()>>>> = 
+    static ref REPO_LOCKS: Mutex<HashMap<String, Arc<Mutex<()>>>> =
         Mutex::new(HashMap::new());
 }
 ```
@@ -392,7 +407,7 @@ Ensures only one execution per repository performs git operations at a time.
 
 ```rust
 lazy_static! {
-    static ref ACTIVE_EXECUTIONS: Mutex<HashSet<String>> = 
+    static ref ACTIVE_EXECUTIONS: Mutex<HashSet<String>> =
         Mutex::new(HashSet::new());
 }
 ```
@@ -402,6 +417,7 @@ Prevents starting duplicate executions for same ID.
 ### Child Process Namespacing
 
 Amp SDK uses namespaces to isolate processes:
+
 - Executions: `exec:{executionId}`
 - Validations: `val:{executionId}`
 
@@ -412,16 +428,19 @@ Enables clean cancellation without interfering with other operations.
 ### Common Errors
 
 **Git errors:**
+
 - Worktree already exists
 - Admin repo not found
 - SSH authentication failed
 
 **Amp errors:**
+
 - Token not configured
 - Session creation failed
 - Session interrupted
 
 **State errors:**
+
 - Execution already running
 - Validation triggered without validation_prompt
 - Commit without changes
@@ -433,6 +452,7 @@ reconcile_on_startup(db: &Connection) -> Result<()>
 ```
 
 Resets stuck states on app launch:
+
 - Running executions → Failed
 - Running validations → null
 
@@ -443,11 +463,13 @@ Prevents orphaned "running" states from crashed sessions.
 ### When to Commit
 
 ✅ **Commit when:**
+
 - Changes are validated (manually or automatically)
 - Ready for code review
 - Want to trigger CI
 
 ❌ **Don't commit if:**
+
 - Execution failed
 - Changes are incomplete
 - Validation failed (unless intentional)
@@ -455,11 +477,13 @@ Prevents orphaned "running" states from crashed sessions.
 ### When to Cleanup
 
 ✅ **Cleanup when:**
+
 - Execution cancelled and won't resume
 - After commit (if disk space needed)
 - Execution failed and worktree is corrupted
 
 ❌ **Don't cleanup if:**
+
 - Might want to resume
 - Want to manually inspect changes
 - Haven't committed yet
@@ -467,11 +491,13 @@ Prevents orphaned "running" states from crashed sessions.
 ### Validation Strategy
 
 **Fast validation:**
+
 ```
 Check if code compiles and no lint errors
 ```
 
 **Thorough validation:**
+
 ```
 1. Run test suite
 2. Check TypeScript types
@@ -480,6 +506,7 @@ Check if code compiles and no lint errors
 ```
 
 **Validation with context:**
+
 ```
 These changes implement JWT authentication.
 Verify:
@@ -491,12 +518,14 @@ Verify:
 ## Implementation Reference
 
 **Backend:**
+
 - `src-tauri/src/commands/executor.rs` - Execution commands
 - `src-tauri/src/commands/executor_events.rs` - Event emission
 - `src-tauri/src/git/service.rs` - Git operations
 - `src-tauri/src/amp/` - Amp SDK integration
 
 **Frontend:**
+
 - `src/lib/stores/executionBus.ts` - Event bus
 - `src/lib/stores/executionStats.ts` - Stats fetching
 - `src/routes/(app)/executions/` - UI routes

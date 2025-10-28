@@ -5,6 +5,7 @@ Maestro is a hybrid Tauri 2.0 + SvelteKit desktop application for orchestrating 
 ## Technology Stack
 
 **Frontend:**
+
 - **SvelteKit** (Svelte 5) with adapter-static
 - **TypeScript** with strict mode
 - **bits-ui** component primitives
@@ -12,6 +13,7 @@ Maestro is a hybrid Tauri 2.0 + SvelteKit desktop application for orchestrating 
 - **lucide-svelte** icons
 
 **Backend:**
+
 - **Tauri 2.0** (Rust)
 - **SQLite** database via rusqlite
 - **git2-rs** for native git operations
@@ -37,6 +39,7 @@ struct Repository {
 ```
 
 **File System:**
+
 - Admin repos: `{app_data_dir}/repos/owner/repo/.git/`
 - Accessed via SSH using ssh-agent credentials
 
@@ -56,6 +59,7 @@ struct PromptSet {
 ```
 
 **Relationships:**
+
 - Has many **Prompt Revisions**
 - Has many **Executions** (through revisions)
 
@@ -74,6 +78,7 @@ struct PromptRevision {
 ```
 
 **Execution:**
+
 - Each revision can be executed against some or all repositories in the prompt set
 - Execution creates one Execution record per repository
 
@@ -87,46 +92,47 @@ struct Execution {
     promptset_id: String,
     revision_id: String,
     repository_id: String,
-    
+
     // Amp session
     session_id: Option<String>,
     thread_url: Option<String>,
-    
+
     // Execution state
     status: ExecutionStatus,                // pending, running, completed, failed, cancelled
     prompt_status: Option<PromptStatus>,
     prompt_result: Option<String>,
-    
+
     // Validation
     validation_status: Option<ValidationStatus>,  // pending, running, passed, failed
     validation_thread_url: Option<String>,
     validation_result: Option<String>,
-    
+
     // Change tracking
     files_added: i64,
     files_removed: i64,
     files_modified: i64,
     lines_added: i64,
     lines_removed: i64,
-    
+
     // Commit tracking
     commit_status: CommitStatus,            // uncommitted, committed
     commit_sha: Option<String>,
     committed_at: Option<i64>,
     parent_sha: Option<String>,             // SHA before worktree changes
     branch: Option<String>,                 // maestro/{promptset:8}/{revision:8}/{execution:8}
-    
+
     // CI tracking
     ci_status: Option<CiStatus>,            // pending, passed, failed, not_configured
     ci_checked_at: Option<i64>,
     ci_url: Option<String>,
-    
+
     created_at: i64,
     completed_at: Option<i64>,
 }
 ```
 
 **Worktree Isolation:**
+
 - Each execution gets its own git worktree at `{app_data_dir}/executions/{promptset_id}/{execution_id}/`
 - Worktree is ephemeral - cleaned up after commit or cancellation
 - Branch naming: `maestro/{promptsetId:8}/{revisionId:8}/{executionId:8}` (short hashes)
@@ -136,6 +142,7 @@ struct Execution {
 Validations are optional automated checks run after execution completes. If a prompt set has a `validation_prompt`, executions can trigger validation through another Amp session.
 
 **State Flow:**
+
 ```
 Execution completes → Trigger validation → validation_status: running
                                         → validation_thread_url set
@@ -152,7 +159,7 @@ All communication uses typed Tauri commands through centralized `$lib/ipc.ts`:
 
 ```typescript
 // Type-safe IPC wrapper
-import * as ipc from '$lib/ipc'
+import * as ipc from "$lib/ipc"
 
 const execution = await ipc.getExecution(id)
 await ipc.validateExecution(id)
@@ -174,7 +181,7 @@ emit_execution_ci(app, execution_id, ci_status, url)
 
 ```typescript
 // Frontend subscribes
-import { subscribeToExecutions } from '$lib/stores/executionBus'
+import { subscribeToExecutions } from "$lib/stores/executionBus"
 await subscribeToExecutions()
 
 // Components get reactive updates
@@ -189,15 +196,15 @@ Maestro uses Svelte 5 runes mode for reactive state:
 
 ```svelte
 <script>
-  let executions = $state<Execution[]>([])
-  
-  // Merge static data with live event bus updates
-  let executionsWithUpdates = $derived(
-    executions.map(e => ({
-      ...e,
-      ...$executionStore.get(e.id)
-    }))
-  )
+	let executions = $state<Execution[]>([])
+
+	// Merge static data with live event bus updates
+	let executionsWithUpdates = $derived(
+		executions.map((e) => ({
+			...e,
+			...$executionStore.get(e.id),
+		}))
+	)
 </script>
 ```
 
@@ -206,6 +213,7 @@ See [reactivity.md](./reactivity.md) for patterns and best practices.
 ## File System Layout
 
 Maestro uses Tauri's app data directory:
+
 - **macOS**: `~/Library/Application Support/dev.trly.maestro/`
 - **Linux**: `~/.local/share/maestro/`
 - **Windows**: `%APPDATA%\dev.trly.maestro\`
@@ -240,6 +248,7 @@ let github_token = get_token_value("github_token")?
 ```
 
 **Benefits:**
+
 - Tokens never stored in env vars, config files, or database
 - OS-level encryption (Keychain on macOS, Secret Service on Linux)
 - Retrieved at command execution time
@@ -262,7 +271,7 @@ See [ssh-authentication.md](./ssh-authentication.md) for setup.
 
 ```rust
 lazy_static! {
-    static ref REPO_LOCKS: Mutex<HashMap<String, Arc<Mutex<()>>>> = 
+    static ref REPO_LOCKS: Mutex<HashMap<String, Arc<Mutex<()>>>> =
         Mutex::new(HashMap::new());
 }
 ```
@@ -283,6 +292,7 @@ Prevents duplicate concurrent operations on same execution.
 ### Child Process Namespacing
 
 Amp SDK processes are namespaced:
+
 - Executions: `exec:{id}`
 - Validations: `val:{id}`
 

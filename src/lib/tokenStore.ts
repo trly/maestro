@@ -1,4 +1,4 @@
-import * as ipc from './ipc'
+import * as ipc from "./ipc"
 
 export type TokenKey = ipc.TokenKey
 export type AllTokens = ipc.AllTokens

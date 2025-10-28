@@ -5,6 +5,7 @@ Maestro integrates with Sourcegraph's GraphQL API to search for repositories acr
 ## Overview
 
 The Sourcegraph integration allows users to:
+
 - Search repositories by query patterns (e.g., `org:mycompany`, `lang:typescript`)
 - Filter by repository metadata (cloned, indexed, private/public)
 - Retrieve repository metadata (description, language, stars, fork status)
@@ -31,6 +32,7 @@ pub async fn search_repositories(
 ```
 
 **Key Features:**
+
 - GraphQL API client using `reqwest`
 - Automatic error handling for HTTP and GraphQL errors
 - Pagination support via `hasNextPage` field
@@ -49,6 +51,7 @@ pub async fn search_sourcegraph_repositories(
 ```
 
 **Token Retrieval:**
+
 - `sourcegraph_endpoint` - Instance URL (e.g., `https://sourcegraph.com`)
 - `sourcegraph_token` - Access token for API authentication
 - Both retrieved from system keyring at command execution time
@@ -59,30 +62,30 @@ pub async fn search_sourcegraph_repositories(
 
 ```typescript
 export interface SourcegraphRepository {
-    id: string
-    name: string
-    description: string | null
-    url: string
-    language: string | null
-    stars: number
-    isPrivate: boolean
-    isFork: boolean
-    isArchived: boolean
-    externalRepository: {
-        serviceType: string  // "github", "gitlab", etc.
-        serviceId: string
-    }
+	id: string
+	name: string
+	description: string | null
+	url: string
+	language: string | null
+	stars: number
+	isPrivate: boolean
+	isFork: boolean
+	isArchived: boolean
+	externalRepository: {
+		serviceType: string // "github", "gitlab", etc.
+		serviceId: string
+	}
 }
 
 export interface RepositorySearchResult {
-    repositories: SourcegraphRepository[]
-    totalCount: number
-    hasNextPage: boolean
+	repositories: SourcegraphRepository[]
+	totalCount: number
+	hasNextPage: boolean
 }
 
 export async function searchSourcegraphRepositories(
-    query: string,
-    limit?: number
+	query: string,
+	limit?: number
 ): Promise<RepositorySearchResult>
 ```
 
@@ -119,31 +122,32 @@ The backend uses the following GraphQL query:
 
 ```graphql
 query SearchRepositories($query: String!, $first: Int!) {
-    repositories(query: $query, first: $first, cloned: true) {
-        nodes {
-            id
-            name
-            description
-            url
-            language
-            stars
-            isPrivate
-            isFork
-            isArchived
-            externalRepository {
-                serviceType
-                serviceID
-            }
-        }
-        totalCount
-        pageInfo {
-            hasNextPage
-        }
-    }
+	repositories(query: $query, first: $first, cloned: true) {
+		nodes {
+			id
+			name
+			description
+			url
+			language
+			stars
+			isPrivate
+			isFork
+			isArchived
+			externalRepository {
+				serviceType
+				serviceID
+			}
+		}
+		totalCount
+		pageInfo {
+			hasNextPage
+		}
+	}
 }
 ```
 
 **Key Parameters:**
+
 - `query` - Search query string (supports Sourcegraph search syntax)
 - `first` - Number of results to return (default: 50)
 - `cloned: true` - Only return repositories that have been cloned to the Sourcegraph instance
@@ -153,14 +157,14 @@ query SearchRepositories($query: String!, $first: Int!) {
 ### Basic Repository Search
 
 ```typescript
-import * as ipc from '$lib/ipc'
+import * as ipc from "$lib/ipc"
 
 // Search by organization
-const result = await ipc.searchSourcegraphRepositories('org:mycompany', 50)
+const result = await ipc.searchSourcegraphRepositories("org:mycompany", 50)
 
 console.log(`Found ${result.totalCount} repositories`)
-result.repositories.forEach(repo => {
-    console.log(`${repo.name} - ${repo.language}`)
+result.repositories.forEach((repo) => {
+	console.log(`${repo.name} - ${repo.language}`)
 })
 ```
 
@@ -168,26 +172,23 @@ result.repositories.forEach(repo => {
 
 ```typescript
 // Search for TypeScript repositories in an org
-const result = await ipc.searchSourcegraphRepositories(
-    'org:mycompany lang:typescript',
-    100
-)
+const result = await ipc.searchSourcegraphRepositories("org:mycompany lang:typescript", 100)
 ```
 
 ### Get Code Host Information
 
 ```typescript
-const result = await ipc.searchSourcegraphRepositories('my-repo')
+const result = await ipc.searchSourcegraphRepositories("my-repo")
 
-result.repositories.forEach(repo => {
-    const codeHost = repo.externalRepository.serviceType
-    console.log(`${repo.name} is hosted on ${codeHost}`)
-    
-    // Clone URL format depends on code host
-    if (codeHost === 'github') {
-        const cloneUrl = `git@github.com:${repo.externalRepository.serviceId}.git`
-        console.log(`Clone: ${cloneUrl}`)
-    }
+result.repositories.forEach((repo) => {
+	const codeHost = repo.externalRepository.serviceType
+	console.log(`${repo.name} is hosted on ${codeHost}`)
+
+	// Clone URL format depends on code host
+	if (codeHost === "github") {
+		const cloneUrl = `git@github.com:${repo.externalRepository.serviceId}.git`
+		console.log(`Clone: ${cloneUrl}`)
+	}
 })
 ```
 
@@ -195,14 +196,14 @@ result.repositories.forEach(repo => {
 
 ```typescript
 try {
-    const result = await ipc.searchSourcegraphRepositories('query')
-    // Handle results
+	const result = await ipc.searchSourcegraphRepositories("query")
+	// Handle results
 } catch (error) {
-    if (error.message.includes('not configured')) {
-        console.error('Sourcegraph credentials not set - go to Settings')
-    } else {
-        console.error('Search failed:', error)
-    }
+	if (error.message.includes("not configured")) {
+		console.error("Sourcegraph credentials not set - go to Settings")
+	} else {
+		console.error("Search failed:", error)
+	}
 }
 ```
 
@@ -234,11 +235,13 @@ Potential improvements:
 ## Implementation Reference
 
 **Backend:**
+
 - `src-tauri/src/sourcegraph/mod.rs` - GraphQL client
 - `src-tauri/src/commands/sourcegraph.rs` - IPC command
 - `src-tauri/Cargo.toml` - Dependencies (`reqwest` with JSON support)
 
 **Frontend:**
+
 - `src/lib/ipc.ts` - Type-safe IPC wrapper
 - `src/lib/components/Settings.svelte` - Configuration UI
 - `src/lib/tokenStore.ts` - Token management

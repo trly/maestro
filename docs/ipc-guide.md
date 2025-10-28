@@ -96,9 +96,9 @@ await ipc.deleteExecution(id)
 ### Tokens
 
 ```typescript
-import type { TokenKey } from '$lib/ipc'
+import type { TokenKey } from "$lib/ipc"
 
-const key: TokenKey = 'amp_token' // or 'github_token'
+const key: TokenKey = "amp_token" // or 'github_token'
 
 await ipc.setToken(key, value)
 await ipc.getToken(key) // => string | null
@@ -112,8 +112,8 @@ await ipc.hasToken(key) // => boolean
 ```typescript
 const paths = await ipc.getConfigPaths()
 console.log(paths.adminRepoDir) // ~/maestro/repos
-console.log(paths.worktreeDir)  // ~/maestro/executions
-console.log(paths.dbPath)       // maestro.db
+console.log(paths.worktreeDir) // ~/maestro/executions
+console.log(paths.dbPath) // maestro.db
 ```
 
 ## Migration from `invoke()`
@@ -121,16 +121,16 @@ console.log(paths.dbPath)       // maestro.db
 ### Before (direct invoke)
 
 ```typescript
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from "@tauri-apps/api/core"
 
-const execution = await invoke<Execution | null>('get_execution', { id })
-await invoke('validate_execution', { executionId: id })
+const execution = await invoke<Execution | null>("get_execution", { id })
+await invoke("validate_execution", { executionId: id })
 ```
 
 ### After (IPC wrappers)
 
 ```typescript
-import * as ipc from '$lib/ipc'
+import * as ipc from "$lib/ipc"
 
 const execution = await ipc.getExecution(id)
 await ipc.validateExecution(id)
@@ -153,11 +153,11 @@ For common workflows, use `tauriApi` from `$lib/tauri-api` - it provides additio
 
 ```typescript
 try {
-  await ipc.commitChanges(executionId)
+	await ipc.commitChanges(executionId)
 } catch (error) {
-  if (error instanceof TauriIPCError) {
-    // Show user-friendly message
-    showToast(`Failed to commit: ${error.message}`)
-  }
+	if (error instanceof TauriIPCError) {
+		// Show user-friendly message
+		showToast(`Failed to commit: ${error.message}`)
+	}
 }
 ```

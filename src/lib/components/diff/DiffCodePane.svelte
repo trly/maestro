@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { children, class: className = '' }: { children: any; class?: string } = $props()
+	let { children, class: className = "" }: { children: any; class?: string } = $props()
 </script>
 
 <div class="flex-1 overflow-auto {className}">

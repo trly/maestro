@@ -1,5 +1,5 @@
-import { writable, get } from 'svelte/store'
-import * as ipc from '$lib/ipc'
+import { writable, get } from "svelte/store"
+import * as ipc from "$lib/ipc"
 
 export interface FileDiff {
 	status: string
@@ -42,10 +42,7 @@ export async function fetchDiff(executionId: string): Promise<ModifiedFilesRespo
 	return result
 }
 
-export async function fetchFileDiff(
-	executionId: string,
-	filePath: string
-): Promise<string> {
+export async function fetchFileDiff(executionId: string, filePath: string): Promise<string> {
 	const key = `${executionId}:${filePath}`
 	const cache = get(fileDiffCache)
 

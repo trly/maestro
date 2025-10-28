@@ -30,7 +30,7 @@ pub fn check_app_installed(command: &str) -> bool {
             _ => check_command_exists(command),
         }
     }
-    
+
     #[cfg(not(target_os = "macos"))]
     {
         check_command_exists(command)
@@ -40,18 +40,19 @@ pub fn check_app_installed(command: &str) -> bool {
 fn check_command_exists(command: &str) -> bool {
     let mut cmd = Command::new("which");
     cmd.arg(command);
-    
+
     // Set PATH to include common installation directories
     #[cfg(target_os = "macos")]
     {
         let path = std::env::var("PATH").unwrap_or_default();
-        let extended_path = format!("{}:/usr/local/bin:/opt/homebrew/bin:{}/.local/bin", 
-            path, 
+        let extended_path = format!(
+            "{}:/usr/local/bin:/opt/homebrew/bin:{}/.local/bin",
+            path,
             std::env::var("HOME").unwrap_or_default()
         );
         cmd.env("PATH", extended_path);
     }
-    
+
     cmd.output()
         .map(|output| output.status.success())
         .unwrap_or(false)

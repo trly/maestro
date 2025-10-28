@@ -1,102 +1,102 @@
-import { Octokit } from "@octokit/rest";
-import type { Repository, RepositoryProvider } from "./types";
-import { tokenStore } from "$lib/tokenStore";
+import { Octokit } from "@octokit/rest"
+import type { Repository, RepositoryProvider } from "./types"
+import { tokenStore } from "$lib/tokenStore"
 
 export class GitHubProvider implements RepositoryProvider {
-  name = "GitHub";
-  private octokit: Octokit | null = null;
-  private initialized = false;
-  private initPromise: Promise<void> | null = null;
+	name = "GitHub"
+	private octokit: Octokit | null = null
+	private initialized = false
+	private initPromise: Promise<void> | null = null
 
-  constructor() {
-    // Don't auto-initialize in constructor
-  }
+	constructor() {
+		// Don't auto-initialize in constructor
+	}
 
-  async initialize(): Promise<void> {
-    if (this.initialized) {
-      return;
-    }
-    
-    if (this.initPromise) {
-      return this.initPromise;
-    }
+	async initialize(): Promise<void> {
+		if (this.initialized) {
+			return
+		}
 
-    this.initPromise = this.initializeToken();
-    await this.initPromise;
-  }
+		if (this.initPromise) {
+			return this.initPromise
+		}
 
-  private async initializeToken(): Promise<void> {
-    try {
-      const tokens = await tokenStore.getAllTokens();
-      if (tokens.githubToken) {
-        this.octokit = new Octokit({ auth: tokens.githubToken });
-      }
-    } finally {
-      this.initialized = true;
-    }
-  }
+		this.initPromise = this.initializeToken()
+		await this.initPromise
+	}
 
-  isConfigured(): boolean {
-    return this.octokit !== null;
-  }
+	private async initializeToken(): Promise<void> {
+		try {
+			const tokens = await tokenStore.getAllTokens()
+			if (tokens.githubToken) {
+				this.octokit = new Octokit({ auth: tokens.githubToken })
+			}
+		} finally {
+			this.initialized = true
+		}
+	}
 
-  async searchRepositories(query: string): Promise<Repository[]> {
-    await this.initialize();
-    
-    if (!this.octokit) {
-      throw new Error("GitHub token not configured");
-    }
+	isConfigured(): boolean {
+		return this.octokit !== null
+	}
 
-    if (!query.trim()) {
-      return this.getUserRepositories();
-    }
+	async searchRepositories(query: string): Promise<Repository[]> {
+		await this.initialize()
 
-    try {
-      const { data } = await this.octokit.search.repos({
-        q: query,
-        per_page: 20,
-        sort: "updated",
-      });
+		if (!this.octokit) {
+			throw new Error("GitHub token not configured")
+		}
 
-      return data.items
-        .filter((repo) => repo.owner)
-        .map((repo) => ({
-          provider: "github" as const,
-          fullName: repo.full_name,
-          name: repo.name,
-          owner: repo.owner!.login,
-          url: repo.html_url,
-          description: repo.description || undefined,
-        }));
-    } catch (error) {
-      return [];
-    }
-  }
+		if (!query.trim()) {
+			return this.getUserRepositories()
+		}
 
-  async getUserRepositories(): Promise<Repository[]> {
-    await this.initialize();
-    
-    if (!this.octokit) {
-      throw new Error("GitHub token not configured");
-    }
+		try {
+			const { data } = await this.octokit.search.repos({
+				q: query,
+				per_page: 20,
+				sort: "updated",
+			})
 
-    try {
-      const { data } = await this.octokit.repos.listForAuthenticatedUser({
-        per_page: 100,
-        sort: "updated",
-        affiliation: "owner,collaborator,organization_member",
-      });
+			return data.items
+				.filter((repo) => repo.owner)
+				.map((repo) => ({
+					provider: "github" as const,
+					fullName: repo.full_name,
+					name: repo.name,
+					owner: repo.owner!.login,
+					url: repo.html_url,
+					description: repo.description || undefined,
+				}))
+		} catch (error) {
+			return []
+		}
+	}
 
-      return data.map((repo) => ({
-        provider: "github" as const,
-        fullName: repo.full_name,
-        name: repo.name,
-        owner: repo.owner.login,
-        url: repo.html_url,
-        description: repo.description || undefined,
-      }));
-    } catch (error) {
-      return [];
-    }
-  }
+	async getUserRepositories(): Promise<Repository[]> {
+		await this.initialize()
+
+		if (!this.octokit) {
+			throw new Error("GitHub token not configured")
+		}
+
+		try {
+			const { data } = await this.octokit.repos.listForAuthenticatedUser({
+				per_page: 100,
+				sort: "updated",
+				affiliation: "owner,collaborator,organization_member",
+			})
+
+			return data.map((repo) => ({
+				provider: "github" as const,
+				fullName: repo.full_name,
+				name: repo.name,
+				owner: repo.owner.login,
+				url: repo.html_url,
+				description: repo.description || undefined,
+			}))
+		} catch (error) {
+			return []
+		}
+	}
 }

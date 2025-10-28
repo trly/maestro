@@ -1,13 +1,13 @@
 <script lang="ts">
-	import type { Analysis, AnalysisStatus } from '$lib/types'
-	import IconButton from '$lib/components/ui/IconButton.svelte'
-	import { ExternalLink, Trash2, Clock, LoaderCircle, CircleCheck, CircleX } from 'lucide-svelte'
+	import type { Analysis, AnalysisStatus } from "$lib/types"
+	import IconButton from "$lib/components/ui/IconButton.svelte"
+	import { ExternalLink, Trash2, Clock, LoaderCircle, CircleCheck, CircleX } from "lucide-svelte"
 
 	let {
 		analysis,
 		onDelete,
 		onViewThread,
-		onView
+		onView,
 	}: {
 		analysis: Analysis
 		onDelete: () => void
@@ -16,15 +16,15 @@
 	} = $props()
 
 	const statusConfig: Record<AnalysisStatus, { icon: any; color: string }> = {
-		pending: { icon: Clock, color: 'text-muted-foreground' },
-		running: { icon: LoaderCircle, color: 'text-primary animate-spin' },
-		completed: { icon: CircleCheck, color: 'text-success' },
-		failed: { icon: CircleX, color: 'text-destructive' }
+		pending: { icon: Clock, color: "text-muted-foreground" },
+		running: { icon: LoaderCircle, color: "text-primary animate-spin" },
+		completed: { icon: CircleCheck, color: "text-success" },
+		failed: { icon: CircleX, color: "text-destructive" },
 	}
 
 	let statusIcon = $derived(statusConfig[analysis.status].icon)
 	let statusColor = $derived(statusConfig[analysis.status].color)
-	
+
 	function formatRelativeTime(timestamp: number): string {
 		const now = Date.now()
 		const diff = now - timestamp
@@ -36,18 +36,18 @@
 		if (days > 0) return `${days}d ago`
 		if (hours > 0) return `${hours}h ago`
 		if (minutes > 0) return `${minutes}m ago`
-		return 'just now'
+		return "just now"
 	}
 
 	function handleKeyDown(e: KeyboardEvent) {
-		if (e.key === 'Enter' || e.key === ' ') {
+		if (e.key === "Enter" || e.key === " ") {
 			e.preventDefault()
 			onView()
 		}
 	}
 </script>
 
-<div 
+<div
 	role="button"
 	tabindex="0"
 	onclick={onView}
@@ -84,17 +84,8 @@
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div class="flex items-center gap-1" role="group" onclick={(e) => e.stopPropagation()}>
 		{#if analysis.ampThreadUrl}
-			<IconButton
-				icon={ExternalLink}
-				tooltip="View thread"
-				onclick={onViewThread}
-			/>
+			<IconButton icon={ExternalLink} tooltip="View thread" onclick={onViewThread} />
 		{/if}
-		<IconButton
-			icon={Trash2}
-			tooltip="Delete"
-			variant="destructive"
-			onclick={onDelete}
-		/>
+		<IconButton icon={Trash2} tooltip="Delete" variant="destructive" onclick={onDelete} />
 	</div>
 </div>
