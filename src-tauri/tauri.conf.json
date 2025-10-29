@@ -51,7 +51,7 @@
     "shortDescription": "AI Prompt Orchestrator",
     "longDescription": "Maestro orchestrates AI prompt execution across multiple repositories using the Amp SDK.",
     "macOS": {
-      "signingIdentity": null
+      "signingIdentity": "-"
     }
   }
 }
