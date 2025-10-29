@@ -2,6 +2,12 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.2.4] - 2025-10-29
+
+### Fixed
+
+- Release workflow now waits for CI to complete instead of just checking for existing runs
+
 ## [0.2.3] - 2025-10-29
 
 ### Fixed
