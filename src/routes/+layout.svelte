@@ -6,12 +6,24 @@
 	import { themeStore } from "$lib/stores/themeStore.svelte"
 	import { settingsStore } from "$lib/stores/settingsStore"
 	import { Dialog } from "bits-ui"
+	import { PaneGroup, Pane, PaneResizer } from "paneforge"
 	import "../app.css"
 
 	let { data, children } = $props()
 
 	let sidebarCollapsed = $state(false)
 	let mobileSidebarOpen = $state(false)
+	let settings = $state<any>({})
+
+	$effect(() => {
+		settingsStore.subscribe((s) => (settings = s))
+	})
+
+	function handleSidebarResize(sizes: number[]) {
+		if (sizes[0] !== undefined) {
+			settingsStore.updateUI({ sidebarPct: sizes[0] })
+		}
+	}
 
 	onMount(async () => {
 		subscribeToExecutions()
@@ -26,23 +38,41 @@
 </script>
 
 <div class="@container/app h-screen max-h-screen bg-background flex flex-col">
-	<div class="flex-1 flex overflow-hidden min-h-0 max-h-screen">
-		<aside
-			class="shrink-0 border-r border-border/20 bg-card overflow-hidden transition-all duration-300 flex flex-col @max-md/app:hidden @max-6xl/app:w-12 @6xl/app:{sidebarCollapsed
-				? 'w-12'
-				: 'w-72 @lg/app:w-80'}"
-		>
-			<PromptSidebar
-				collapsed={sidebarCollapsed}
-				onToggleCollapse={() => (sidebarCollapsed = !sidebarCollapsed)}
-				pathname={data.pathname}
-				searchParams={data.searchParams}
-			/>
-		</aside>
+	<div class="flex-1 flex overflow-hidden min-h-0 max-h-screen @max-md/app:block">
+		<div class="@md/app:hidden h-full">
+			<main class="@container/main h-full overflow-hidden flex flex-col">
+				{@render children()}
+			</main>
+		</div>
 
-		<main class="@container/main flex-1 min-w-0 min-h-0 overflow-hidden flex flex-col">
-			{@render children()}
-		</main>
+		<div class="hidden @md/app:flex @md/app:h-full @md/app:flex-1">
+			<PaneGroup direction="horizontal" onLayoutChange={handleSidebarResize}>
+				<Pane
+					defaultSize={sidebarCollapsed ? 3 : (settings.ui?.sidebarPct ?? 20)}
+					minSize={sidebarCollapsed ? 3 : 12}
+					maxSize={sidebarCollapsed ? 3 : 40}
+				>
+					<aside class="h-full border-r border-border/20 bg-card overflow-hidden flex flex-col">
+						<PromptSidebar
+							collapsed={sidebarCollapsed}
+							onToggleCollapse={() => (sidebarCollapsed = !sidebarCollapsed)}
+							pathname={data.pathname}
+							searchParams={data.searchParams}
+						/>
+					</aside>
+				</Pane>
+				{#if !sidebarCollapsed}
+					<PaneResizer
+						class="w-1 bg-border/40 hover:bg-primary/40 transition-colors cursor-col-resize"
+					/>
+				{/if}
+				<Pane>
+					<main class="@container/main h-full overflow-hidden flex flex-col">
+						{@render children()}
+					</main>
+				</Pane>
+			</PaneGroup>
+		</div>
 	</div>
 </div>
 

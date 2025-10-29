@@ -6,6 +6,8 @@
 	import Badge from "$lib/components/ui/Badge.svelte"
 	import FileList from "$lib/components/diff/FileList.svelte"
 	import DiffTabs from "$lib/components/diff/DiffTabs.svelte"
+	import { PaneGroup, Pane, PaneResizer } from "paneforge"
+	import { settingsStore } from "$lib/stores/settingsStore"
 
 	type ModifiedFile = {
 		status: string
@@ -25,6 +27,17 @@
 	let commitSha = $state<string | null>(null)
 	let parentSha = $state<string | null>(null)
 	let branch = $state<string | null>(null)
+	let settings = $state<any>({})
+
+	$effect(() => {
+		settingsStore.subscribe((s) => (settings = s))
+	})
+
+	function handleDiffResize(sizes: number[]) {
+		if (sizes[0] !== undefined) {
+			settingsStore.updateUI({ diffFilesPct: sizes[0] })
+		}
+	}
 
 	let diffItems = $derived(diff ? processPatchDiff(diff) : [])
 	let selectedFile = $derived(
@@ -110,15 +123,21 @@
 <Modal bind:open title="Review Changes">
 	{#snippet children()}
 		<div class="flex-1 flex flex-row min-h-0">
-			<FileList
-				bind:files
-				bind:selectedIndex={selectedFileIndex}
-				onselect={selectFile}
-				ontoggle={toggleFile}
-				readonly={commitStatus === "committed"}
-			/>
-
-			<div class="flex-1 flex flex-col min-w-0 overflow-hidden p-6">
+			<PaneGroup direction="horizontal" onLayoutChange={handleDiffResize}>
+				<Pane defaultSize={settings.ui?.diffFilesPct ?? 25} minSize={18} maxSize={50}>
+					<FileList
+						bind:files
+						bind:selectedIndex={selectedFileIndex}
+						onselect={selectFile}
+						ontoggle={toggleFile}
+						readonly={commitStatus === "committed"}
+					/>
+				</Pane>
+				<PaneResizer
+					class="w-1 bg-border/40 hover:bg-primary/40 transition-colors cursor-col-resize"
+				/>
+				<Pane>
+					<div class="flex-1 flex flex-col min-w-0 overflow-hidden p-6">
 				<div class="flex flex-col gap-2 mb-4">
 					<div class="flex items-center gap-3">
 						{#if selectedFile}
@@ -165,7 +184,9 @@
 						</p>
 					{/if}
 				</div>
-			</div>
+					</div>
+				</Pane>
+			</PaneGroup>
 		</div>
 	{/snippet}
 

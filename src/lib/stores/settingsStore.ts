@@ -7,6 +7,12 @@ export interface Settings {
 	editorCommand: string
 	selectedEditor: string
 	selectedTerminal: string
+	ui?: {
+		sidebarPct: number
+		promptPct: number
+		promptSplitPct: number
+		diffFilesPct: number
+	}
 }
 
 const defaultSettings: Settings = {
@@ -15,6 +21,12 @@ const defaultSettings: Settings = {
 	editorCommand: "code",
 	selectedEditor: "code",
 	selectedTerminal: "",
+	ui: {
+		sidebarPct: 20,
+		promptPct: 35,
+		promptSplitPct: 50,
+		diffFilesPct: 25,
+	},
 }
 
 function createSettingsStore() {
@@ -28,6 +40,8 @@ function createSettingsStore() {
 			const editorCmd = await ipc.getSetting("editor_command")
 			const selectedEditor = await ipc.getSetting("selected_editor")
 			const selectedTerminal = await ipc.getSetting("selected_terminal")
+			const uiSettingsStr = await ipc.getSetting("ui_settings")
+			const uiSettings = uiSettingsStr ? JSON.parse(uiSettingsStr) : defaultSettings.ui
 			update((s) => ({
 				...s,
 				ciStuckThresholdMinutes: threshold,
@@ -35,6 +49,7 @@ function createSettingsStore() {
 				editorCommand: editorCmd || defaultSettings.editorCommand,
 				selectedEditor: selectedEditor || defaultSettings.selectedEditor,
 				selectedTerminal: selectedTerminal || defaultSettings.selectedTerminal,
+				ui: uiSettings,
 			}))
 		},
 		async setCiStuckThreshold(minutes: number) {
@@ -56,6 +71,13 @@ function createSettingsStore() {
 		async setSelectedTerminal(terminal: string) {
 			await ipc.setSetting("selected_terminal", terminal)
 			update((s) => ({ ...s, selectedTerminal: terminal }))
+		},
+		async updateUI(uiSettings: Partial<Settings["ui"]>) {
+			update((s) => ({
+				...s,
+				ui: { ...defaultSettings.ui!, ...s.ui, ...uiSettings },
+			}))
+			await ipc.setSetting("ui_settings", JSON.stringify({ ...defaultSettings.ui, ...uiSettings }))
 		},
 	}
 }

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { X, Pencil, Save } from "lucide-svelte"
 	import { Switch } from "bits-ui"
+	import { PaneGroup, Pane, PaneResizer } from "paneforge"
+	import { settingsStore } from "$lib/stores/settingsStore"
 	import type { PromptRevision } from "$lib/types"
 
 	let {
@@ -26,6 +28,17 @@
 	let validationContentRef = $state<HTMLElement | null>(null)
 	let startY = $state(0)
 	let startHeight = $state(0)
+	let settings = $state<any>({})
+
+	$effect(() => {
+		settingsStore.subscribe((s) => (settings = s))
+	})
+
+	function handlePromptSplitResize(sizes: number[]) {
+		if (sizes[0] !== undefined) {
+			settingsStore.updateUI({ promptSplitPct: sizes[0] })
+		}
+	}
 
 	function handleResizeStart(e: MouseEvent) {
 		isResizing = true
@@ -114,19 +127,25 @@
 			class="flex divide-x divide-border/20"
 			style="height: {manuallyResized ? promptHeight : computedHeight}px;"
 		>
-			<!-- Revision Prompt (Left) -->
-			<div class="flex-1 flex flex-col min-w-0">
-				<div class="px-4 py-2 bg-muted/10 border-b border-border/10">
-					<h3 class="text-xs font-semibold text-muted-foreground">Revision Prompt</h3>
-				</div>
-				<div class="flex-1 overflow-auto">
-					<pre
-						bind:this={promptContentRef}
-						class="px-6 py-6 text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground">{revision.promptText}</pre>
-				</div>
-			</div>
-
-			<!-- Validation Prompt (Right) -->
+			<PaneGroup direction="horizontal" onLayoutChange={handlePromptSplitResize}>
+				<Pane defaultSize={settings.ui?.promptSplitPct ?? 50}>
+					<!-- Revision Prompt (Left) -->
+					<div class="flex-1 flex flex-col min-w-0 h-full">
+						<div class="px-4 py-2 bg-muted/10 border-b border-border/10">
+							<h3 class="text-xs font-semibold text-muted-foreground">Revision Prompt</h3>
+						</div>
+						<div class="flex-1 overflow-auto">
+							<pre
+								bind:this={promptContentRef}
+								class="px-6 py-6 text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground">{revision.promptText}</pre>
+						</div>
+					</div>
+				</Pane>
+				<PaneResizer
+					class="w-1 bg-border/40 hover:bg-primary/40 transition-colors cursor-col-resize"
+				/>
+				<Pane>
+					<!-- Validation Prompt (Right) -->
 			{#if !validationPrompt && !isEditingValidation}
 				<div class="flex-1 flex flex-col min-w-0 items-center justify-center">
 					<button
@@ -201,6 +220,8 @@
 					</div>
 				</div>
 			{/if}
+				</Pane>
+			</PaneGroup>
 		</div>
 	</div>
 

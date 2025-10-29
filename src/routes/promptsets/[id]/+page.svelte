@@ -10,6 +10,7 @@
 	import IconButton from "$lib/components/ui/IconButton.svelte"
 	import { X } from "lucide-svelte"
 	import { Tabs, Dialog } from "bits-ui"
+	import { PaneGroup, Pane, PaneResizer } from "paneforge"
 	import EditRepositoriesDialog from "$lib/components/ui/EditRepositoriesDialog.svelte"
 	import { api } from "$lib/api"
 	import { showToast } from "$lib/ui/toast"
@@ -17,6 +18,7 @@
 	import { pollExecutions } from "$lib/polling"
 	import { toShortHash } from "$lib/utils"
 	import { sidebarStore } from "$lib/stores/sidebarStore"
+	import { settingsStore } from "$lib/stores/settingsStore"
 	import type {
 		PromptSet,
 		PromptRevision,
@@ -161,6 +163,17 @@
 	let diffViewerExecutionId = $state<string | null>(null)
 	let stopPolling = $state<(() => void) | null>(null)
 	let activeTab = $state<string>("executions")
+	let settings = $state<any>({})
+
+	$effect(() => {
+		settingsStore.subscribe((s) => (settings = s))
+	})
+
+	function handlePromptResize(sizes: number[]) {
+		if (sizes[0] !== undefined) {
+			settingsStore.updateUI({ promptPct: sizes[0] })
+		}
+	}
 
 	const promptsetId = $derived(data.promptsetId)
 	const revisionParam = $derived(data.revisionParam)
@@ -1154,16 +1167,20 @@
 		<!-- Main Content Area: PromptConsole + Tabs -->
 		<div class="flex-1 min-h-0 flex flex-col bg-background">
 			{#if currentRevision}
-				<!-- Prompt Console (resizable) -->
-				<PromptConsole
-					revision={currentRevision}
-					validationPrompt={currentPromptSet.validationPrompt}
-					autoValidate={currentPromptSet.autoValidate}
-					onSaveValidation={saveValidationPrompt}
-				/>
-
-				<!-- Tabs Area (fixed below PromptConsole) -->
-				<Tabs.Root bind:value={activeTab} class="flex flex-col flex-1 min-h-0">
+				<PaneGroup direction="vertical" onLayoutChange={handlePromptResize}>
+					<Pane defaultSize={settings.ui?.promptPct ?? 35} minSize={20} maxSize={70}>
+						<PromptConsole
+							revision={currentRevision}
+							validationPrompt={currentPromptSet.validationPrompt}
+							autoValidate={currentPromptSet.autoValidate}
+							onSaveValidation={saveValidationPrompt}
+						/>
+					</Pane>
+					<PaneResizer
+						class="h-1 bg-border/40 hover:bg-primary/40 transition-colors cursor-row-resize"
+					/>
+					<Pane>
+						<Tabs.Root bind:value={activeTab} class="flex flex-col h-full">
 					<Tabs.List
 						class="flex-shrink-0 flex items-center gap-1 px-4 py-2 bg-muted/5 border-b border-border/10"
 					>
@@ -1256,7 +1273,9 @@
 							}}
 						/>
 					</Tabs.Content>
-				</Tabs.Root>
+						</Tabs.Root>
+					</Pane>
+				</PaneGroup>
 			{:else}
 				<div class="flex items-center justify-center h-full">
 					<div class="text-center text-muted-foreground max-w-md">
