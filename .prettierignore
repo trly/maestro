@@ -5,3 +5,12 @@ src-tauri/
 dist/
 .svelte-kit/
 node_modules/
+
+# Dependency lock files and manifests
+package.json
+Cargo.toml
+bun.lock
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+Cargo.lock

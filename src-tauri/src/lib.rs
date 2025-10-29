@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
+#[cfg(target_os = "macos")]
+use tauri::menu::PredefinedMenuItem;
+use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{AppHandle, Manager, Wry};
 
 pub mod ci;
