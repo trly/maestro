@@ -2,6 +2,25 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.2.0] - 2025-10-29
+
+### Added
+
+- Resizable panels with PaneForge integration
+- Synchronized scrolling for prompt console
+- Improved sidebar layout with centered icons and tooltips
+
+### Changed
+
+- Replaced ampcode.com API with Amp `read_thread` tool for analysis
+- Extracted shared table logic into reusable TableState class
+- Optimized CI caching strategy to eliminate tauri-cli rebuild
+
+### Fixed
+
+- Preserve all UI settings when updating individual panel sizes
+- Remove unnecessary bg-card from RepositorySelector
+
 ## [0.1.0] - 2025-10-29
 
 ### Added

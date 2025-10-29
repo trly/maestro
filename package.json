@@ -1,42 +1,42 @@
 {
-	"name": "maestro",
-	"version": "0.1.0",
-	"type": "module",
-	"private": true,
-	"scripts": {
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"format": "prettier --write ."
-	},
-	"devDependencies": {
-		"@sveltejs/adapter-static": "^3.0.10",
-		"@sveltejs/kit": "^2.47.2",
-		"@sveltejs/vite-plugin-svelte": "^6.2.1",
-		"@tailwindcss/container-queries": "^0.1.1",
-		"@tailwindcss/postcss": "^4.1.15",
-		"@types/diff": "^8.0.0",
-		"@types/node": "^24.9.1",
-		"autoprefixer": "^10.4.21",
-		"prettier": "^3.6.2",
-		"prettier-plugin-svelte": "^3.4.0",
-		"svelte": "^5.41.1",
-		"svelte-check": "^4.3.3",
-		"tailwindcss": "^4.1.15",
-		"vite": "^7.1.11",
-		"vite-plugin-svelte-inspector": "^0.2.1"
-	},
-	"peerDependencies": {
-		"typescript": "^5.9.3"
-	},
-	"dependencies": {
-		"@octokit/rest": "^22.0.0",
-		"@sourcegraph/amp-sdk": "^0.1.0-20251029183144-g02378e6",
-		"@tauri-apps/api": "^2.9.0",
-		"@tauri-apps/plugin-notification": "^2.3.1",
-		"@tauri-apps/plugin-shell": "^2.3.1",
-		"bits-ui": "^2.14.0",
-		"diff": "^8.0.2",
-		"lucide-svelte": "^0.545.0",
-		"marked": "^16.4.1",
-		"paneforge": "^1.0.2"
-	}
+  "name": "maestro",
+  "version": "0.2.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.47.2",
+    "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/postcss": "^4.1.15",
+    "@types/diff": "^8.0.0",
+    "@types/node": "^24.9.1",
+    "autoprefixer": "^10.4.21",
+    "prettier": "^3.6.2",
+    "prettier-plugin-svelte": "^3.4.0",
+    "svelte": "^5.41.1",
+    "svelte-check": "^4.3.3",
+    "tailwindcss": "^4.1.15",
+    "vite": "^7.1.11",
+    "vite-plugin-svelte-inspector": "^0.2.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@octokit/rest": "^22.0.0",
+    "@sourcegraph/amp-sdk": "^0.1.0-20251029183144-g02378e6",
+    "@tauri-apps/api": "^2.9.0",
+    "@tauri-apps/plugin-notification": "^2.3.1",
+    "@tauri-apps/plugin-shell": "^2.3.1",
+    "bits-ui": "^2.14.0",
+    "diff": "^8.0.2",
+    "lucide-svelte": "^0.545.0",
+    "marked": "^16.4.1",
+    "paneforge": "^1.0.2"
+  }
 }
