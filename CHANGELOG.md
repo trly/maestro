@@ -2,6 +2,13 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.2.5] - 2025-10-29
+
+### Changed
+
+- CI now self-signs macOS application for distribution
+- Updated architecture documentation
+
 ## [0.2.4] - 2025-10-29
 
 ### Fixed
