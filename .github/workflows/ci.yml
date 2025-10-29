@@ -19,7 +19,7 @@ jobs:
         uses: jdx/mise-action@v2
 
       - name: Install Rust components
-        run: rustup component add clippy
+        run: rustup component add clippy rustfmt
 
       - name: Install dependencies
         run: |
