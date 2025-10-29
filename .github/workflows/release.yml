@@ -19,23 +19,36 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
-      - name: Get CI run for this commit
+      - name: Wait for CI to complete
         id: ci-run
         run: |
-          RUN_ID=$(gh run list --workflow=ci.yml --commit=${{ github.sha }} --json databaseId,conclusion --jq '.[] | select(.conclusion=="success") | .databaseId' | head -n1)
-          if [ -z "$RUN_ID" ]; then
-            echo "::error::No successful CI run found for commit ${{ github.sha }}."
-            echo "::error::Push this commit to a branch to trigger CI, or manually run the CI workflow for this commit."
-            exit 1
-          fi
-          echo "Found existing successful CI run: $RUN_ID"
-          echo "run-id=$RUN_ID" >> $GITHUB_OUTPUT
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Verify CI completed successfully
-        run: |
-          echo "Reusing artifacts from CI run ${{ steps.ci-run.outputs.run-id }}"
+          echo "Waiting for CI workflow to complete for commit ${{ github.sha }}..."
+          TIMEOUT=3600
+          ELAPSED=0
+          INTERVAL=30
+          
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            RUN_ID=$(gh run list --workflow=ci.yml --commit=${{ github.sha }} --json databaseId,status,conclusion --jq '.[] | select(.status=="completed" and .conclusion=="success") | .databaseId' | head -n1)
+            
+            if [ -n "$RUN_ID" ]; then
+              echo "Found successful CI run: $RUN_ID"
+              echo "run-id=$RUN_ID" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            
+            FAILED_RUN=$(gh run list --workflow=ci.yml --commit=${{ github.sha }} --json conclusion --jq '.[] | select(.conclusion=="failure" or .conclusion=="cancelled") | .conclusion' | head -n1)
+            if [ -n "$FAILED_RUN" ]; then
+              echo "::error::CI workflow failed or was cancelled for commit ${{ github.sha }}"
+              exit 1
+            fi
+            
+            echo "CI still running, waiting ${INTERVAL}s... (${ELAPSED}s elapsed)"
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+          
+          echo "::error::Timeout waiting for CI to complete after ${TIMEOUT}s"
+          exit 1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
