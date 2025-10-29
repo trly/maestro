@@ -46,7 +46,7 @@
 	}
 </script>
 
-<div class="p-6 border rounded-lg bg-card">
+<div>
 	<h3 class="text-lg font-semibold mb-4">Development Tools</h3>
 	<p class="text-sm text-muted-foreground mb-6">Configure editor and development tools</p>
 

@@ -124,7 +124,7 @@
 	}
 </script>
 
-<div class="p-6 border rounded-lg bg-card">
+<div>
 	<h3 class="text-lg font-semibold mb-4">Amp Configuration</h3>
 	<p class="text-sm text-muted-foreground mb-6">
 		Configure Amp AI agent for prompt execution and analysis

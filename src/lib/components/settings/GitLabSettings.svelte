@@ -108,7 +108,7 @@
 	}
 </script>
 
-<div class="p-6 border rounded-lg bg-card">
+<div>
 	<h3 class="text-lg font-semibold mb-4">GitLab</h3>
 	<p class="text-sm text-muted-foreground mb-6">
 		Configure GitLab integration for self-hosted or GitLab.com
@@ -242,7 +242,7 @@
 				<p class="text-xs text-muted-foreground mt-2">
 					Generate at your GitLab instance: User Settings → Access Tokens
 				</p>
-				{#if gitlabTokenMasked && gitlabEndpointMasked && !editingToken && !editingEndpoint}
+				{#if gitlabTokenMasked && !editingToken && !editingEndpoint}
 					<div class="mt-3 flex items-center gap-2">
 						<button
 							type="button"
