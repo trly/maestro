@@ -194,7 +194,7 @@
 
 <div>
 	{#if providers.length === 0}
-		<div class="bg-card border border-border/30 rounded-lg p-4">
+		<div>
 			<p class="font-semibold text-foreground">No repository providers configured</p>
 			<p class="text-sm mt-1 text-muted-foreground">
 				Configure GitHub or GitLab token in Settings to enable repository search
