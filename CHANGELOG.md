@@ -2,6 +2,12 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.2.8] - 2025-10-29
+
+### Fixed
+
+- Statically link OpenSSL to prevent macOS installer crashes
+
 ## [0.2.7] - 2025-10-29
 
 ### Fixed
