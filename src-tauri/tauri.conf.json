@@ -1,51 +1,57 @@
 {
-	"$schema": "https://schema.tauri.app/config/2",
-	"productName": "Maestro",
-	"version": "0.0.9",
-	"identifier": "dev.trly.maestro",
-	"build": {
-		"frontendDist": "../dist",
-		"devUrl": "http://localhost:5173",
-		"beforeDevCommand": "bun vite dev --port 5173 --strictPort",
-		"beforeBuildCommand": "bun vite build"
-	},
-	"app": {
-		"windows": [
-			{
-				"title": "Maestro - AI Prompt Orchestrator",
-				"width": 1200,
-				"height": 800,
-				"resizable": true,
-				"fullscreen": false
-			}
-		],
-		"security": {
-			"csp": null,
-			"capabilities": ["default"]
-		}
-	},
-	"bundle": {
-		"active": true,
-		"targets": ["app", "dmg", "deb"],
-		"icon": [
-			"icons/32x32.png",
-			"icons/128x128.png",
-			"icons/128x128@2x.png",
-			"icons/icon.icns",
-			"icons/icon.ico"
-		],
-		"resources": [
-			"../src/lib/amp-executor.ts",
-			"../node_modules/@sourcegraph/amp-sdk/**/*",
-			"../package.json",
-			"../bun.lock"
-		],
-		"copyright": "Copyright © 2025 Sourcegraph",
-		"category": "DeveloperTool",
-		"shortDescription": "AI Prompt Orchestrator",
-		"longDescription": "Maestro orchestrates AI prompt execution across multiple repositories using the Amp SDK.",
-		"macOS": {
-			"signingIdentity": null
-		}
-	}
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Maestro",
+  "version": "0.1.0",
+  "identifier": "dev.trly.maestro",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "bun vite dev --port 5173 --strictPort",
+    "beforeBuildCommand": "bun vite build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Maestro - AI Prompt Orchestrator",
+        "width": 1200,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null,
+      "capabilities": [
+        "default"
+      ]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "app",
+      "dmg",
+      "deb"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "../src/lib/amp-executor.ts",
+      "../node_modules/@sourcegraph/amp-sdk/**/*",
+      "../package.json",
+      "../bun.lock"
+    ],
+    "copyright": "Copyright © 2025 Sourcegraph",
+    "category": "DeveloperTool",
+    "shortDescription": "AI Prompt Orchestrator",
+    "longDescription": "Maestro orchestrates AI prompt execution across multiple repositories using the Amp SDK.",
+    "macOS": {
+      "signingIdentity": null
+    }
+  }
 }

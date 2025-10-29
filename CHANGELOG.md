@@ -2,6 +2,23 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.1.0] - 2025-10-29
+
+### Added
+
+- GitLab provider support with health checks
+- Not pushed CI status for uncommitted changes
+- Prettier formatting and tidy command
+
+### Changed
+
+- Refactored Git and CI logic using provider traits for better abstraction
+- Updated settings page layout
+
+### Fixed
+
+- CI workflow now installs rustfmt component
+
 ## [0.0.9] - 2025-10-24
 
 ### Changed
