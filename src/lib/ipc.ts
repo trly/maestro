@@ -420,8 +420,6 @@ export type TokenKey =
 	| "gitlab_instance_url"
 	| "sourcegraph_endpoint"
 	| "sourcegraph_token"
-	| "amp_client_id"
-	| "amp_client_secret"
 
 /**
  * Set a token in the system keyring
@@ -444,8 +442,6 @@ export interface AllTokens {
 	gitlabInstanceUrl: string | null
 	sourcegraphEndpoint: string | null
 	sourcegraphToken: string | null
-	ampClientId: string | null
-	ampClientSecret: string | null
 }
 
 /**

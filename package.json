@@ -29,7 +29,7 @@
 	},
 	"dependencies": {
 		"@octokit/rest": "^22.0.0",
-		"@sourcegraph/amp-sdk": "^0.1.0-3e67faf1b0e66cf0d3bf2985979efbcac0554a79",
+		"@sourcegraph/amp-sdk": "^0.1.0-20251029183144-g02378e6",
 		"@tauri-apps/api": "^2.9.0",
 		"@tauri-apps/plugin-notification": "^2.3.1",
 		"@tauri-apps/plugin-shell": "^2.3.1",

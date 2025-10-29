@@ -228,7 +228,7 @@ User settings are loaded globally at app startup in `+layout.svelte`:
 Maestro uses the system keyring (via `keyring` crate) for secure credential storage:
 
 - **Service Name**: `dev.trly.maestro` (identifies app in keyring)
-- **Token Keys**: `amp_token`, `github_token`, `sourcegraph_endpoint`, `sourcegraph_token`, `amp_client_id`, `amp_client_secret`
+- **Token Keys**: `amp_token`, `github_token`, `sourcegraph_endpoint`, `sourcegraph_token`
 - **Never** store tokens in env vars, config files, or database
 - **Always** retrieve tokens at command execution time via `tokens::get_token_value(key)`
 

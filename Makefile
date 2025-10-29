@@ -32,7 +32,9 @@ icon: ## Generate app icons from source image
 	cargo tauri icon
 
 clean: ## Clean build artifacts
-	cargo clean
+	rm -rf node_modules bun.lock
+	bun install
+	cd src-tauri && cargo clean
 	rm -rf dist/
 	rm -rf .svelte-kit/
 

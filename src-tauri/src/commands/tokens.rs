@@ -17,8 +17,6 @@ pub struct AllTokens {
     pub gitlab_instance_url: Option<String>,
     pub sourcegraph_endpoint: Option<String>,
     pub sourcegraph_token: Option<String>,
-    pub amp_client_id: Option<String>,
-    pub amp_client_secret: Option<String>,
 }
 
 fn get_tokens_entry() -> Result<Entry, String> {
@@ -85,8 +83,6 @@ pub(crate) fn get_token_value(key: &str) -> Result<Option<String>, String> {
         "gitlab_instance_url" => Ok(tokens.gitlab_instance_url.clone()),
         "sourcegraph_endpoint" => Ok(tokens.sourcegraph_endpoint.clone()),
         "sourcegraph_token" => Ok(tokens.sourcegraph_token.clone()),
-        "amp_client_id" => Ok(tokens.amp_client_id.clone()),
-        "amp_client_secret" => Ok(tokens.amp_client_secret.clone()),
         _ => Err(format!("Unknown token key: {}", key)),
     }
 }
@@ -129,14 +125,6 @@ pub fn set_token(key: String, value: String) -> Result<(), String> {
         }
         "sourcegraph_token" => {
             if let Some(mut old) = tokens.sourcegraph_token.replace(value) {
-                old.zeroize();
-            }
-        }
-        "amp_client_id" => {
-            let _ = tokens.amp_client_id.replace(value);
-        }
-        "amp_client_secret" => {
-            if let Some(mut old) = tokens.amp_client_secret.replace(value) {
                 old.zeroize();
             }
         }
@@ -190,14 +178,6 @@ pub fn delete_token(key: String) -> Result<(), String> {
         }
         "sourcegraph_token" => {
             if let Some(mut s) = tokens.sourcegraph_token.take() {
-                s.zeroize();
-            }
-        }
-        "amp_client_id" => {
-            let _ = tokens.amp_client_id.take();
-        }
-        "amp_client_secret" => {
-            if let Some(mut s) = tokens.amp_client_secret.take() {
                 s.zeroize();
             }
         }
@@ -255,7 +235,5 @@ pub fn get_all_tokens_masked() -> Result<AllTokens, String> {
         gitlab_instance_url: mask(&tokens.gitlab_instance_url),
         sourcegraph_endpoint: mask(&tokens.sourcegraph_endpoint),
         sourcegraph_token: mask(&tokens.sourcegraph_token),
-        amp_client_id: mask(&tokens.amp_client_id),
-        amp_client_secret: mask(&tokens.amp_client_secret),
     })
 }

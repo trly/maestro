@@ -1,15 +1,17 @@
 # Failure Analysis
 
-Maestro's failure analysis feature aggregates multiple failed executions or validations and uses Amp's V2 API to categorize common failure patterns.
+Maestro's failure analysis feature aggregates multiple failed executions or validations and uses Amp SDK's `read_thread` tool to categorize common failure patterns.
 
 ## Overview
 
 When executions or validations fail across multiple repositories, the analysis feature:
 
-1. Fetches full thread history from Amp V2 API (via OAuth2)
-2. Aggregates all failure threads into a single analysis prompt
-3. Creates a new Amp thread to analyze and categorize failures
+1. Collects thread URLs from failed executions/validations
+2. Creates an analysis prompt instructing Amp to use `read_thread` for each thread
+3. Uses Amp SDK to execute the analysis (Amp automatically fetches thread content)
 4. Stores results linked to the prompt revision
+
+**No OAuth credentials required** - leverages Amp's built-in `read_thread` tool instead of direct API integration.
 
 ## Domain Model
 
@@ -94,43 +96,13 @@ CREATE INDEX idx_analysis_execs_execution ON analysis_executions (execution_id);
 CREATE INDEX idx_analysis_execs_analysis ON analysis_executions (analysis_id);
 ```
 
-## Amp V2 API Integration
+## Amp SDK Integration
 
-### OAuth2 Authentication
+Maestro uses the same Amp SDK execution flow as regular prompt executions. The analysis prompt instructs Amp to use its built-in `read_thread` tool to fetch and analyze thread content.
 
-Maestro uses WorkOS OAuth2 for Amp V2 API access:
+**No direct API integration** - Amp SDK handles all thread fetching automatically via the `read_thread` tool.
 
-```rust
-// Credentials stored in system keyring
-let client_id = get_token_value("amp_client_id")?;
-let client_secret = get_token_value("amp_client_secret")?;
-
-// Create authenticated client
-let mut client = AmpV2Client::new(client_id, client_secret);
-let access_token = client.get_access_token().await?;
-```
-
-**Required OAuth2 Scopes:**
-
-- `amp.api:workspace.threads.meta:view` - View thread metadata
-- `amp.api:workspace.threads.contents:view` - View thread messages
-
-**Token Endpoint:** `https://auth.ampcode.com/oauth2/token`
-
-### Fetching Thread Messages
-
-```rust
-// Extract thread ID from URL
-let thread_id = AmpV2Client::extract_thread_id(thread_url)?;
-
-// Fetch all messages (handles pagination)
-let messages = client.get_thread_messages(&thread_id).await?;
-
-// Format for analysis
-let formatted = AmpV2Client::format_messages_for_analysis(&messages);
-```
-
-**API Base URL:** `https://ampcode.com/api/v2`
+**Authentication** - Uses the same `amp_token` as execution agent (stored in system keyring).
 
 ## Workflow
 
@@ -174,23 +146,18 @@ store.add_analysis_executions(&id, &execution_ids)?;
 
 ```rust
 tokio::spawn(async move {
-    // 1. Get OAuth2 credentials
-    let client_id = get_token_value("amp_client_id")?;
-    let client_secret = get_token_value("amp_client_secret")?;
-
-    // 2. Fetch all thread messages
-    let mut client = AmpV2Client::new(client_id, client_secret);
+    // 1. Fetch all thread messages
     for execution in executions {
         let thread_url = match analysis_type {
             AnalysisType::Execution => execution.thread_url,
             AnalysisType::Validation => execution.validation_thread_url,
         };
-        let thread_id = AmpV2Client::extract_thread_id(thread_url)?;
-        let messages = client.get_thread_messages(&thread_id).await?;
+        let thread_id = extract_thread_id(thread_url)?;
+        let messages = get_thread_messages(&thread_id).await?;
         all_threads.push(format_messages_for_analysis(&messages));
     }
 
-    // 3. Create analysis prompt
+    // 2. Create analysis prompt
     let prompt = format!(
         "Analyze the following failed {} threads and categorize common failure patterns:\n\n{}",
         analysis_type, all_threads.join("\n\n---\n\n")
@@ -269,9 +236,6 @@ const analyses = await getAnalysesByRevision(
 
 ```
 src-tauri/src/
-├── amp/
-│   ├── mod.rs
-│   └── v2_client.rs          # Amp V2 API client with OAuth2
 ├── commands/
 │   └── analysis.rs           # Analysis commands
 └── db/
@@ -279,12 +243,6 @@ src-tauri/src/
 ```
 
 ### Key Components
-
-**AmpV2Client** (`src-tauri/src/amp/v2_client.rs`):
-
-- OAuth2 token management (with caching)
-- Thread message fetching (with pagination)
-- Message formatting for analysis
 
 **Analysis Commands** (`src-tauri/src/commands/analysis.rs`):
 
@@ -326,27 +284,23 @@ ORDER BY created_at DESC;
 
 ## Security Considerations
 
-1. **OAuth2 Credentials**
-   - Client ID and secret stored in system keyring
-   - Tokens never exposed in logs or UI
-   - Retrieved only at command execution time
+1. **Amp Token**
+   - Stored in system keyring (same as execution agent)
+   - Never exposed in logs or UI
+   - Passed to amp-executor.ts via AMP_API_KEY environment variable
 
-2. **Access Tokens**
-   - Cached in AmpV2Client for duration of request
-   - Not persisted to disk
-   - Automatically refreshed when expired
-
-3. **Thread Access**
-   - Only threads from workspace executions are accessed
-   - OAuth2 scopes limit access to workspace data
+2. **Thread Access**
+   - Only threads from workspace executions are analyzed
+   - Amp SDK's read_thread tool handles authentication automatically
+   - User must have access to threads in their workspace
 
 ## Performance
 
 ### Thread Fetching
 
-- Parallel fetching of multiple threads
-- Pagination handled automatically
-- Messages formatted incrementally
+- Amp SDK handles thread fetching via read_thread tool
+- Multiple threads read sequentially by Amp agent
+- No manual pagination required
 
 ### Background Execution
 
@@ -381,31 +335,31 @@ Potential improvements:
 
 ## Troubleshooting
 
-### "OAuth2 credentials not configured"
+### "Amp token not configured"
 
-**Cause:** `amp_client_id` or `amp_client_secret` missing from keyring
+**Cause:** `amp_token` missing from keyring
 
 **Solution:**
 
-1. Go to Settings → API Tokens
-2. Enter Amp OAuth2 Client ID
-3. Enter Amp OAuth2 Client Secret
-4. Credentials provisioned by Sourcegraph for Enterprise customers
+1. Go to Settings → Agents
+2. Enter Amp API Token
+3. Generate token at: https://ampcode.com/settings/profile
 
-### "Failed to fetch thread messages"
+### "Failed to read thread"
 
 **Possible causes:**
 
-- Invalid OAuth2 credentials
+- Invalid Amp token
 - Thread URL malformed
+- Thread not accessible in workspace
 - Network connectivity issues
-- Rate limiting
 
 **Solution:**
 
-1. Verify credentials in Settings
+1. Verify Amp token in Settings → Agents
 2. Check thread URL format: `https://ampcode.com/threads/T-{uuid}`
-3. Check network logs for API errors
+3. Ensure you have access to the thread in your Amp workspace
+4. Check amp-executor.ts output for detailed errors
 
 ### "Analysis failed"
 
@@ -492,10 +446,10 @@ Analyses are displayed between the prompt console and executions table:
 
 **Backend:**
 
-- `src-tauri/src/amp/v2_client.rs` - Amp V2 API client
 - `src-tauri/src/commands/analysis.rs` - Analysis commands
 - `src-tauri/src/db/store.rs` - Analysis CRUD
 - `src-tauri/src/db/migrations.rs` - Migration 13
+- `src/lib/amp-executor.ts` - Amp SDK execution (shared with regular executions)
 
 **Frontend:**
 
@@ -510,4 +464,4 @@ Analyses are displayed between the prompt console and executions table:
 - **[Architecture](./architecture.md)** - Overall system design
 - **[Executions](./executions.md)** - Execution lifecycle
 - **[IPC Guide](./ipc-guide.md)** - API reference
-- **[Settings](./settings.md)** - OAuth2 credential configuration
+- **[Settings](./settings.md)** - Amp token configuration

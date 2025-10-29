@@ -3,9 +3,7 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
 
-use crate::amp::v2_client::AmpV2Client;
 use crate::commands::executor_events::{emit_analysis_result, emit_analysis_status};
-use crate::commands::tokens::get_token_value;
 use crate::db::store::Store;
 use crate::types::{Analysis, AnalysisStatus, AnalysisType};
 use crate::Paths;
@@ -103,16 +101,7 @@ async fn run_analysis_impl(analysis_id: String, app: AppHandle) -> Result<()> {
         (analysis.analysis_type, execution_ids)
     };
 
-    let client_id = get_token_value("amp_client_id")
-        .map_err(|e| anyhow::anyhow!("Failed to get amp_client_id: {}", e))?
-        .ok_or_else(|| anyhow::anyhow!("amp_client_id not configured"))?;
-    let client_secret = get_token_value("amp_client_secret")
-        .map_err(|e| anyhow::anyhow!("Failed to get amp_client_secret: {}", e))?
-        .ok_or_else(|| anyhow::anyhow!("amp_client_secret not configured"))?;
-
-    let mut amp_client = AmpV2Client::new(client_id, client_secret);
-
-    let mut formatted_threads = String::new();
+    let mut thread_list = String::new();
 
     for execution_id in &execution_ids {
         let thread_url = {
@@ -129,37 +118,32 @@ async fn run_analysis_impl(analysis_id: String, app: AppHandle) -> Result<()> {
         };
 
         if let Some(url) = thread_url {
-            if let Some(thread_id) = AmpV2Client::extract_thread_id(&url) {
-                match amp_client.get_thread_messages(&thread_id).await {
-                    Ok(messages) => {
-                        formatted_threads
-                            .push_str(&format!("\n\n## Execution: {}\n", execution_id));
-                        formatted_threads.push_str(&format!("Thread URL: {}\n", url));
-                        formatted_threads
-                            .push_str(&AmpV2Client::format_messages_for_analysis(&messages));
-                    }
-                    Err(e) => {
-                        log::warn!("[run_analysis] Failed to fetch thread {}: {}", thread_id, e);
-                        formatted_threads.push_str(&format!(
-                            "\n\n## Execution: {} (failed to fetch)\n",
-                            execution_id
-                        ));
-                    }
-                }
-            }
+            thread_list.push_str(&format!("\n- {} ({})", url, execution_id));
         }
     }
 
     let analysis_prompt = format!(
-        "Analyze the following failed {} threads and categorize common failure patterns.\n\n\
-        As part of the analysis, provide suggested changes to the prompt to reduce these failures over a larger set of similar repositories.\n\n
-        IMPORTANT: Do NOT write any analysis to disk. Return your failure categorization as a markdown table.\n\n\
-        {}",
+        "You are analyzing failed {} threads to identify common failure patterns.\n\n\
+        STEP 1: For EACH thread URL listed below, use the read_thread tool to extract:\n\
+        - The original task/goal that was attempted\n\
+        - All error messages and stack traces\n\
+        - The failure cause and context\n\
+        - Any relevant tool outputs or file contents\n\n\
+        Thread URLs to analyze:{}\n\n\
+        STEP 2: After reading ALL threads, create a comprehensive analysis that includes:\n\
+        1. A markdown table categorizing failure patterns with columns: Pattern | Count | Example Thread | Root Cause\n\
+        2. Specific, actionable suggestions to modify the original prompt to prevent these failures\n\
+        3. Any common environmental or setup issues discovered\n\n\
+        IMPORTANT:\n\
+        - You MUST use read_thread for every URL listed above\n\
+        - Do NOT write any files to disk\n\
+        - Return your complete analysis as markdown\n\
+        - Be specific about which execution IDs exhibited which patterns",
         match analysis_type {
             AnalysisType::Execution => "execution",
             AnalysisType::Validation => "validation",
         },
-        formatted_threads
+        thread_list
     );
 
     // Store the generated prompt in the database

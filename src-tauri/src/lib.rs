@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::Manager;
 
-pub mod amp;
 pub mod ci;
 mod commands;
 mod db;
