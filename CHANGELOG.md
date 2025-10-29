@@ -2,6 +2,12 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.2.1] - 2025-10-29
+
+### Added
+
+- Production logging with file rotation and environment controls
+
 ## [0.2.0] - 2025-10-29
 
 ### Added
