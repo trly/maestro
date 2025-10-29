@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Execution, Repository } from "$lib/types"
-	import type { SortSpec } from "./types"
+	import type { SortSpec } from "$lib/table/types"
 	import type { SelectionState } from "$lib/composables/useSelection.svelte"
 	import ExecutionRow from "./ExecutionRow.svelte"
 	import IconButton from "$lib/components/ui/IconButton.svelte"
@@ -21,7 +21,7 @@
 		analyzingExecutions?: boolean
 		analyzingValidations?: boolean
 		onToggleSelectAll: () => void
-		onChangeSort: (key: SortSpec["key"]) => void
+		onChangeSort: (key: string) => void
 		onLoadStats: (id: string) => void
 		onLoadCi: (id: string) => void
 		onStart: (id: string) => void
@@ -43,7 +43,7 @@
 
 	let someVisibleSelected = $derived(props.selection.selectedIds.size > 0 && !allVisibleSelected)
 
-	function getSortIcon(key: SortSpec["key"]) {
+	function getSortIcon(key: string) {
 		if (props.sort.key !== key) return null
 		return props.sort.dir === "asc" ? ChevronUp : ChevronDown
 	}

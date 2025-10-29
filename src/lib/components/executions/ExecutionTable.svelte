@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { Execution, Repository } from "$lib/types"
-	import type { SortSpec, ColumnFilters } from "./types"
+	import type { ColumnFilters } from "$lib/table/types"
+	import { TableState } from "$lib/table/TableState.svelte"
+	import { normalizeExecutionFilters } from "$lib/table/filters"
 	import { useSelection } from "$lib/composables/useSelection.svelte"
 	import ExecutionFilters from "./ExecutionFilters.svelte"
 	import ExecutionList from "./ExecutionList.svelte"
@@ -44,47 +46,15 @@
 		onBulkRevalidate: (executions: Execution[]) => void
 	}>()
 
-	// Filters + sort state
-	let filters = $state<ColumnFilters>({})
-	let sort = $state<SortSpec>({ key: "createdAt", dir: "desc" })
+	const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" })
 
-	// Reset filters when switching revisions
-	$effect(() => {
-		props.revisionId
-		filters = {}
-	})
-
-	function setFilters(next: ColumnFilters) {
-		// Normalize filters
-		const norm = (v?: string | null) => (v == null || v === "" || v === "all" ? undefined : v)
-		const f = { ...next }
-		f.repository = typeof f.repository === "string" ? f.repository.trim() || undefined : undefined
-		f.status = norm(f.status as any) as any
-		f.validationStatus = norm(f.validationStatus as any) as any
-		f.ciStatus = norm(f.ciStatus as any) as any
-		f.changes = norm(f.changes as any) as any
-
-		// Mutate in place for rune stability
-		for (const k of Object.keys(filters)) delete (filters as any)[k]
-		Object.assign(filters, f)
-	}
-
-	// Derived helpers
-	let executionsById = $derived.by(() => {
-		props.executionsVersion
-		const map = new Map<string, Execution>()
-		for (const e of props.executions) map.set(e.id, e)
-		return map
-	})
-
-	let filteredExecutions = $derived.by(() => {
-		props.repositories.size
-		const repoContains = (repoId: string, q: string) => {
-			const name = props.repositories.get(repoId)?.providerId || repoId
-			return name.toLowerCase().includes(q.toLowerCase())
-		}
-		return props.executions.filter((e: Execution) => {
-			if (filters.repository && !repoContains(e.repositoryId, filters.repository)) return false
+	const table = new TableState<Execution>(
+		(e) => e.id,
+		(filters, e) => {
+			if (filters.repository) {
+				const name = props.repositories.get(e.repositoryId)?.providerId || e.repositoryId
+				if (!name.toLowerCase().includes(filters.repository.toLowerCase())) return false
+			}
 			if (filters.status && e.status !== filters.status) return false
 			if (filters.validationStatus && e.validationStatus !== filters.validationStatus) return false
 			if (filters.ciStatus && e.ciStatus !== filters.ciStatus) return false
@@ -94,42 +64,43 @@
 				if (filters.changes === "no-changes" && files > 0) return false
 			}
 			return true
-		})
-	})
-
-	const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" })
-
-	let sortedExecutions = $derived.by(() => {
-		const s = [...filteredExecutions]
-		const dir = sort.dir === "asc" ? 1 : -1
-		const cmp = {
-			repo: (a: Execution, b: Execution) => {
+		},
+		{
+			repo: (a, b) => {
 				const an = props.repositories.get(a.repositoryId)?.providerId || a.repositoryId
 				const bn = props.repositories.get(b.repositoryId)?.providerId || b.repositoryId
 				return collator.compare(an, bn)
 			},
-			status: (a: Execution, b: Execution) => collator.compare(a.status, b.status),
-			validation: (a: Execution, b: Execution) =>
+			status: (a, b) => collator.compare(a.status, b.status),
+			validation: (a, b) =>
 				collator.compare(a.validationStatus || "pending", b.validationStatus || "pending"),
-			ci: (a: Execution, b: Execution) =>
+			ci: (a, b) =>
 				collator.compare(a.ciStatus || "not_configured", b.ciStatus || "not_configured"),
-			commit: (a: Execution, b: Execution) => collator.compare(a.commitStatus, b.commitStatus),
-			diff: (a: Execution, b: Execution) => {
+			commit: (a, b) => collator.compare(a.commitStatus, b.commitStatus),
+			diff: (a, b) => {
 				const da = (a.linesAdded || 0) + (a.linesRemoved || 0)
 				const db = (b.linesAdded || 0) + (b.linesRemoved || 0)
 				return da - db
 			},
-			createdAt: (a: Execution, b: Execution) => (a.createdAt || 0) - (b.createdAt || 0),
-			completedAt: (a: Execution, b: Execution) => (a.completedAt || 0) - (b.completedAt || 0),
-		}[sort.key]
-		s.sort((a, b) => {
-			const r = cmp(a, b)
-			return r === 0 ? dir * collator.compare(a.id, b.id) : dir * r
-		})
-		return s
+			createdAt: (a, b) => (a.createdAt || 0) - (b.createdAt || 0),
+			completedAt: (a, b) => (a.completedAt || 0) - (b.completedAt || 0),
+		},
+		normalizeExecutionFilters,
+		{ key: "createdAt", dir: "desc" }
+	)
+
+	$effect(() => {
+		table.items = props.executions
 	})
 
-	let filteredSortedIds = $derived(sortedExecutions.map((e) => e.id))
+	$effect(() => {
+		props.executionsVersion
+	})
+
+	$effect(() => {
+		props.revisionId
+		table.clearFilters()
+	})
 
 	// Selection
 	const selection = useSelection()
@@ -137,7 +108,7 @@
 	// Bulk actions
 	let selectedExecutions = $derived.by(() => {
 		return Array.from(selection.selectedIds)
-			.map((id) => executionsById.get(id))
+			.map((id) => table.itemsById.get(id))
 			.filter((e): e is Execution => e !== undefined)
 	})
 
@@ -167,21 +138,11 @@
 	}
 
 	function handleToggleSelectAll() {
-		selection.toggleAll(filteredSortedIds)
+		selection.toggleAll(table.sortedIds)
 	}
 
-	function handleChangeSort(key: SortSpec["key"]) {
-		if (sort.key === key) {
-			sort.dir = sort.dir === "asc" ? "desc" : "asc"
-		} else {
-			sort.key = key
-			sort.dir = "asc"
-		}
-	}
-
-	// Execution helpers
 	function getExecution(id: string) {
-		return executionsById.get(id)!
+		return table.itemsById.get(id)!
 	}
 
 	function getRepoName(execution: Execution): string {
@@ -208,24 +169,24 @@
 {/if}
 
 <div class="flex-1 min-h-0 flex flex-col overflow-hidden @container/table">
-	<ExecutionFilters {filters} onFilterChange={setFilters} />
+	<ExecutionFilters filters={table.filters} onFilterChange={(f) => table.setFilters(f)} />
 
 	<ExecutionList
-		ids={filteredSortedIds}
-		{executionsById}
+		ids={table.sortedIds}
+		executionsById={table.itemsById}
 		repositories={props.repositories}
 		{selection}
 		pushingExecutions={props.pushingExecutions}
 		refreshingCi={props.refreshingCi}
 		loadingStats={props.loadingStats}
-		{sort}
+		sort={table.sort}
 		hasValidationPrompt={props.hasValidationPrompt}
 		onAnalyzeExecutions={props.onAnalyzeExecutions}
 		onAnalyzeValidations={props.onAnalyzeValidations}
 		analyzingExecutions={props.analyzingExecutions}
 		analyzingValidations={props.analyzingValidations}
 		onToggleSelectAll={handleToggleSelectAll}
-		onChangeSort={handleChangeSort}
+		onChangeSort={(key) => table.toggleSort(key)}
 		onLoadStats={(id) => {
 			const execution = getExecution(id)
 			props.onLoadStats(id, execution.status)

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Analysis } from "$lib/types"
-	import type { SortSpec } from "./types"
+	import type { SortSpec } from "$lib/table/types"
 	import AnalysisRow from "./AnalysisRow.svelte"
 	import { ChevronUp, ChevronDown } from "lucide-svelte"
 
@@ -8,13 +8,13 @@
 		ids: string[]
 		analysesById: Map<string, Analysis>
 		sort: SortSpec
-		onChangeSort: (key: SortSpec["key"]) => void
+		onChangeSort: (key: string) => void
 		onDelete: (id: string) => void
 		onViewThread: (id: string) => void
 		onView: (id: string) => void
 	}>()
 
-	function getSortIcon(key: SortSpec["key"]) {
+	function getSortIcon(key: string) {
 		if (props.sort.key !== key) return null
 		return props.sort.dir === "asc" ? ChevronUp : ChevronDown
 	}
