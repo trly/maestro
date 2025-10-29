@@ -5,6 +5,7 @@
 	import { subscribeToExecutions, unsubscribeFromExecutions } from "$lib/stores/executionBus"
 	import { themeStore } from "$lib/stores/themeStore.svelte"
 	import { settingsStore } from "$lib/stores/settingsStore"
+	import { initLogger } from "$lib/logger"
 	import { Dialog } from "bits-ui"
 	import { PaneGroup, Pane, PaneResizer } from "paneforge"
 	import "../app.css"
@@ -26,6 +27,7 @@
 	}
 
 	onMount(async () => {
+		await initLogger()
 		subscribeToExecutions()
 		await themeStore.init()
 		await settingsStore.load()

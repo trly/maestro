@@ -1,6 +1,7 @@
 import { Octokit } from "@octokit/rest"
 import type { Repository, RepositoryProvider } from "./types"
 import { tokenStore } from "$lib/tokenStore"
+import { logger } from "$lib/logger"
 
 export class GitHubProvider implements RepositoryProvider {
 	name = "GitHub"
@@ -69,7 +70,7 @@ export class GitHubProvider implements RepositoryProvider {
 					description: repo.description || undefined,
 				}))
 		} catch (error) {
-			console.error("GitHub repository search failed:", error)
+			logger.error(`GitHub repository search failed: ${error}`)
 			return []
 		}
 	}

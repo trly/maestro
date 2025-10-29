@@ -1,4 +1,5 @@
 import * as ipc from "$lib/ipc"
+import { logger } from "$lib/logger"
 
 export interface ExecutionStats {
 	filesAdded: number
@@ -34,7 +35,7 @@ export async function fetchExecutionStats(executionId: string): Promise<Executio
 		statsCache.set(executionId, stats)
 		return stats
 	} catch (error) {
-		console.error(`Failed to fetch stats for execution ${executionId}:`, error)
+		logger.error(`Failed to fetch stats for execution ${executionId}: ${error}`)
 		return {
 			filesAdded: 0,
 			filesRemoved: 0,

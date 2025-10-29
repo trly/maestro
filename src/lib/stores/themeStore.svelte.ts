@@ -1,6 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 import * as ipc from "$lib/ipc"
+import { logger } from "$lib/logger"
 
 export type Theme = "light" | "dark" | "auto"
 
@@ -21,13 +22,8 @@ async function applyTheme(newTheme: Theme) {
 	if (typeof document !== "undefined") {
 		document.documentElement.classList.remove("light", "dark")
 		document.documentElement.classList.add(effectiveTheme)
-		console.log(
-			"[Theme] Applied theme:",
-			newTheme,
-			"effective:",
-			effectiveTheme,
-			"classes:",
-			document.documentElement.className
+		logger.debug(
+			`[Theme] Applied theme: ${newTheme}, effective: ${effectiveTheme}, classes: ${document.documentElement.className}`
 		)
 	}
 
@@ -36,7 +32,7 @@ async function applyTheme(newTheme: Theme) {
 		// Pass null to let Tauri auto-track system theme when in auto mode
 		await appWindow.setTheme(newTheme === "auto" ? null : (effectiveTheme as "light" | "dark"))
 	} catch (e) {
-		console.error("Failed to set Tauri theme:", e)
+		logger.error(`Failed to set Tauri theme: ${e}`)
 	}
 }
 
@@ -47,11 +43,8 @@ async function setupSystemThemeListener() {
 	const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
 
 	systemThemeListener = (e: MediaQueryListEvent) => {
-		console.log(
-			"[Theme] CSS media query changed:",
-			e.matches ? "dark" : "light",
-			"current theme:",
-			theme
+		logger.debug(
+			`[Theme] CSS media query changed: ${e.matches ? "dark" : "light"}, current theme: ${theme}`
 		)
 		if (theme === "auto") {
 			applyTheme("auto")
@@ -65,20 +58,20 @@ async function setupSystemThemeListener() {
 		// @ts-expect-error: legacy Safari/WKWebView API
 		mediaQuery.addListener(systemThemeListener)
 	} else {
-		console.warn("[Theme] matchMedia has no change listener support")
+		logger.warn("[Theme] matchMedia has no change listener support")
 	}
 
 	// Listen to Tauri's system theme change events
 	try {
 		tauriThemeUnlisten = await listen<string>("tauri://theme-changed", (event) => {
-			console.log("[Theme] Tauri theme changed:", event.payload, "current theme:", theme)
+			logger.debug(`[Theme] Tauri theme changed: ${event.payload}, current theme: ${theme}`)
 			if (theme === "auto") {
 				applyTheme("auto")
 			}
 		})
-		console.log("[Theme] Successfully listening to Tauri theme changes")
+		logger.debug("[Theme] Successfully listening to Tauri theme changes")
 	} catch (e) {
-		console.error("Failed to listen to Tauri theme changes:", e)
+		logger.error(`Failed to listen to Tauri theme changes: ${e}`)
 	}
 }
 

@@ -31,6 +31,7 @@
 	import { fetchExecutionStats, type ExecutionStats } from "$lib/stores/executionStats"
 	import { openInBrowser } from "$lib/utils/browser"
 	import * as ipc from "$lib/ipc"
+	import { logger } from "$lib/logger"
 
 	let { data } = $props()
 
@@ -287,7 +288,7 @@
 			const stats = await fetchExecutionStats(executionId)
 			liveStats = new Map(liveStats).set(executionId, stats)
 		} catch (err) {
-			console.error(`Failed to load stats for ${executionId}:`, err)
+			logger.error(`Failed to load stats for ${executionId}: ${err}`)
 		} finally {
 			// Remove from loading set
 			const updatedLoading = new Set(loadingStats)
@@ -1034,7 +1035,7 @@
 			showToast("Analysis started", "success")
 		} catch (err) {
 			showToast("Failed to start analysis", "error")
-			console.error("Analysis error:", err)
+			logger.error(`Analysis error: ${err}`)
 		} finally {
 			analyzingExecutions = false
 		}
@@ -1069,7 +1070,7 @@
 			showToast("Analysis started", "success")
 		} catch (err) {
 			showToast("Failed to start analysis", "error")
-			console.error("Analysis error:", err)
+			logger.error(`Analysis error: ${err}`)
 		} finally {
 			analyzingValidations = false
 		}
@@ -1085,7 +1086,7 @@
 			}
 		} catch (err) {
 			showToast("Failed to delete analysis", "error")
-			console.error("Delete analysis error:", err)
+			logger.error(`Delete analysis error: ${err}`)
 		}
 	}
 
@@ -1099,7 +1100,7 @@
 			}
 		} catch (err) {
 			showToast("Failed to re-run analysis", "error")
-			console.error("Re-run analysis error:", err)
+			logger.error(`Re-run analysis error: ${err}`)
 		}
 	}
 
@@ -1137,7 +1138,7 @@
 						liveStats = new Map(liveStats).set(executionId, stats)
 					})
 					.catch((err) => {
-						console.error(`Failed to fetch stats for ${executionId}:`, err)
+						logger.error(`Failed to fetch stats for ${executionId}: ${err}`)
 					})
 			}
 		})

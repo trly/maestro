@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::Manager;
+use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
+use tauri::{AppHandle, Manager, Wry};
 
 pub mod ci;
 mod commands;
@@ -9,6 +10,52 @@ mod git;
 mod sourcegraph;
 pub mod types;
 mod util;
+
+fn build_menu(app: &AppHandle<Wry>) -> tauri::Result<()> {
+    // Create About menu item
+    let about = MenuItemBuilder::with_id("about", "About Maestro").build(app)?;
+
+    #[cfg(target_os = "macos")]
+    {
+        // On macOS, create app menu with About and standard items
+        let app_menu = SubmenuBuilder::new(app, "Maestro")
+            .item(&about)
+            .separator()
+            .item(&PredefinedMenuItem::separator(app)?)
+            .item(&PredefinedMenuItem::hide(app, None)?)
+            .item(&PredefinedMenuItem::hide_others(app, None)?)
+            .item(&PredefinedMenuItem::show_all(app, None)?)
+            .separator()
+            .item(&PredefinedMenuItem::quit(app, None)?)
+            .build()?;
+
+        let menu = MenuBuilder::new(app).item(&app_menu).build()?;
+
+        app.set_menu(menu)?;
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        // On Windows/Linux, add About to Help menu
+        let help_menu = SubmenuBuilder::new(app, "Help").item(&about).build()?;
+
+        let menu = MenuBuilder::new(app).item(&help_menu).build()?;
+
+        app.set_menu(menu)?;
+    }
+
+    // Handle menu events
+    app.on_menu_event(move |app_handle, event| {
+        if event.id() == "about" {
+            // Navigate to about page in existing window
+            if let Some(window) = app_handle.get_webview_window("main") {
+                let _ = window.eval("window.location.href = '/about'");
+            }
+        }
+    });
+
+    Ok(())
+}
 
 #[derive(Clone)]
 pub struct Paths {
@@ -19,24 +66,65 @@ pub struct Paths {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Ensure SSH_AUTH_SOCK is set for 1Password/ssh-agent compatibility
-    #[cfg(target_os = "macos")]
-    {
-        // Check 1Password SSH agent first (common setup)
-        let op_ssh_sock = format!(
-            "{}/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock",
-            std::env::var("HOME").unwrap_or_default()
-        );
-        if std::path::Path::new(&op_ssh_sock).exists() {
-            std::env::set_var("SSH_AUTH_SOCK", &op_ssh_sock);
-            log::info!("Using 1Password SSH agent at {}", op_ssh_sock);
-        } else if std::env::var("SSH_AUTH_SOCK").is_err() {
-            log::warn!("No SSH_AUTH_SOCK found and 1Password agent not detected");
-        }
-    }
-
     tauri::Builder::default()
         .setup(|app| {
+            // Initialize logging first so all subsequent operations can use it
+            let log_level = std::env::var("MAESTRO_LOG_LEVEL")
+                .ok()
+                .and_then(|level| match level.to_lowercase().as_str() {
+                    "trace" => Some(log::LevelFilter::Trace),
+                    "debug" => Some(log::LevelFilter::Debug),
+                    "info" => Some(log::LevelFilter::Info),
+                    "warn" => Some(log::LevelFilter::Warn),
+                    "error" => Some(log::LevelFilter::Error),
+                    _ => None,
+                })
+                .unwrap_or(log::LevelFilter::Info); // Default to Info for file logging
+
+            let mut builder = tauri_plugin_log::Builder::default()
+                .level(log_level) // File logging level
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(10))
+                .max_file_size(5 * 1024 * 1024) // 5MB per file
+                .targets(vec![tauri_plugin_log::Target::new(
+                    tauri_plugin_log::TargetKind::LogDir { file_name: None },
+                )]);
+
+            // Add stdout target in debug builds or if MAESTRO_LOG_STDOUT is set
+            let enable_stdout = cfg!(debug_assertions)
+                || std::env::var("MAESTRO_LOG_STDOUT")
+                    .ok()
+                    .map(|v| v == "1" || v.to_lowercase() == "true")
+                    .unwrap_or(false);
+
+            if enable_stdout {
+                builder = builder.target(tauri_plugin_log::Target::new(
+                    tauri_plugin_log::TargetKind::Stdout,
+                ));
+            }
+
+            // Initialize logging plugin - handle errors gracefully
+            if let Err(e) = app.handle().plugin(builder.build()) {
+                eprintln!("Failed to initialize logging plugin: {}", e);
+            }
+
+            // Ensure SSH_AUTH_SOCK is set for 1Password/ssh-agent compatibility
+            #[cfg(target_os = "macos")]
+            {
+                let op_ssh_sock = format!(
+                    "{}/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock",
+                    std::env::var("HOME").unwrap_or_default()
+                );
+                if std::path::Path::new(&op_ssh_sock).exists() {
+                    std::env::set_var("SSH_AUTH_SOCK", &op_ssh_sock);
+                    log::info!("Using 1Password SSH agent at {}", op_ssh_sock);
+                } else if std::env::var("SSH_AUTH_SOCK").is_err() {
+                    log::warn!("No SSH_AUTH_SOCK found and 1Password agent not detected");
+                }
+            }
+
+            // Build native menu
+            build_menu(app.handle())?;
+
             // Compute paths from app_data_dir or MAESTRO_CONFIG override
             let base_dir = if let Ok(custom_base) = std::env::var("MAESTRO_CONFIG") {
                 PathBuf::from(custom_base)
@@ -77,13 +165,6 @@ pub fn run() {
             app.manage(Mutex::new(store));
             app.manage(paths);
 
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -157,6 +238,7 @@ pub fn run() {
             commands::health_check::health_check_github,
             commands::health_check::health_check_gitlab,
             commands::health_check::health_check_sourcegraph,
+            commands::app_info::get_app_info,
         ])
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())

@@ -7,6 +7,7 @@
 	import * as ipc from "$lib/ipc"
 	import type { SourcegraphRepository } from "$lib/ipc"
 	import ProviderIcon from "./ProviderIcon.svelte"
+	import { logger } from "$lib/logger"
 
 	let {
 		selectedRepos = $bindable([]),
@@ -71,7 +72,7 @@
 			const allResults = await Promise.all(activeProviders.map((p) => p.searchRepositories(query)))
 			searchResults = allResults.flat()
 		} catch (error) {
-			console.error("Repository search failed:", error)
+			logger.error(`Repository search failed: ${error}`)
 			searchResults = []
 		} finally {
 			isSearching = false
@@ -121,7 +122,7 @@
 				}
 			})
 		} catch (error) {
-			console.error("Sourcegraph search failed:", error)
+			logger.error(`Sourcegraph search failed: ${error}`)
 			sgResults = []
 		} finally {
 			isSgSearching = false

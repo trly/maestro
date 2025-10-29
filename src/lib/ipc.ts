@@ -604,6 +604,24 @@ export async function getMaxConcurrentExecutions(): Promise<number> {
 }
 
 // ============================================================================
+// Application Info Commands
+// ============================================================================
+
+export interface AppMetadata {
+	version: string
+	name: string
+	identifier: string
+	copyright: string
+}
+
+/**
+ * Get application metadata (version, name, etc.)
+ */
+export async function getAppInfo(): Promise<AppMetadata> {
+	return invokeCommand<AppMetadata>("get_app_info")
+}
+
+// ============================================================================
 // Application Check Commands
 // ============================================================================
 

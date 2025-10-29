@@ -1,6 +1,7 @@
 // Command modules will be added in subsequent phases
 pub mod analysis;
 pub mod app_check;
+pub mod app_info;
 pub mod ci;
 pub mod db;
 pub mod execution_poller;

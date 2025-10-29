@@ -25,6 +25,7 @@
 	} from "lucide-svelte"
 	import { openInBrowser } from "$lib/utils/browser"
 	import { openInEditor, copyWorktreePath } from "$lib/utils/worktree"
+	import { logger } from "$lib/logger"
 
 	const props = $props<{
 		id: string
@@ -101,7 +102,7 @@
 		try {
 			await openInEditor(execution)
 		} catch (error) {
-			console.error("Failed to open in editor:", error)
+			logger.error(`Failed to open in editor: ${error}`)
 		}
 	}
 
@@ -109,7 +110,7 @@
 		try {
 			await copyWorktreePath(execution)
 		} catch (error) {
-			console.error("Failed to copy worktree path:", error)
+			logger.error(`Failed to copy worktree path: ${error}`)
 		}
 	}
 </script>

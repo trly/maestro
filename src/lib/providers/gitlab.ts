@@ -1,5 +1,6 @@
 import type { Repository, RepositoryProvider } from "./types"
 import { tokenStore } from "$lib/tokenStore"
+import { logger } from "$lib/logger"
 
 interface GitLabProject {
 	id: number
@@ -82,7 +83,8 @@ export class GitLabProvider implements RepositoryProvider {
 			)
 
 			if (!response.ok) {
-				console.error("GitLab search failed:", response.status, await response.text())
+				const errorText = await response.text()
+				logger.error(`GitLab search failed: ${response.status} ${errorText}`)
 				return []
 			}
 
@@ -97,7 +99,7 @@ export class GitLabProvider implements RepositoryProvider {
 				description: project.description || undefined,
 			}))
 		} catch (error) {
-			console.error("GitLab repository search failed:", error)
+			logger.error(`GitLab repository search failed: ${error}`)
 			return []
 		}
 	}
