@@ -4,6 +4,10 @@ on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
 
+concurrency:
+  group: release-${{ github.sha }}
+  cancel-in-progress: false
+
 jobs:
   verify-and-release:
     runs-on: ubuntu-latest
@@ -18,15 +22,20 @@ jobs:
       - name: Get CI run for this commit
         id: ci-run
         run: |
-          RUN_ID=$(gh run list --workflow=ci.yml --commit=${{ github.sha }} --json databaseId --jq '.[0].databaseId')
+          RUN_ID=$(gh run list --workflow=ci.yml --commit=${{ github.sha }} --json databaseId,conclusion --jq '.[] | select(.conclusion=="success") | .databaseId' | head -n1)
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::No successful CI run found for commit ${{ github.sha }}."
+            echo "::error::Push this commit to a branch to trigger CI, or manually run the CI workflow for this commit."
+            exit 1
+          fi
+          echo "Found existing successful CI run: $RUN_ID"
           echo "run-id=$RUN_ID" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Wait for CI to complete
+      - name: Verify CI completed successfully
         run: |
-          echo "Waiting for CI run ${{ steps.ci-run.outputs.run-id }} to complete..."
-          gh run watch ${{ steps.ci-run.outputs.run-id }} --exit-status
+          echo "Reusing artifacts from CI run ${{ steps.ci-run.outputs.run-id }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
