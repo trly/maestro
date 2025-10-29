@@ -12,7 +12,8 @@ build: ## Build production installer
 
 ## Quality checks
 check: ## Run TypeScript and Rust checks
-	bun svelte-kit sync && bun svelte-check --tsconfig ./tsconfig.json
+	bun run check
+	cd src-tauri && cargo check
 	cd src-tauri && cargo clippy -- -D warnings
 	cd src-tauri && cargo fmt -- --check
 
