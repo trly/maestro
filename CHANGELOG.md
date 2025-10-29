@@ -2,6 +2,12 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.2.7] - 2025-10-29
+
+### Fixed
+
+- Configure ad-hoc code signing for macOS builds to address quarantine issues
+
 ## [0.2.6] - 2025-10-29
 
 ### Fixed
