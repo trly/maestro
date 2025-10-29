@@ -2,6 +2,12 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.2.6] - 2025-10-29
+
+### Fixed
+
+- Remove manual codesign step from CI, rely on Tauri's automatic ad-hoc signing
+
 ## [0.2.5] - 2025-10-29
 
 ### Changed
