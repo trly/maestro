@@ -1181,98 +1181,102 @@
 					/>
 					<Pane>
 						<Tabs.Root bind:value={activeTab} class="flex flex-col h-full">
-					<Tabs.List
-						class="flex-shrink-0 flex items-center gap-1 px-4 py-2 bg-muted/5 border-b border-border/10"
-					>
-						<Tabs.Trigger
-							value="executions"
-							class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors
+							<Tabs.List
+								class="flex-shrink-0 flex items-center gap-1 px-4 py-2 bg-muted/5 border-b border-border/10"
+							>
+								<Tabs.Trigger
+									value="executions"
+									class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors
 									data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm
 									data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground"
-						>
-							Executions {#if executionsWithUpdates.filter((e) => e.revisionId === currentRevision!.id).length > 0}({executionsWithUpdates.filter(
-									(e) => e.revisionId === currentRevision!.id
-								).length}){/if}
-						</Tabs.Trigger>
-						<Tabs.Trigger
-							value="analyses"
-							class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors
+								>
+									Executions {#if executionsWithUpdates.filter((e) => e.revisionId === currentRevision!.id).length > 0}({executionsWithUpdates.filter(
+											(e) => e.revisionId === currentRevision!.id
+										).length}){/if}
+								</Tabs.Trigger>
+								<Tabs.Trigger
+									value="analyses"
+									class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors
 									data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm
 									data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground"
-						>
-							Analyses {#if analyses.length > 0}({analyses.length}){/if}
-						</Tabs.Trigger>
-					</Tabs.List>
+								>
+									Analyses {#if analyses.length > 0}({analyses.length}){/if}
+								</Tabs.Trigger>
+							</Tabs.List>
 
-					<Tabs.Content
-						value="executions"
-						class="flex-1 flex flex-col min-h-0 overflow-hidden @container/table data-[state=active]:flex data-[state=inactive]:hidden"
-					>
-						<ExecutionTable
-							executions={executionsWithUpdates.filter((e) => e.revisionId === currentRevision!.id)}
-							{repositories}
-							hasValidationPrompt={!!currentPromptSet.validationPrompt}
-							revisionId={currentRevision?.id}
-							onAnalyzeExecutions={revisionHeaderProps
-								? () => handleAnalyzeExecutions(currentRevision!)
-								: undefined}
-							onAnalyzeValidations={revisionHeaderProps
-								? () => handleAnalyzeValidations(currentRevision!)
-								: undefined}
-							analyzingExecutions={analysesWithUpdates.some(
-								(a) => (a.status === "pending" || a.status === "running") && a.type === "execution"
-							)}
-							analyzingValidations={analysesWithUpdates.some(
-								(a) => (a.status === "pending" || a.status === "running") && a.type === "validation"
-							)}
-							onDeleteExecution={deleteExecutionWithConfirm}
-							onStartExecution={startExecutionManually}
-							onValidateExecution={validateExecutionManually}
-							onStopExecution={stopExecutionManually}
-							onStopValidation={stopValidationManually}
-							onResumeExecution={resumeExecutionManually}
-							onReviewChanges={(executionId) => {
-								diffViewerExecutionId = executionId
-								diffViewerOpen = true
-							}}
-							onPushExecution={pushExecutionManually}
-							onRefreshCi={refreshCiManually}
-							onLoadStats={loadSingleExecutionStats}
-							onBulkDelete={bulkDeleteExecutions}
-							onBulkStart={bulkStartExecutions}
-							onBulkRestart={bulkRestartExecutions}
-							onBulkStartValidations={bulkStartValidations}
-							onBulkRevalidate={bulkRevalidateExecutions}
-							{pushingExecutions}
-							{refreshingCi}
-							{loadingStats}
-							{bulkStarting}
-							{bulkRestarting}
-							{bulkValidating}
-							{bulkRevalidating}
-							{bulkDeleting}
-						/>
-					</Tabs.Content>
+							<Tabs.Content
+								value="executions"
+								class="flex-1 flex flex-col min-h-0 overflow-hidden @container/table data-[state=active]:flex data-[state=inactive]:hidden"
+							>
+								<ExecutionTable
+									executions={executionsWithUpdates.filter(
+										(e) => e.revisionId === currentRevision!.id
+									)}
+									{repositories}
+									hasValidationPrompt={!!currentPromptSet.validationPrompt}
+									revisionId={currentRevision?.id}
+									onAnalyzeExecutions={revisionHeaderProps
+										? () => handleAnalyzeExecutions(currentRevision!)
+										: undefined}
+									onAnalyzeValidations={revisionHeaderProps
+										? () => handleAnalyzeValidations(currentRevision!)
+										: undefined}
+									analyzingExecutions={analysesWithUpdates.some(
+										(a) =>
+											(a.status === "pending" || a.status === "running") && a.type === "execution"
+									)}
+									analyzingValidations={analysesWithUpdates.some(
+										(a) =>
+											(a.status === "pending" || a.status === "running") && a.type === "validation"
+									)}
+									onDeleteExecution={deleteExecutionWithConfirm}
+									onStartExecution={startExecutionManually}
+									onValidateExecution={validateExecutionManually}
+									onStopExecution={stopExecutionManually}
+									onStopValidation={stopValidationManually}
+									onResumeExecution={resumeExecutionManually}
+									onReviewChanges={(executionId) => {
+										diffViewerExecutionId = executionId
+										diffViewerOpen = true
+									}}
+									onPushExecution={pushExecutionManually}
+									onRefreshCi={refreshCiManually}
+									onLoadStats={loadSingleExecutionStats}
+									onBulkDelete={bulkDeleteExecutions}
+									onBulkStart={bulkStartExecutions}
+									onBulkRestart={bulkRestartExecutions}
+									onBulkStartValidations={bulkStartValidations}
+									onBulkRevalidate={bulkRevalidateExecutions}
+									{pushingExecutions}
+									{refreshingCi}
+									{loadingStats}
+									{bulkStarting}
+									{bulkRestarting}
+									{bulkValidating}
+									{bulkRevalidating}
+									{bulkDeleting}
+								/>
+							</Tabs.Content>
 
-					<Tabs.Content
-						value="analyses"
-						class="flex-1 min-h-0 overflow-hidden data-[state=active]:flex data-[state=inactive]:hidden"
-					>
-						<AnalysisTable
-							{analyses}
-							revisionId={currentRevision?.id}
-							onDeleteAnalysis={(analysis) => handleDeleteAnalysis(analysis.id)}
-							onViewThread={(analysis) => {
-								if (analysis.ampThreadUrl) {
-									openInBrowser(analysis.ampThreadUrl)
-								}
-							}}
-							onViewAnalysis={(analysis) => {
-								selectedAnalysis = analysis
-								analysisDialogOpen = true
-							}}
-						/>
-					</Tabs.Content>
+							<Tabs.Content
+								value="analyses"
+								class="flex-1 min-h-0 overflow-hidden data-[state=active]:flex data-[state=inactive]:hidden"
+							>
+								<AnalysisTable
+									{analyses}
+									revisionId={currentRevision?.id}
+									onDeleteAnalysis={(analysis) => handleDeleteAnalysis(analysis.id)}
+									onViewThread={(analysis) => {
+										if (analysis.ampThreadUrl) {
+											openInBrowser(analysis.ampThreadUrl)
+										}
+									}}
+									onViewAnalysis={(analysis) => {
+										selectedAnalysis = analysis
+										analysisDialogOpen = true
+									}}
+								/>
+							</Tabs.Content>
 						</Tabs.Root>
 					</Pane>
 				</PaneGroup>

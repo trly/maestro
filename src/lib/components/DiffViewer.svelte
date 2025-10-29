@@ -138,52 +138,55 @@
 				/>
 				<Pane>
 					<div class="flex-1 flex flex-col min-w-0 overflow-hidden p-6">
-				<div class="flex flex-col gap-2 mb-4">
-					<div class="flex items-center gap-3">
-						{#if selectedFile}
-							<h3 class="font-semibold">{selectedFile.path}</h3>
-						{/if}
-						{#if commitStatus === "uncommitted"}
-							<Badge type="uncommitted" text="Uncommitted changes" />
-						{:else}
-							<Badge type="committed" text="Committed {commitSha ? commitSha.slice(0, 7) : ''}" />
-						{/if}
-					</div>
-					<div class="flex items-center gap-4 text-xs text-muted-foreground">
-						{#if parentSha}
-							<div>
-								Parent: <span class="font-mono">{parentSha.slice(0, 7)}</span>
+						<div class="flex flex-col gap-2 mb-4">
+							<div class="flex items-center gap-3">
+								{#if selectedFile}
+									<h3 class="font-semibold">{selectedFile.path}</h3>
+								{/if}
+								{#if commitStatus === "uncommitted"}
+									<Badge type="uncommitted" text="Uncommitted changes" />
+								{:else}
+									<Badge
+										type="committed"
+										text="Committed {commitSha ? commitSha.slice(0, 7) : ''}"
+									/>
+								{/if}
 							</div>
-						{/if}
-						{#if branch}
-							<div>
-								Branch: <span class="font-mono">{branch}</span>
+							<div class="flex items-center gap-4 text-xs text-muted-foreground">
+								{#if parentSha}
+									<div>
+										Parent: <span class="font-mono">{parentSha.slice(0, 7)}</span>
+									</div>
+								{/if}
+								{#if branch}
+									<div>
+										Branch: <span class="font-mono">{branch}</span>
+									</div>
+								{/if}
 							</div>
-						{/if}
-					</div>
-				</div>
+						</div>
 
-				<div class="flex-1 overflow-y-auto">
-					{#if loading && !selectedFile}
-						<p class="text-sm text-muted-foreground">Loading...</p>
-					{:else if !selectedFile}
-						<p class="text-sm text-muted-foreground">Select a file to view diff</p>
-					{:else if loading}
-						<p class="text-sm text-muted-foreground">Loading diff...</p>
-					{:else if diffItems.length > 0}
-						<DiffTabs
-							items={diffItems}
-							{commitStatus}
-							{parentSha}
-							{commitSha}
-							fileStatus={selectedFile?.status}
-						/>
-					{:else}
-						<p class="text-sm text-muted-foreground">
-							No changes to display{isBinaryFile ? " (binary file)" : ""}
-						</p>
-					{/if}
-				</div>
+						<div class="flex-1 overflow-y-auto">
+							{#if loading && !selectedFile}
+								<p class="text-sm text-muted-foreground">Loading...</p>
+							{:else if !selectedFile}
+								<p class="text-sm text-muted-foreground">Select a file to view diff</p>
+							{:else if loading}
+								<p class="text-sm text-muted-foreground">Loading diff...</p>
+							{:else if diffItems.length > 0}
+								<DiffTabs
+									items={diffItems}
+									{commitStatus}
+									{parentSha}
+									{commitSha}
+									fileStatus={selectedFile?.status}
+								/>
+							{:else}
+								<p class="text-sm text-muted-foreground">
+									No changes to display{isBinaryFile ? " (binary file)" : ""}
+								</p>
+							{/if}
+						</div>
 					</div>
 				</Pane>
 			</PaneGroup>

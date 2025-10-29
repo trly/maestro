@@ -11,7 +11,8 @@
 - `make dev` or `cargo tauri dev` - Start Tauri desktop app in development mode
 - `make build` or `cargo tauri build` - Build production installer
 - `make test` or `cd src-tauri && cargo test` - Run Rust test suite
-- `make check` - TypeScript type checking (run before commits)
+- `make check` - TypeScript/Rust checks (run before commits)
+- make tidy - TypeScript/Rust checks (run after a successful check and prior to commits)
 - `make icon` or `cargo tauri icon` - Generate app icons
 
 **Advanced:**
