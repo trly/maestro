@@ -73,11 +73,12 @@ function createSettingsStore() {
 			update((s) => ({ ...s, selectedTerminal: terminal }))
 		},
 		async updateUI(uiSettings: Partial<Settings["ui"]>) {
-			update((s) => ({
-				...s,
-				ui: { ...defaultSettings.ui!, ...s.ui, ...uiSettings },
-			}))
-			await ipc.setSetting("ui_settings", JSON.stringify({ ...defaultSettings.ui, ...uiSettings }))
+			let mergedUI: Settings["ui"]
+			update((s) => {
+				mergedUI = { ...defaultSettings.ui!, ...s.ui, ...uiSettings }
+				return { ...s, ui: mergedUI }
+			})
+			await ipc.setSetting("ui_settings", JSON.stringify(mergedUI))
 		},
 	}
 }

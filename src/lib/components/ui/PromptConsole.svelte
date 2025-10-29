@@ -101,7 +101,11 @@
 						<div class="px-4 py-2 bg-muted/10 border-b border-border/10">
 							<h3 class="text-xs font-semibold text-muted-foreground">Revision Prompt</h3>
 						</div>
-						<div bind:this={promptScrollContainerRef} class="flex-1 overflow-auto" onscroll={handlePromptScroll}>
+						<div
+							bind:this={promptScrollContainerRef}
+							class="flex-1 overflow-auto"
+							onscroll={handlePromptScroll}
+						>
 							<pre
 								bind:this={promptContentRef}
 								class="px-6 py-6 text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground">{revision.promptText}</pre>
@@ -170,7 +174,11 @@
 									{/if}
 								</div>
 							</div>
-							<div bind:this={validationScrollContainerRef} class="flex-1 overflow-auto" onscroll={handleValidationScroll}>
+							<div
+								bind:this={validationScrollContainerRef}
+								class="flex-1 overflow-auto"
+								onscroll={handleValidationScroll}
+							>
 								{#if isEditingValidation}
 									<textarea
 										bind:this={validationContentRef}

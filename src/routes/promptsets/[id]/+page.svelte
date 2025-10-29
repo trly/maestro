@@ -1168,7 +1168,12 @@
 		<div class="flex-1 min-h-0 flex flex-col bg-background">
 			{#if currentRevision}
 				<PaneGroup direction="vertical" onLayoutChange={handlePromptResize}>
-					<Pane defaultSize={settings.ui?.promptPct ?? 35} minSize={20} maxSize={70} class="overflow-hidden">
+					<Pane
+						defaultSize={settings.ui?.promptPct ?? 35}
+						minSize={20}
+						maxSize={70}
+						class="overflow-hidden"
+					>
 						<PromptConsole
 							revision={currentRevision}
 							validationPrompt={currentPromptSet.validationPrompt}
