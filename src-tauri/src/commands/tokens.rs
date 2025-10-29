@@ -13,6 +13,8 @@ static CREDENTIAL_CACHE: OnceLock<Arc<RwLock<AllTokens>>> = OnceLock::new();
 pub struct AllTokens {
     pub amp_token: Option<String>,
     pub github_token: Option<String>,
+    pub gitlab_token: Option<String>,
+    pub gitlab_instance_url: Option<String>,
     pub sourcegraph_endpoint: Option<String>,
     pub sourcegraph_token: Option<String>,
     pub amp_client_id: Option<String>,
@@ -79,6 +81,8 @@ pub(crate) fn get_token_value(key: &str) -> Result<Option<String>, String> {
     match key {
         "amp_token" => Ok(tokens.amp_token.clone()),
         "github_token" => Ok(tokens.github_token.clone()),
+        "gitlab_token" => Ok(tokens.gitlab_token.clone()),
+        "gitlab_instance_url" => Ok(tokens.gitlab_instance_url.clone()),
         "sourcegraph_endpoint" => Ok(tokens.sourcegraph_endpoint.clone()),
         "sourcegraph_token" => Ok(tokens.sourcegraph_token.clone()),
         "amp_client_id" => Ok(tokens.amp_client_id.clone()),
@@ -111,6 +115,14 @@ pub fn set_token(key: String, value: String) -> Result<(), String> {
             if let Some(mut old) = tokens.github_token.replace(value) {
                 old.zeroize();
             }
+        }
+        "gitlab_token" => {
+            if let Some(mut old) = tokens.gitlab_token.replace(value) {
+                old.zeroize();
+            }
+        }
+        "gitlab_instance_url" => {
+            let _ = tokens.gitlab_instance_url.replace(value);
         }
         "sourcegraph_endpoint" => {
             let _ = tokens.sourcegraph_endpoint.replace(value);
@@ -164,6 +176,14 @@ pub fn delete_token(key: String) -> Result<(), String> {
             if let Some(mut s) = tokens.github_token.take() {
                 s.zeroize();
             }
+        }
+        "gitlab_token" => {
+            if let Some(mut s) = tokens.gitlab_token.take() {
+                s.zeroize();
+            }
+        }
+        "gitlab_instance_url" => {
+            let _ = tokens.gitlab_instance_url.take();
         }
         "sourcegraph_endpoint" => {
             let _ = tokens.sourcegraph_endpoint.take();
@@ -231,6 +251,8 @@ pub fn get_all_tokens_masked() -> Result<AllTokens, String> {
     Ok(AllTokens {
         amp_token: mask(&tokens.amp_token),
         github_token: mask(&tokens.github_token),
+        gitlab_token: mask(&tokens.gitlab_token),
+        gitlab_instance_url: mask(&tokens.gitlab_instance_url),
         sourcegraph_endpoint: mask(&tokens.sourcegraph_endpoint),
         sourcegraph_token: mask(&tokens.sourcegraph_token),
         amp_client_id: mask(&tokens.amp_client_id),

@@ -155,6 +155,9 @@ pub fn run() {
             commands::analysis::get_analysis,
             commands::analysis::get_analyses_by_revision,
             commands::analysis::delete_analysis,
+            commands::health_check::health_check_github,
+            commands::health_check::health_check_gitlab,
+            commands::health_check::health_check_sourcegraph,
         ])
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())

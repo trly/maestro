@@ -4,7 +4,6 @@ use anyhow::Result;
 #[derive(Debug, Clone)]
 pub struct RepoMetadata {
     pub default_branch: String,
-    pub description: Option<String>,
 }
 
 /// Context for git provider operations
@@ -43,9 +42,12 @@ pub trait GitProvider: Send + Sync {
 }
 
 /// Factory function to create a git provider
-pub fn create_git_provider(provider: &str, _provider_id: &str) -> Result<Box<dyn GitProvider>> {
+pub async fn create_git_provider(
+    provider: &str,
+    _provider_id: &str,
+) -> Result<Box<dyn GitProvider>> {
     use crate::commands::tokens::get_token_value;
-    use crate::git::GitHubGitProvider;
+    use crate::git::{GitHubGitProvider, GitLabGitProvider};
 
     match provider {
         "github" => {
@@ -54,6 +56,16 @@ pub fn create_git_provider(provider: &str, _provider_id: &str) -> Result<Box<dyn
                 .ok_or_else(|| anyhow::anyhow!("GitHub token not configured"))?;
 
             let provider = GitHubGitProvider::new(token)?;
+            Ok(Box::new(provider))
+        }
+        "gitlab" => {
+            let token = get_token_value("gitlab_token")
+                .map_err(|e| anyhow::anyhow!("Failed to access GitLab token: {}", e))?
+                .ok_or_else(|| anyhow::anyhow!("GitLab token not configured"))?;
+
+            let base_url = get_token_value("gitlab_instance_url").ok().flatten();
+
+            let provider = GitLabGitProvider::new(token, base_url).await?;
             Ok(Box::new(provider))
         }
         _ => Err(anyhow::anyhow!("Unsupported git provider: {}", provider)),

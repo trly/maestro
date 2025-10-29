@@ -58,7 +58,7 @@ pub trait CiProvider: Send + Sync {
 
 /// Factory function to create a CI provider
 pub async fn create_ci_provider(provider: &str, _provider_id: &str) -> Result<Arc<dyn CiProvider>> {
-    use crate::ci::GitHubCiProvider;
+    use crate::ci::{GitHubCiProvider, GitLabCiProvider};
     use crate::commands::tokens::get_token_value;
 
     match provider {
@@ -68,6 +68,16 @@ pub async fn create_ci_provider(provider: &str, _provider_id: &str) -> Result<Ar
                 .ok_or_else(|| anyhow::anyhow!("GitHub token not configured"))?;
 
             let provider = GitHubCiProvider::new(token)?;
+            Ok(Arc::new(provider))
+        }
+        "gitlab" => {
+            let token = get_token_value("gitlab_token")
+                .map_err(|e| anyhow::anyhow!("Failed to access GitLab token: {}", e))?
+                .ok_or_else(|| anyhow::anyhow!("GitLab token not configured"))?;
+
+            let base_url = get_token_value("gitlab_instance_url").ok().flatten();
+
+            let provider = GitLabCiProvider::new(token, base_url).await?;
             Ok(Arc::new(provider))
         }
         _ => Err(anyhow::anyhow!("Unsupported CI provider: {}", provider)),

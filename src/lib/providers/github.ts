@@ -69,6 +69,7 @@ export class GitHubProvider implements RepositoryProvider {
 					description: repo.description || undefined,
 				}))
 		} catch (error) {
+			console.error("GitHub repository search failed:", error)
 			return []
 		}
 	}

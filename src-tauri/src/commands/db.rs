@@ -19,17 +19,16 @@ pub async fn sync_repository_metadata(store: StoreState<'_>, id: String) -> Resu
         &repository.provider,
         &repository.provider_id,
     )
+    .await
     .map_err(|e| format!("Failed to create git provider: {}", e))?;
 
-    // Parse owner/repo from provider_id
-    let (owner, repo) = crate::util::git::parse_provider_id(&repository.provider_id)
-        .map_err(|e| format!("Failed to parse provider ID: {}", e))?;
-
+    // Build provider configuration
     let ctx = GitProviderContext {
-        provider_cfg: serde_json::json!({
-            "owner": owner,
-            "repo": repo,
-        }),
+        provider_cfg: crate::util::git::build_provider_cfg(
+            &repository.provider,
+            &repository.provider_id,
+        )
+        .map_err(|e| format!("Failed to build provider config: {}", e))?,
     };
 
     // Fetch default branch from provider
@@ -60,15 +59,11 @@ pub async fn create_repository(
         .map_err(|e| e.to_string())?;
 
     // Fetch default branch using GitProvider
-    if let Ok(git_provider) = crate::git::git_provider::create_git_provider(&provider, &provider_id)
+    if let Ok(git_provider) =
+        crate::git::git_provider::create_git_provider(&provider, &provider_id).await
     {
-        if let Ok((owner, repo_name)) = crate::util::git::parse_provider_id(&provider_id) {
-            let ctx = GitProviderContext {
-                provider_cfg: serde_json::json!({
-                    "owner": owner,
-                    "repo": repo_name,
-                }),
-            };
+        if let Ok(provider_cfg) = crate::util::git::build_provider_cfg(&provider, &provider_id) {
+            let ctx = GitProviderContext { provider_cfg };
             if let Ok(default_branch) = git_provider.fetch_default_branch(&ctx).await {
                 store
                     .lock()

@@ -77,10 +77,11 @@ pub async fn start_ci_check(
     let ctx = CiContext {
         commit_sha: commit_sha.clone(),
         branch: branch.clone(),
-        provider_cfg: serde_json::json!({
-            "owner": owner,
-            "repo": repo_name,
-        }),
+        provider_cfg: crate::util::git::build_provider_cfg(
+            &repository.provider,
+            &repository.provider_id,
+        )
+        .map_err(|e| e.to_string())?,
     };
 
     // Get initial CI URL from provider
@@ -185,10 +186,11 @@ pub async fn refresh_ci_status(
     let ctx = CiContext {
         commit_sha: commit_sha.clone(),
         branch,
-        provider_cfg: serde_json::json!({
-            "owner": owner,
-            "repo": repo_name,
-        }),
+        provider_cfg: crate::util::git::build_provider_cfg(
+            &repository.provider,
+            &repository.provider_id,
+        )
+        .map_err(|e| e.to_string())?,
     };
 
     // Check CI once

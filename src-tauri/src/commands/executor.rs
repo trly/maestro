@@ -19,23 +19,18 @@ use crate::util::git::{maestro_branch_name, parse_provider_id};
 use crate::util::paths::{admin_repo_path, execution_worktree_path, worktree_path};
 use crate::Paths;
 
-async fn fetch_default_branch_from_github(owner: &str, repo: &str) -> Result<String> {
-    use crate::commands::tokens::get_token_value;
-    use crate::git::{GitHubGitProvider, GitProvider, GitProviderContext};
+async fn fetch_default_branch(provider: &str, provider_id: &str) -> Result<String> {
+    use crate::git::git_provider::create_git_provider;
+    use crate::git::GitProviderContext;
+    use crate::util::git::build_provider_cfg;
 
-    let github_token = get_token_value("github_token")
-        .map_err(|e| anyhow::anyhow!("Failed to access GitHub token: {}", e))?
-        .ok_or_else(|| anyhow::anyhow!("GitHub token not configured"))?;
+    let git_provider = create_git_provider(provider, provider_id).await?;
 
-    let provider = GitHubGitProvider::new(github_token)?;
     let ctx = GitProviderContext {
-        provider_cfg: serde_json::json!({
-            "owner": owner,
-            "repo": repo,
-        }),
+        provider_cfg: build_provider_cfg(provider, provider_id)?,
     };
 
-    let metadata = provider.get_repo_metadata(&ctx).await?;
+    let metadata = git_provider.get_repo_metadata(&ctx).await?;
     Ok(metadata.default_branch)
 }
 
@@ -57,9 +52,12 @@ fn get_repo_lock(owner: &str, repo: &str) -> std::sync::Arc<Mutex<()>> {
 
 async fn ensure_admin_repo_and_fetch(
     admin_repo_dir: &Path,
+    provider: &str,
     owner: &str,
     repo: &str,
 ) -> Result<PathBuf> {
+    use crate::commands::tokens::get_token_value;
+
     let repo_lock = get_repo_lock(owner, repo);
     let _lock = repo_lock.lock().unwrap();
 
@@ -69,7 +67,26 @@ async fn ensure_admin_repo_and_fetch(
         let parent_dir = admin_repo_dir.join(owner);
         std::fs::create_dir_all(&parent_dir)?;
 
-        let url = format!("git@github.com:{}/{}.git", owner, repo);
+        let url = match provider {
+            "github" => format!("git@github.com:{}/{}.git", owner, repo),
+            "gitlab" => {
+                // Check for custom GitLab instance URL (try both keys for compatibility)
+                let instance_url = get_token_value("gitlab_instance_url")
+                    .ok()
+                    .flatten()
+                    .or_else(|| get_token_value("gitlab_endpoint").ok().flatten())
+                    .unwrap_or_else(|| "https://gitlab.com".to_string());
+
+                // Extract hostname from URL (e.g., "https://gitlab.example.com" -> "gitlab.example.com")
+                let host = instance_url
+                    .trim_start_matches("https://")
+                    .trim_start_matches("http://")
+                    .trim_end_matches('/');
+
+                format!("git@{}:{}/{}.git", host, owner, repo)
+            }
+            _ => anyhow::bail!("Unsupported provider for SSH clone: {}", provider),
+        };
 
         GitService::clone_repo(&url, &admin_repo_path)
 			.context("Failed to clone repository. Ensure SSH key is added to ssh-agent (try: ssh-add ~/.ssh/id_rsa)")?;
@@ -495,19 +512,17 @@ async fn prepare_execution_impl(
         (execution, repository)
     };
 
-    if repository.provider != "github" {
-        anyhow::bail!("Only GitHub repositories are supported");
-    }
-
     let (owner, repo) = parse_provider_id(&repository.provider_id)?;
 
-    let admin_repo_path = ensure_admin_repo_and_fetch(&paths.admin_repo_dir, &owner, &repo).await?;
+    let admin_repo_path =
+        ensure_admin_repo_and_fetch(&paths.admin_repo_dir, &repository.provider, &owner, &repo)
+            .await?;
 
-    // Use cached default branch or fetch from GitHub if not cached
+    // Use cached default branch or fetch from provider if not cached
     let default_branch = if let Some(cached_branch) = &repository.default_branch {
         cached_branch.clone()
     } else {
-        let branch = fetch_default_branch_from_github(&owner, &repo).await?;
+        let branch = fetch_default_branch(&repository.provider, &repository.provider_id).await?;
         let store_state = app.state::<Mutex<Store>>();
         let store = store_state.lock().unwrap();
         let _ = store.update_repository_default_branch(&repository.id, &branch);
@@ -609,20 +624,16 @@ pub(crate) async fn execute_prompt_impl(
     }
 
     let result = async {
-		if repository.provider != "github" {
-			anyhow::bail!("Only GitHub repositories are supported");
-		}
+    let (owner, repo) = parse_provider_id(&repository.provider_id)?;
 
-		let (owner, repo) = parse_provider_id(&repository.provider_id)?;
+    let admin_repo_path = ensure_admin_repo_and_fetch(&paths.admin_repo_dir, &repository.provider, &owner, &repo).await?;
 
-		let admin_repo_path = ensure_admin_repo_and_fetch(&paths.admin_repo_dir, &owner, &repo).await?;
-
-		// Use cached default branch or fetch from GitHub if not cached
-		let default_branch = if let Some(cached_branch) = &repository.default_branch {
-			cached_branch.clone()
-		} else {
-			let branch = fetch_default_branch_from_github(&owner, &repo).await?;
-			log::info!("[execute_prompt] Fetched GitHub default branch for {}/{}: {}", owner, repo, branch);
+    // Use cached default branch or fetch from provider if not cached
+	let default_branch = if let Some(cached_branch) = &repository.default_branch {
+     cached_branch.clone()
+	} else {
+     let branch = fetch_default_branch(&repository.provider, &repository.provider_id).await?;
+     log::info!("[execute_prompt] Fetched default branch for {}/{}: {}", owner, repo, branch);
 			let store_state = app.state::<Mutex<Store>>();
 			let store = store_state.lock().unwrap();
 			let _ = store.update_repository_default_branch(&repository.id, &branch);
@@ -1114,7 +1125,7 @@ async fn resume_execution_impl(
 		let (owner, repo) = parse_provider_id(&repository.provider_id)?;
 
 		log::info!("[resume_execution] Ensuring admin repo and fetching for {}/{}", owner, repo);
-		let admin_repo_path = ensure_admin_repo_and_fetch(&paths.admin_repo_dir, &owner, &repo).await?;
+		let admin_repo_path = ensure_admin_repo_and_fetch(&paths.admin_repo_dir, &repository.provider, &owner, &repo).await?;
 		let worktree_path = execution_worktree_path(&paths, &execution.promptset_id, &execution_id);
 
 		let branch_name = maestro_branch_name(&execution.promptset_id, &execution.revision_id, &execution_id);
@@ -1126,7 +1137,7 @@ async fn resume_execution_impl(
 			let default_branch = if let Some(branch) = &repository.default_branch {
 				branch.clone()
 			} else {
-				fetch_default_branch_from_github(&owner, &repo)
+				fetch_default_branch(&repository.provider, &repository.provider_id)
 					.await
 					.unwrap_or_else(|_| "main".to_string())
 			};
@@ -1491,17 +1502,14 @@ pub async fn push_commit(
     {
         use crate::ci::CiContext;
 
-        // Parse owner/repo from provider_id
-        let (owner, repo_name) =
-            crate::util::git::parse_provider_id(&provider_id).unwrap_or_default();
+        // Build provider configuration
+        let provider_cfg = crate::util::git::build_provider_cfg(&provider_name, &provider_id)
+            .map_err(|e| e.to_string())?;
 
         let ctx = CiContext {
             commit_sha: commit_sha.clone(),
             branch: branch.clone(),
-            provider_cfg: serde_json::json!({
-                "owner": owner,
-                "repo": repo_name,
-            }),
+            provider_cfg,
         };
 
         // Check if CI is configured by polling once
@@ -1826,10 +1834,6 @@ pub async fn cleanup_execution(
             execution.branch.clone(),
         )
     };
-
-    if repository.provider != "github" {
-        return Err("Only GitHub repositories are supported".to_string());
-    }
 
     let (owner, repo) = parse_provider_id(&repository.provider_id).map_err(|e| e.to_string())?;
 

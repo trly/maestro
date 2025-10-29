@@ -9,18 +9,21 @@ The CI and Git provider interfaces have been refactored to be fully provider-agn
 ### 1. Provider-Agnostic Contexts
 
 **CiContext** ([src-tauri/src/ci/provider.rs](file:///Users/trly/src/github.com/trly/maestro/src-tauri/src/ci/provider.rs#L6-L17))
+
 - ✅ Removed GitHub-specific `owner` and `repo` fields
 - ✅ Kept only universal fields: `commit_sha`, `branch`, `provider_cfg`
 - ✅ Added `cfg<T>()` helper for type-safe provider config deserialization
 
 **GitProviderContext** ([src-tauri/src/git/git_provider.rs](file:///Users/trly/src/github.com/trly/maestro/src-tauri/src/git/git_provider.rs#L11-L22))
-- ✅ Removed GitHub-specific `owner` and `repo` fields  
+
+- ✅ Removed GitHub-specific `owner` and `repo` fields
 - ✅ Uses only `provider_cfg` for provider-specific data
 - ✅ Added `cfg<T>()` helper for type-safe deserialization
 
 ### 2. Updated Trait Methods
 
 **CiProvider::get_commit_url()** ([src-tauri/src/ci/provider.rs](file:///Users/trly/src/github.com/trly/maestro/src-tauri/src/ci/provider.rs#L55))
+
 - ✅ Changed signature to accept `&CiContext` instead of just `commit_sha`
 - ✅ Now returns `Result<String>` to handle config parsing errors
 - ✅ Allows providers to build URLs from their specific config
@@ -28,6 +31,7 @@ The CI and Git provider interfaces have been refactored to be fully provider-agn
 ### 3. GitHub Provider Config Structs
 
 **GitHubCiConfig** ([src-tauri/src/ci/github_ci_provider.rs](file:///Users/trly/src/github.com/trly/maestro/src-tauri/src/ci/github_ci_provider.rs#L8-L14))
+
 ```rust
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct GitHubCiConfig {
@@ -39,6 +43,7 @@ pub struct GitHubCiConfig {
 ```
 
 **GitHubGitConfig** ([src-tauri/src/git/github_git_provider.rs](file:///Users/trly/src/github.com/trly/maestro/src-tauri/src/git/github_git_provider.rs#L6-L10))
+
 ```rust
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct GitHubGitConfig {
@@ -50,10 +55,12 @@ pub struct GitHubGitConfig {
 ### 4. All Call Sites Migrated
 
 ✅ Updated all `CiContext` creation sites to use `provider_cfg`:
+
 - [commands/ci.rs](file:///Users/trly/src/github.com/trly/maestro/src-tauri/src/commands/ci.rs#L77-L83) (2 locations)
 - [commands/executor.rs](file:///Users/trly/src/github.com/trly/maestro/src-tauri/src/commands/executor.rs#L1496-L1502)
 
 ✅ Updated all `GitProviderContext` creation sites:
+
 - [commands/db.rs](file:///Users/trly/src/github.com/trly/maestro/src-tauri/src/commands/db.rs#L28-L33) (2 locations)
 - [commands/executor.rs](file:///Users/trly/src/github.com/trly/maestro/src-tauri/src/commands/executor.rs#L31-L37)
 
@@ -100,15 +107,15 @@ Use the config structs in your implementations:
 impl GitLabCiProvider {
     async fn poll(&self, ctx: &CiContext) -> Result<Vec<CiCheck>> {
         let cfg: GitLabCiConfig = ctx.cfg()?;
-        
+
         // Use cfg.project_id, cfg.web_base_url, etc.
         let route = format!("/api/v4/projects/{}/pipelines", cfg.project_id);
         // ...
     }
-    
+
     fn get_commit_url(&self, ctx: &CiContext) -> Result<String> {
         let cfg: GitLabCiConfig = ctx.cfg()?;
-        
+
         if let Some(slug) = &cfg.slug {
             Ok(format!(
                 "{}{}/-/commit/{}",

@@ -7,6 +7,7 @@ pub mod execution_poller;
 pub mod executor;
 pub mod executor_events;
 pub mod github;
+pub mod health_check;
 pub mod settings;
 pub mod sourcegraph;
 pub mod tokens;

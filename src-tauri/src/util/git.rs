@@ -1,13 +1,15 @@
 use anyhow::{bail, Result};
 
-/// Parse provider_id in format "github.com/owner/repo" or "owner/repo"
+/// Parse provider_id in format "github.com/owner/repo", "gitlab.com/owner/repo", or "owner/repo"
 /// Returns (owner, repo) tuple
 pub fn parse_provider_id(provider_id: &str) -> Result<(String, String)> {
-    let trimmed = provider_id.trim_start_matches("github.com/");
+    let trimmed = provider_id
+        .trim_start_matches("github.com/")
+        .trim_start_matches("gitlab.com/");
     let parts: Vec<&str> = trimmed.split('/').collect();
 
     if parts.len() != 2 {
-        bail!("Invalid provider_id format. Expected 'owner/repo' or 'github.com/owner/repo', got '{}'", provider_id);
+        bail!("Invalid provider_id format. Expected 'owner/repo', 'github.com/owner/repo', or 'gitlab.com/owner/repo', got '{}'", provider_id);
     }
 
     if parts[0].is_empty() || parts[1].is_empty() {
@@ -15,6 +17,39 @@ pub fn parse_provider_id(provider_id: &str) -> Result<(String, String)> {
     }
 
     Ok((parts[0].to_string(), parts[1].to_string()))
+}
+
+/// Build provider_cfg JSON for CI/Git provider context
+/// - GitHub: {"owner": "...", "repo": "..."}
+/// - GitLab: {"project_id": "owner/repo", "slug": "owner/repo", "web_base_url": "..."}
+pub fn build_provider_cfg(provider: &str, provider_id: &str) -> Result<serde_json::Value> {
+    let (owner, repo) = parse_provider_id(provider_id)?;
+
+    match provider {
+        "github" => Ok(serde_json::json!({
+            "owner": owner,
+            "repo": repo,
+        })),
+        "gitlab" => {
+            use crate::commands::tokens::get_token_value;
+
+            // GitLab API accepts project_id as either numeric ID or "owner/repo" slug
+            let slug = format!("{}/{}", owner, repo);
+
+            // Get custom GitLab instance URL if configured
+            let web_base_url = get_token_value("gitlab_instance_url")
+                .ok()
+                .flatten()
+                .unwrap_or_else(|| "https://gitlab.com".to_string());
+
+            Ok(serde_json::json!({
+                "project_id": slug.clone(),
+                "slug": slug,
+                "web_base_url": web_base_url,
+            }))
+        }
+        _ => bail!("Unsupported provider: {}", provider),
+    }
 }
 
 /// Generate maestro branch name from short hashes

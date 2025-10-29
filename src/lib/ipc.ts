@@ -416,6 +416,8 @@ export async function cleanupExecution(executionId: string): Promise<void> {
 export type TokenKey =
 	| "amp_token"
 	| "github_token"
+	| "gitlab_token"
+	| "gitlab_instance_url"
 	| "sourcegraph_endpoint"
 	| "sourcegraph_token"
 	| "amp_client_id"
@@ -438,6 +440,8 @@ export async function deleteToken(key: TokenKey): Promise<void> {
 export interface AllTokens {
 	ampToken: string | null
 	githubToken: string | null
+	gitlabToken: string | null
+	gitlabInstanceUrl: string | null
 	sourcegraphEndpoint: string | null
 	sourcegraphToken: string | null
 	ampClientId: string | null
@@ -637,6 +641,37 @@ export async function getAvailableTerminals(): Promise<TerminalInfo[]> {
  */
 export async function checkAppInstalled(command: string): Promise<boolean> {
 	return invokeCommand<boolean>("check_app_installed", { command })
+}
+
+// ============================================================================
+// Health Check Commands
+// ============================================================================
+
+export interface HealthCheckResult {
+	success: boolean
+	username?: string
+	error?: string
+}
+
+/**
+ * Check GitHub token validity and get current username
+ */
+export async function healthCheckGithub(): Promise<HealthCheckResult> {
+	return invokeCommand<HealthCheckResult>("health_check_github")
+}
+
+/**
+ * Check GitLab token validity and get current username
+ */
+export async function healthCheckGitlab(): Promise<HealthCheckResult> {
+	return invokeCommand<HealthCheckResult>("health_check_gitlab")
+}
+
+/**
+ * Check Sourcegraph token validity and get current username
+ */
+export async function healthCheckSourcegraph(): Promise<HealthCheckResult> {
+	return invokeCommand<HealthCheckResult>("health_check_sourcegraph")
 }
 
 // ============================================================================

@@ -1,4 +1,5 @@
 import { GitHubProvider } from "./github"
+import { GitLabProvider } from "./gitlab"
 import type { RepositoryProvider } from "./types"
 
 export async function getConfiguredProviders(): Promise<RepositoryProvider[]> {
@@ -10,8 +11,14 @@ export async function getConfiguredProviders(): Promise<RepositoryProvider[]> {
 		providers.push(github)
 	}
 
+	const gitlab = new GitLabProvider()
+	await gitlab.initialize()
+	if (gitlab.isConfigured()) {
+		providers.push(gitlab)
+	}
+
 	return providers
 }
 
 export * from "./types"
-export { GitHubProvider }
+export { GitHubProvider, GitLabProvider }

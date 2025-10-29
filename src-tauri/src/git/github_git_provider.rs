@@ -39,7 +39,6 @@ impl GitProvider for GitHubGitProvider {
             default_branch: repo_info
                 .default_branch
                 .unwrap_or_else(|| "main".to_string()),
-            description: repo_info.description,
         })
     }
 }

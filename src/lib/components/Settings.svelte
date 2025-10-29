@@ -5,22 +5,28 @@
 	import { settingsStore } from "$lib/stores/settingsStore"
 	import * as ipc from "$lib/ipc"
 	import { Select } from "bits-ui"
-	import { Check, ChevronDown } from "lucide-svelte"
+	import { Check, ChevronDown, CheckCircle2, XCircle, Loader2 } from "lucide-svelte"
 
 	let ampToken = $state("")
 	let githubToken = $state("")
+	let gitlabToken = $state("")
+	let gitlabEndpoint = $state("")
 	let sourcegraphEndpoint = $state("")
 	let sourcegraphToken = $state("")
 	let ampClientId = $state("")
 	let ampClientSecret = $state("")
 	let ampTokenMasked = $state("")
 	let githubTokenMasked = $state("")
+	let gitlabTokenMasked = $state("")
+	let gitlabEndpointMasked = $state("")
 	let sourcegraphEndpointMasked = $state("")
 	let sourcegraphTokenMasked = $state("")
 	let ampClientIdMasked = $state("")
 	let ampClientSecretMasked = $state("")
 	let editingAmp = $state(false)
 	let editingGithub = $state(false)
+	let editingGitlabToken = $state(false)
+	let editingGitlabEndpoint = $state(false)
 	let editingSourcegraphEndpoint = $state(false)
 	let editingSourcegraphToken = $state(false)
 	let editingAmpClientId = $state(false)
@@ -42,6 +48,14 @@
 	let selectedEditorValue = $state<string>("")
 	let selectedTerminalValue = $state<string>("")
 
+	// Health check states
+	let githubHealthCheck = $state<ipc.HealthCheckResult | null>(null)
+	let gitlabHealthCheck = $state<ipc.HealthCheckResult | null>(null)
+	let sourcegraphHealthCheck = $state<ipc.HealthCheckResult | null>(null)
+	let checkingGithub = $state(false)
+	let checkingGitlab = $state(false)
+	let checkingSourcegraph = $state(false)
+
 	// Derive currentTheme from themeStore
 	let currentTheme = $derived(themeStore.current)
 
@@ -56,6 +70,8 @@
 			const allTokens = await tokenStore.getAllTokensMasked()
 			ampTokenMasked = allTokens.ampToken || ""
 			githubTokenMasked = allTokens.githubToken || ""
+			gitlabTokenMasked = allTokens.gitlabToken || ""
+			gitlabEndpointMasked = allTokens.gitlabInstanceUrl || ""
 			sourcegraphEndpointMasked = allTokens.sourcegraphEndpoint || ""
 			sourcegraphTokenMasked = allTokens.sourcegraphToken || ""
 			ampClientIdMasked = allTokens.ampClientId || ""
@@ -88,6 +104,51 @@
 		await themeStore.setTheme(theme)
 	}
 
+	async function testGithubConnection() {
+		checkingGithub = true
+		githubHealthCheck = null
+		try {
+			githubHealthCheck = await ipc.healthCheckGithub()
+		} catch (error) {
+			githubHealthCheck = {
+				success: false,
+				error: error instanceof Error ? error.message : String(error),
+			}
+		} finally {
+			checkingGithub = false
+		}
+	}
+
+	async function testGitlabConnection() {
+		checkingGitlab = true
+		gitlabHealthCheck = null
+		try {
+			gitlabHealthCheck = await ipc.healthCheckGitlab()
+		} catch (error) {
+			gitlabHealthCheck = {
+				success: false,
+				error: error instanceof Error ? error.message : String(error),
+			}
+		} finally {
+			checkingGitlab = false
+		}
+	}
+
+	async function testSourcegraphConnection() {
+		checkingSourcegraph = true
+		sourcegraphHealthCheck = null
+		try {
+			sourcegraphHealthCheck = await ipc.healthCheckSourcegraph()
+		} catch (error) {
+			sourcegraphHealthCheck = {
+				success: false,
+				error: error instanceof Error ? error.message : String(error),
+			}
+		} finally {
+			checkingSourcegraph = false
+		}
+	}
+
 	async function saveToken(key: TokenKey, value: string) {
 		try {
 			if (value.trim()) {
@@ -96,6 +157,8 @@
 				const allTokens = await tokenStore.getAllTokensMasked()
 				ampTokenMasked = allTokens.ampToken || ""
 				githubTokenMasked = allTokens.githubToken || ""
+				gitlabTokenMasked = allTokens.gitlabToken || ""
+				gitlabEndpointMasked = allTokens.gitlabInstanceUrl || ""
 				sourcegraphEndpointMasked = allTokens.sourcegraphEndpoint || ""
 				sourcegraphTokenMasked = allTokens.sourcegraphToken || ""
 				ampClientIdMasked = allTokens.ampClientId || ""
@@ -108,6 +171,12 @@
 				} else if (key === "github_token") {
 					githubToken = ""
 					editingGithub = false
+				} else if (key === "gitlab_token") {
+					gitlabToken = ""
+					editingGitlabToken = false
+				} else if (key === "gitlab_instance_url") {
+					gitlabEndpoint = ""
+					editingGitlabEndpoint = false
 				} else if (key === "sourcegraph_endpoint") {
 					sourcegraphEndpoint = ""
 					editingSourcegraphEndpoint = false
@@ -129,6 +198,12 @@
 				} else if (key === "github_token") {
 					githubTokenMasked = ""
 					editingGithub = false
+				} else if (key === "gitlab_token") {
+					gitlabTokenMasked = ""
+					editingGitlabToken = false
+				} else if (key === "gitlab_instance_url") {
+					gitlabEndpointMasked = ""
+					editingGitlabEndpoint = false
 				} else if (key === "sourcegraph_endpoint") {
 					sourcegraphEndpointMasked = ""
 					editingSourcegraphEndpoint = false
@@ -162,6 +237,14 @@
 				githubToken = ""
 				githubTokenMasked = ""
 				editingGithub = false
+			} else if (key === "gitlab_token") {
+				gitlabToken = ""
+				gitlabTokenMasked = ""
+				editingGitlabToken = false
+			} else if (key === "gitlab_instance_url") {
+				gitlabEndpoint = ""
+				gitlabEndpointMasked = ""
+				editingGitlabEndpoint = false
 			} else if (key === "sourcegraph_endpoint") {
 				sourcegraphEndpoint = ""
 				sourcegraphEndpointMasked = ""
@@ -194,6 +277,12 @@
 		} else if (key === "github_token") {
 			editingGithub = true
 			githubToken = ""
+		} else if (key === "gitlab_token") {
+			editingGitlabToken = true
+			gitlabToken = ""
+		} else if (key === "gitlab_instance_url") {
+			editingGitlabEndpoint = true
+			gitlabEndpoint = ""
 		} else if (key === "sourcegraph_endpoint") {
 			editingSourcegraphEndpoint = true
 			sourcegraphEndpoint = ""
@@ -216,6 +305,12 @@
 		} else if (key === "github_token") {
 			editingGithub = false
 			githubToken = ""
+		} else if (key === "gitlab_token") {
+			editingGitlabToken = false
+			gitlabToken = ""
+		} else if (key === "gitlab_instance_url") {
+			editingGitlabEndpoint = false
+			gitlabEndpoint = ""
 		} else if (key === "sourcegraph_endpoint") {
 			editingSourcegraphEndpoint = false
 			sourcegraphEndpoint = ""
@@ -484,6 +579,186 @@
 								>
 								(requires <code>repo</code> scope)
 							</p>
+							{#if githubTokenMasked && !editingGithub}
+								<div class="mt-3 flex items-center gap-2">
+									<button
+										type="button"
+										onclick={testGithubConnection}
+										disabled={checkingGithub}
+										class="px-3 py-1.5 text-sm border rounded-md hover:bg-muted transition-colors disabled:opacity-50"
+									>
+										{checkingGithub ? "Testing..." : "Test Connection"}
+									</button>
+									{#if checkingGithub}
+										<Loader2 class="w-4 h-4 animate-spin text-primary" />
+									{:else if githubHealthCheck}
+										{#if githubHealthCheck.success}
+											<div class="flex items-center gap-1.5 text-success">
+												<CheckCircle2 class="w-4 h-4" />
+												<span class="text-sm">Connected as {githubHealthCheck.username}</span>
+											</div>
+										{:else}
+											<div class="flex items-center gap-1.5 text-destructive">
+												<XCircle class="w-4 h-4" />
+												<span class="text-sm">{githubHealthCheck.error}</span>
+											</div>
+										{/if}
+									{/if}
+								</div>
+							{/if}
+						</div>
+
+						<div>
+							<label for="gitlab-token" class="block text-sm font-medium mb-2"
+								>GitLab Personal Access Token</label
+							>
+							<p class="text-xs text-muted-foreground mb-2">
+								Required for GitLab repository access
+							</p>
+							<div class="flex flex-col sm:flex-row gap-2">
+								{#if editingGitlabToken}
+									<div class="flex-1">
+										<input
+											id="gitlab-token"
+											type="text"
+											bind:value={gitlabToken}
+											placeholder="Enter GitLab PAT"
+											class="w-full px-3 py-2 border rounded-md bg-background"
+										/>
+									</div>
+									<button
+										type="button"
+										onclick={() => saveToken("gitlab_token", gitlabToken)}
+										class="px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+									>
+										Save
+									</button>
+									<button
+										type="button"
+										onclick={() => cancelEditing("gitlab_token")}
+										class="px-3 py-2 border rounded-md hover:bg-muted"
+									>
+										Cancel
+									</button>
+								{:else}
+									<div class="flex-1">
+										<input
+											type="text"
+											value={gitlabTokenMasked || "Not set"}
+											disabled
+											class="w-full px-3 py-2 border rounded-md bg-muted text-muted-foreground"
+										/>
+									</div>
+									<button
+										type="button"
+										onclick={() => startEditing("gitlab_token")}
+										class="px-3 py-2 border rounded-md hover:bg-muted"
+									>
+										{gitlabTokenMasked ? "Update" : "Set"}
+									</button>
+									{#if gitlabTokenMasked}
+										<button
+											type="button"
+											onclick={() => deleteToken("gitlab_token")}
+											class="px-3 py-2 text-destructive hover:bg-destructive/10 rounded-md"
+										>
+											Delete
+										</button>
+									{/if}
+								{/if}
+							</div>
+							<p class="text-xs text-muted-foreground mt-2">
+								Generate at your GitLab instance: User Settings → Access Tokens
+							</p>
+						</div>
+
+						<div>
+							<label for="gitlab-endpoint" class="block text-sm font-medium mb-2"
+								>GitLab Instance URL</label
+							>
+							<p class="text-xs text-muted-foreground mb-2">Your GitLab instance endpoint</p>
+							<div class="flex flex-col sm:flex-row gap-2">
+								{#if editingGitlabEndpoint}
+									<div class="flex-1">
+										<input
+											id="gitlab-endpoint"
+											type="text"
+											bind:value={gitlabEndpoint}
+											placeholder="https://gitlab.com"
+											class="w-full px-3 py-2 border rounded-md bg-background"
+										/>
+									</div>
+									<button
+										type="button"
+										onclick={() => saveToken("gitlab_instance_url", gitlabEndpoint)}
+										class="px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+									>
+										Save
+									</button>
+									<button
+										type="button"
+										onclick={() => cancelEditing("gitlab_instance_url")}
+										class="px-3 py-2 border rounded-md hover:bg-muted"
+									>
+										Cancel
+									</button>
+								{:else}
+									<div class="flex-1">
+										<input
+											type="text"
+											value={gitlabEndpointMasked || "https://gitlab.com (default)"}
+											disabled
+											class="w-full px-3 py-2 border rounded-md bg-muted text-muted-foreground"
+										/>
+									</div>
+									<button
+										type="button"
+										onclick={() => startEditing("gitlab_instance_url")}
+										class="px-3 py-2 border rounded-md hover:bg-muted"
+									>
+										{gitlabEndpointMasked ? "Update" : "Set"}
+									</button>
+									{#if gitlabEndpointMasked}
+										<button
+											type="button"
+											onclick={() => deleteToken("gitlab_instance_url")}
+											class="px-3 py-2 text-destructive hover:bg-destructive/10 rounded-md"
+										>
+											Delete
+										</button>
+									{/if}
+								{/if}
+							</div>
+							<p class="text-xs text-muted-foreground mt-2">
+								Example: <code>https://gitlab.com</code> or your self-hosted instance
+							</p>
+							{#if gitlabTokenMasked && !editingGitlabToken && !editingGitlabEndpoint}
+								<div class="mt-3 flex items-center gap-2">
+									<button
+										type="button"
+										onclick={testGitlabConnection}
+										disabled={checkingGitlab}
+										class="px-3 py-1.5 text-sm border rounded-md hover:bg-muted transition-colors disabled:opacity-50"
+									>
+										{checkingGitlab ? "Testing..." : "Test Connection"}
+									</button>
+									{#if checkingGitlab}
+										<Loader2 class="w-4 h-4 animate-spin text-primary" />
+									{:else if gitlabHealthCheck}
+										{#if gitlabHealthCheck.success}
+											<div class="flex items-center gap-1.5 text-success">
+												<CheckCircle2 class="w-4 h-4" />
+												<span class="text-sm">Connected as {gitlabHealthCheck.username}</span>
+											</div>
+										{:else}
+											<div class="flex items-center gap-1.5 text-destructive">
+												<XCircle class="w-4 h-4" />
+												<span class="text-sm">{gitlabHealthCheck.error}</span>
+											</div>
+										{/if}
+									{/if}
+								</div>
+							{/if}
 						</div>
 					</div>
 				</div>
@@ -619,6 +894,33 @@
 							<p class="text-xs text-muted-foreground mt-2">
 								Generate at your Sourcegraph instance: Settings → Access tokens
 							</p>
+							{#if sourcegraphTokenMasked && sourcegraphEndpointMasked && !editingSourcegraphToken && !editingSourcegraphEndpoint}
+								<div class="mt-3 flex items-center gap-2">
+									<button
+										type="button"
+										onclick={testSourcegraphConnection}
+										disabled={checkingSourcegraph}
+										class="px-3 py-1.5 text-sm border rounded-md hover:bg-muted transition-colors disabled:opacity-50"
+									>
+										{checkingSourcegraph ? "Testing..." : "Test Connection"}
+									</button>
+									{#if checkingSourcegraph}
+										<Loader2 class="w-4 h-4 animate-spin text-primary" />
+									{:else if sourcegraphHealthCheck}
+										{#if sourcegraphHealthCheck.success}
+											<div class="flex items-center gap-1.5 text-success">
+												<CheckCircle2 class="w-4 h-4" />
+												<span class="text-sm">Connected as {sourcegraphHealthCheck.username}</span>
+											</div>
+										{:else}
+											<div class="flex items-center gap-1.5 text-destructive">
+												<XCircle class="w-4 h-4" />
+												<span class="text-sm">{sourcegraphHealthCheck.error}</span>
+											</div>
+										{/if}
+									{/if}
+								</div>
+							{/if}
 						</div>
 
 						<!-- Amp OAuth2 Client ID -->

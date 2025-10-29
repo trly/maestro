@@ -6,6 +6,7 @@
 	import { tokenStore } from "$lib/tokenStore"
 	import * as ipc from "$lib/ipc"
 	import type { SourcegraphRepository } from "$lib/ipc"
+	import ProviderIcon from "./ProviderIcon.svelte"
 
 	let {
 		selectedRepos = $bindable([]),
@@ -27,9 +28,12 @@
 
 	let providers = $state<Awaited<ReturnType<typeof getConfiguredProviders>>>([])
 	let hasSgConfig = $state(false)
+	let enabledProviders = $state<Set<string>>(new Set())
 
 	onMount(async () => {
 		providers = await getConfiguredProviders()
+		// Enable all providers by default
+		enabledProviders = new Set(providers.map((p) => p.name))
 		const tokens = await tokenStore.getAllTokens()
 		hasSgConfig = !!(tokens.sourcegraphEndpoint && tokens.sourcegraphToken)
 	})
@@ -62,9 +66,12 @@
 		isSearching = true
 		open = true
 		try {
-			const allResults = await Promise.all(providers.map((p) => p.searchRepositories(query)))
+			// Filter providers based on user selection
+			const activeProviders = providers.filter((p) => enabledProviders.has(p.name))
+			const allResults = await Promise.all(activeProviders.map((p) => p.searchRepositories(query)))
 			searchResults = allResults.flat()
 		} catch (error) {
+			console.error("Repository search failed:", error)
 			searchResults = []
 		} finally {
 			isSearching = false
@@ -85,16 +92,30 @@
 
 			// Convert to Repository format
 			sgResults = result.repositories.map((r: SourcegraphRepository) => {
-				// Sourcegraph returns names like "github.com/owner/repo", strip the prefix
-				const repoPath = r.name.replace(/^github\.com\//, "")
+				// Detect provider from repository name
+				let provider: "github" | "gitlab" | "bitbucket" = "github"
+				let repoPath = r.name
+
+				if (r.name.startsWith("gitlab.com/")) {
+					provider = "gitlab"
+					repoPath = r.name.replace(/^gitlab\.com\//, "")
+				} else if (r.name.startsWith("github.com/")) {
+					provider = "github"
+					repoPath = r.name.replace(/^github\.com\//, "")
+				} else if (r.name.startsWith("bitbucket.org/")) {
+					provider = "bitbucket"
+					repoPath = r.name.replace(/^bitbucket\.org\//, "")
+				}
+
 				const parts = repoPath.split("/")
 				const owner = parts[0] || ""
 				const name = parts[1] || repoPath
+
 				return {
-					provider: "github" as const,
-					fullName: repoPath, // "owner/repo"
-					name: name, // "repo"
-					owner: owner, // "owner"
+					provider,
+					fullName: repoPath,
+					name,
+					owner,
 					url: r.url,
 					description: r.description || "",
 				}
@@ -159,6 +180,16 @@
 	let filteredSgResults = $derived(
 		sgResults.filter((r) => !selectedRepos.find((s) => s.fullName === r.fullName))
 	)
+
+	function toggleProvider(providerName: string) {
+		const newSet = new Set(enabledProviders)
+		if (newSet.has(providerName)) {
+			newSet.delete(providerName)
+		} else {
+			newSet.add(providerName)
+		}
+		enabledProviders = newSet
+	}
 </script>
 
 <div>
@@ -166,7 +197,7 @@
 		<div class="bg-card border border-border/30 rounded-lg p-4">
 			<p class="font-semibold text-foreground">No repository providers configured</p>
 			<p class="text-sm mt-1 text-muted-foreground">
-				Configure GitHub token in Settings to enable GitHub integration
+				Configure GitHub or GitLab token in Settings to enable repository search
 			</p>
 		</div>
 	{:else}
@@ -189,6 +220,7 @@
 				<div
 					class="flex items-center gap-1.5 bg-primary text-primary-foreground px-2.5 py-1 rounded-lg transition-all"
 				>
+					<ProviderIcon provider={repo.provider} class="size-3.5 shrink-0" />
 					<span class="text-sm font-semibold">{repo.fullName}</span>
 					<button
 						onclick={() => removeRepo(repo)}
@@ -200,6 +232,23 @@
 				</div>
 			{/each}
 		</div>
+
+		{#if providers.length > 1}
+			<div class="mb-3 flex items-center gap-4">
+				<span class="text-sm text-muted-foreground">Search in:</span>
+				{#each providers as provider}
+					<label class="flex items-center gap-2 cursor-pointer">
+						<input
+							type="checkbox"
+							checked={enabledProviders.has(provider.name)}
+							onchange={() => toggleProvider(provider.name)}
+							class="w-4 h-4 rounded border-border/30 text-primary focus:ring-2 focus:ring-ring"
+						/>
+						<span class="text-sm text-foreground">{provider.name}</span>
+					</label>
+				{/each}
+			</div>
+		{/if}
 
 		<Combobox.Root
 			type="single"
@@ -239,6 +288,10 @@
 								value={repo.fullName}
 								class="flex h-10 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 data-[highlighted]:bg-muted transition-colors"
 							>
+								<ProviderIcon
+									provider={repo.provider}
+									class="size-4 shrink-0 text-muted-foreground"
+								/>
 								<div class="flex-1 min-w-0 font-medium text-sm text-foreground truncate">
 									{repo.fullName}
 								</div>
@@ -273,7 +326,7 @@
 							class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground pointer-events-none"
 						/>
 						<Combobox.Input
-							placeholder="Sourcegraph query (filters to GitHub repos only)..."
+							placeholder="Sourcegraph query (searches GitHub & GitLab repos)..."
 							class="w-full h-10 pl-10 pr-4 border border-border/30 rounded-lg bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-border transition-all"
 							oninput={(e) => onSgInput((e.currentTarget as HTMLInputElement).value)}
 						/>
@@ -290,7 +343,7 @@
 								</div>
 							{:else if filteredSgResults.length === 0 && sgQuery.trim()}
 								<div class="px-5 py-8 text-center text-muted-foreground text-sm">
-									No GitHub repositories found
+									No repositories found
 								</div>
 							{:else if filteredSgResults.length > 0}
 								<div class="p-2 border-b border-border/30">
@@ -308,6 +361,10 @@
 										value={repo.fullName}
 										class="flex h-10 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 data-[highlighted]:bg-muted transition-colors"
 									>
+										<ProviderIcon
+											provider={repo.provider}
+											class="size-4 shrink-0 text-muted-foreground"
+										/>
 										<div class="flex-1 min-w-0 font-medium text-sm text-foreground truncate">
 											{repo.fullName}
 										</div>
