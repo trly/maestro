@@ -23,6 +23,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Wait for CI to complete
+        run: |
+          echo "Waiting for CI run ${{ steps.ci-run.outputs.run-id }} to complete..."
+          gh run watch ${{ steps.ci-run.outputs.run-id }} --exit-status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Download Linux build artifact
         uses: actions/download-artifact@v4
         with:
