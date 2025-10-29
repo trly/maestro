@@ -132,6 +132,13 @@ jobs:
       - name: Build app
         run: cargo tauri build --bundles ${{ matrix.bundle }}
 
+      - name: Ad-hoc sign macOS app
+        if: matrix.os == 'macos-latest'
+        run: |
+          APP_PATH="src-tauri/target/release/bundle/macos/Maestro.app"
+          codesign -s - -f --deep "$APP_PATH"
+          echo "Ad-hoc signed $APP_PATH"
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

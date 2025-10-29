@@ -26,7 +26,7 @@ jobs:
           TIMEOUT=3600
           ELAPSED=0
           INTERVAL=30
-          
+
           while [ $ELAPSED -lt $TIMEOUT ]; do
             RUN_ID=$(gh run list --workflow=ci.yml --commit=${{ github.sha }} --json databaseId,status,conclusion --jq '.[] | select(.status=="completed" and .conclusion=="success") | .databaseId' | head -n1)
             
@@ -46,7 +46,7 @@ jobs:
             sleep $INTERVAL
             ELAPSED=$((ELAPSED + INTERVAL))
           done
-          
+
           echo "::error::Timeout waiting for CI to complete after ${TIMEOUT}s"
           exit 1
         env:
