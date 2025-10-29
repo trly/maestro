@@ -2,6 +2,16 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.2.3] - 2025-10-29
+
+### Fixed
+
+- Conditionally import PredefinedMenuItem for macOS only
+
+### Changed
+
+- CI workflow now reuses existing artifacts when releasing tags
+
 ## [0.2.2] - 2025-10-29
 
 ### Changed
