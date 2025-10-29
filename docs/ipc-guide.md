@@ -18,6 +18,7 @@ Complete API reference for Maestro's type-safe IPC layer. **For common usage pat
 // Create/Update
 await ipc.createRepository(provider, providerId)
 await ipc.updateRepositoryName(id, name)
+await ipc.syncRepositoryMetadata(id)
 
 // Read
 await ipc.getRepository(id) // => Repository | null
@@ -32,13 +33,13 @@ await ipc.deleteRepository(id) // => boolean
 
 ```typescript
 // Create/Update
-await ipc.createPromptSet(name, repositoryIds, validationPrompt?)
+await ipc.createPromptSet(name, repositoryIds, validationPrompt?, autoValidate?)
 await ipc.updatePromptSetValidation(id, validationPrompt)
+await ipc.updatePromptSetAutoValidate(id, autoValidate)
 await ipc.updatePromptSetRepositories(id, repositoryIds)
 
 // Read
 await ipc.getPromptSet(id)
-await ipc.findPromptSetByPrefix(idPrefix)
 await ipc.getAllPromptSets()
 await ipc.getPromptSetRevisions(promptsetId)
 await ipc.getExecutionsByPromptSet(promptsetId)
@@ -55,10 +56,10 @@ await ipc.createPromptRevision(promptsetId, promptText, parentRevisionId?)
 
 // Read
 await ipc.getPromptRevision(id)
-await ipc.findPromptRevisionByPrefix(idPrefix)
 await ipc.getExecutionsByRevision(revisionId)
 
 // Execute
+await ipc.prepareExecutions(promptsetId, revisionId, repositoryIds?)
 await ipc.executePromptSet(promptsetId, revisionId, repositoryIds?)
 
 // Control
@@ -79,9 +80,10 @@ await ipc.createExecution(promptsetId, revisionId, repositoryId)
 await ipc.getExecution(id)
 await ipc.findExecutionByPrefix(idPrefix)
 await ipc.getExecutionModifiedFiles(executionId)
-await ipc.getExecutionFileDiff(executionId, filePath)
+await ipc.getExecutionFileDiff(executionId, file)
 
 // Control
+await ipc.startExecution(executionId)
 await ipc.validateExecution(executionId)
 await ipc.stopExecution(executionId)
 await ipc.stopValidation(executionId)
@@ -98,22 +100,58 @@ await ipc.deleteExecution(id)
 ```typescript
 import type { TokenKey } from "$lib/ipc"
 
-const key: TokenKey = "amp_token" // or 'github_token'
+const key: TokenKey = "amp_token" // or 'github_token', 'gitlab_token', etc.
 
 await ipc.setToken(key, value)
-await ipc.getToken(key) // => string | null
-await ipc.getTokenMasked(key) // => string | null (e.g., "abc...xyz")
 await ipc.deleteToken(key)
-await ipc.hasToken(key) // => boolean
+await ipc.getAllTokens() // => { ampToken, githubToken, ... }
+await ipc.getAllTokensMasked() // => { ampToken: "abc...xyz", ... }
 ```
 
 ### Configuration
 
 ```typescript
+// Paths
 const paths = await ipc.getConfigPaths()
 console.log(paths.adminRepoDir) // ~/maestro/repos
 console.log(paths.worktreeDir) // ~/maestro/executions
 console.log(paths.dbPath) // maestro.db
+
+// Editor/Terminal
+await ipc.openWorktreeInEditor(promptsetId, executionId, editorCommand)
+await ipc.openWorktreeWithTerminal(promptsetId, executionId, editorCommand, terminalCommand)
+
+// App Info
+const appInfo = await ipc.getAppInfo() // => { version, name, identifier, copyright }
+const editors = await ipc.getAvailableEditors() // => AppInfo[]
+const terminals = await ipc.getAvailableTerminals() // => TerminalInfo[]
+const isInstalled = await ipc.checkAppInstalled(command)
+
+// Health Checks
+const ghHealth = await ipc.healthCheckGithub() // => { success, username?, error? }
+const glHealth = await ipc.healthCheckGitlab()
+const sgHealth = await ipc.healthCheckSourcegraph()
+
+// Settings
+await ipc.getSetting(key)
+await ipc.setSetting(key, value)
+await ipc.getCiStuckThresholdMinutes()
+await ipc.getMaxConcurrentExecutions()
+
+// CI
+await ipc.startCiCheck(executionId)
+await ipc.refreshCiStatus(executionId)
+await ipc.pushCommit(executionId, force?)
+
+// Sourcegraph
+const result = await ipc.searchSourcegraphRepositories(query, limit?)
+
+// Analysis
+const analysisId = await ipc.createAnalysis(revisionId, analysisType, executionIds)
+await ipc.runAnalysis(analysisId)
+const analysis = await ipc.getAnalysis(analysisId)
+const analyses = await ipc.getAnalysesByRevision(revisionId, analysisType?)
+await ipc.deleteAnalysis(analysisId)
 ```
 
 ## Migration from `invoke()`

@@ -1,111 +1,73 @@
 # Change Tracking
 
-Unified system for tracking file changes (diffs) and statistics from both committed history and live worktrees. **For common usage patterns, see AGENTS.md Diff Architecture section.**
+Maestro tracks file changes from both committed history and live worktrees. **For common usage patterns, see AGENTS.md Diff Architecture section.**
 
 ## When to Read This
 
-- Understanding diff regeneration architecture
-- Debugging diff calculation issues
-- Understanding worktree vs committed diff differences
+- Understanding the difference between worktree and committed diffs
+- Learning how to access change information in the UI
+- Understanding the change tracking lifecycle
 
-## Backend Module
+## Core Concepts
 
-### `src-tauri/src/git/diff.rs`
+### Worktree Diff vs. Committed Diff
 
-**Core Functions:**
+Maestro provides two types of change tracking:
 
-```rust
-// Committed changes (from git history)
-get_committed_diff(admin_repo_path, parent_sha, commit_sha)
-  -> Result<ModifiedFilesResponse>
+**Worktree Diff** - Changes in active execution worktrees:
+- Tracks uncommitted changes in the working directory
+- Shows added, modified, and deleted files
+- Includes line-level statistics (additions/deletions)
+- Available while execution is in progress or completed but not yet committed
 
-get_committed_file_diff(admin_repo_path, parent_sha, commit_sha, file_path)
-  -> Result<String>
+**Committed Diff** - Changes from git history:
+- Regenerated from commit metadata stored in the database
+- Shows the exact changes between parent and current commit
+- Available even after worktree cleanup
+- Permanent record of what changed in each execution
 
-// Worktree changes (uncommitted)
-get_worktree_diff(worktree_path)
-  -> Result<ModifiedFilesResponse>
+### Change Lifecycle
 
-get_worktree_file_diff(worktree_path, file_path)
-  -> Result<String>
+```
+Execution starts
+  ↓
+Worktree created with initial state
+  ↓
+AI makes changes (tracked via worktree diff)
+  ↓
+Changes committed to branch
+  ↓
+Diff source switches to committed history
+  ↓
+Worktree can be safely cleaned up
+  ↓
+Changes remain accessible via commit metadata
 ```
 
-**Types:**
+## Frontend API
 
-```rust
-struct ModifiedFile {
-    status: FileStatus,
-    path: String,
-    additions: u32,
-    deletions: u32
-}
+### Accessing Changes
 
-struct ModifiedFilesResponse {
-    files: Vec<ModifiedFile>,
-    source: DiffSource,  // "worktree" | "committed"
-    commit_sha: Option<String>
-}
-```
-
-### Command Flow
-
-Both IPC commands follow the same logic:
-
-```rust
-// 1. Check if execution has commit
-if let Some(commit_sha) = execution.commit_sha {
-    return get_committed_diff(admin_repo_path, parent_sha, commit_sha)
-}
-
-// 2. Otherwise use worktree
-if worktree_exists {
-    return get_worktree_diff(worktree_path)
-}
-```
-
-## Frontend Store
-
-### `src/lib/stores/diffStore.ts`
-
-**API:**
+Changes are accessed through the IPC layer:
 
 ```typescript
-// Fetch file list (cached)
-const response = await fetchDiff(executionId)
+// Get list of modified files
+const response = await ipc.getExecutionModifiedFiles(executionId)
+// Returns: { files: [], source: "worktree" | "committed", commitSha? }
 
-// Fetch specific file diff (cached)
-const diffText = await fetchFileDiff(executionId, filePath)
-
-// Clear cache
-clearDiffCache(executionId) // specific execution
-clearDiffCache() // all executions
-
-// Semantic alias
-invalidateDiff(executionId)
+// Get diff for specific file
+const diffText = await ipc.getExecutionFileDiff(executionId, filePath)
 ```
 
-**Caching Strategy:**
+### Change Statistics
 
-- Execution-level cache for file lists
-- Execution:file-level cache for individual diffs
-- Automatic invalidation after commit
+Statistics are calculated on-demand from the diff:
 
-**Types:**
+- **File counts**: Added, modified, deleted, renamed files
+- **Line changes**: Total additions and deletions
+- **Per-file stats**: Individual file change metrics
 
-```typescript
-interface FileDiff {
-	status: "added" | "modified" | "deleted" | "renamed"
-	path: string
-	additions: number
-	deletions: number
-}
-
-interface ModifiedFilesResponse {
-	files: FileDiff[]
-	source: "worktree" | "committed"
-	commitSha?: string
-}
-```
+Statistics are never stored in the database—they're always computed from the current git state.
 
 ## Key Design Decisions
 
@@ -113,25 +75,83 @@ interface ModifiedFilesResponse {
 
 Worktrees can be safely deleted after commit because:
 
-- Commit SHA is stored in database
+- Commit SHA is stored in execution metadata
 - Parent SHA is stored before deletion
-- Diffs regenerated via `git diff <parent> <commit>` from admin repo
+- Diffs are regenerated from the admin repository's git history
 
-### Separation of Concerns
+This approach:
+- Saves disk space
+- Ensures accuracy (no stale cached data)
+- Allows historical access to changes
 
-- **Backend**: Pure git operations, no caching
-- **Frontend**: Caching layer for UI performance
-- **Commands**: Route to appropriate diff function based on execution state
+### On-Demand Calculation
 
-## Benefits
+Change statistics are calculated when requested rather than stored:
 
-- **Code Reduction**: ~160 lines eliminated from commands (71% reduction)
-- **Centralization**: All diff logic in one backend module
-- **Caching**: Frontend reduces redundant IPC calls
-- **Consistency**: Unified error handling and types
-- **Testability**: Diff logic can be unit tested independently
+**Benefits:**
+- Always accurate and reflects current git state
+- No risk of stale data
+- Simpler database schema
+- Works seamlessly after worktree cleanup
 
-## Components Using Diffs
+**Trade-off:**
+- Requires computation on each access
+- Frontend caching recommended for performance
 
-- **`DiffViewer.svelte`**: Main diff display component (uses diffStore)
-- **`PromptDiff.svelte`**: Unrelated (text-only prompt comparison)
+## UI Components
+
+### Change Display
+
+Changes are displayed in several places:
+
+- **Execution rows**: Summary statistics (file count, line changes)
+- **Diff viewer**: Detailed file-by-file comparison
+- **Commit status**: Shows whether changes are committed
+
+### Diff Viewer
+
+The diff viewer provides:
+- File list with change status badges
+- Line-level statistics per file
+- Unified diff view for individual files
+- Syntax highlighting
+
+## Common Patterns
+
+### Viewing Changes
+
+1. Click the commit badge or changes summary in an execution row
+2. Diff viewer opens with file list
+3. Click any file to see detailed diff
+
+### After Committing
+
+1. Changes are committed to a branch
+2. Diff source automatically switches to "committed"
+3. Stats remain accessible even if worktree is cleaned up
+
+### Caching for Performance
+
+The frontend caches diff data per execution to avoid redundant IPC calls. Cache is automatically invalidated when:
+- Execution status changes
+- Changes are committed
+- Execution is restarted
+
+## Troubleshooting
+
+### Changes Not Showing
+
+**Possible causes:**
+- Execution hasn't made any changes yet
+- Worktree doesn't exist (was cleaned up)
+- Execution was never committed
+
+**Solution:** For completed executions, commit the changes to make them permanently accessible.
+
+### Statistics Show Zero
+
+**Possible causes:**
+- Execution completed with no changes
+- Diff calculation encountered an error
+
+**Solution:** Check execution logs or try restarting the execution.

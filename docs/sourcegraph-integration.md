@@ -15,40 +15,17 @@ The Sourcegraph integration allows users to:
 
 ### Backend Module
 
-**Location:** `src-tauri/src/sourcegraph/mod.rs`
+The Sourcegraph integration provides a GraphQL API client with:
 
-```rust
-pub struct SourcegraphClient {
-    endpoint: String,
-    access_token: String,
-    http_client: reqwest::Client,
-}
-
-pub async fn search_repositories(
-    &self,
-    query: &str,
-    limit: i32,
-) -> Result<RepositorySearchResult>
-```
-
-**Key Features:**
-
-- GraphQL API client using `reqwest`
 - Automatic error handling for HTTP and GraphQL errors
 - Pagination support via `hasNextPage` field
 - Only returns cloned repositories by default
 
 ### IPC Command
 
-**Location:** `src-tauri/src/commands/sourcegraph.rs`
-
-```rust
-#[tauri::command]
-pub async fn search_sourcegraph_repositories(
-    query: String,
-    limit: Option<i32>,
-) -> Result<RepositorySearchResult, String>
-```
+The `search_sourcegraph_repositories` command accepts:
+- `query` - Sourcegraph search query
+- `limit` - Optional result limit
 
 **Token Retrieval:**
 
@@ -57,8 +34,6 @@ pub async fn search_sourcegraph_repositories(
 - Both retrieved from system keyring at command execution time
 
 ### Frontend API
-
-**Location:** `src/lib/ipc.ts`
 
 ```typescript
 export interface SourcegraphRepository {
@@ -234,17 +209,16 @@ Potential improvements:
 
 ## Implementation Reference
 
-**Backend:**
+**Backend Modules:**
 
-- `src-tauri/src/sourcegraph/mod.rs` - GraphQL client
-- `src-tauri/src/commands/sourcegraph.rs` - IPC command
-- `src-tauri/Cargo.toml` - Dependencies (`reqwest` with JSON support)
+- Sourcegraph GraphQL client - Repository search
+- Sourcegraph commands - IPC interface
 
-**Frontend:**
+**Frontend Modules:**
 
-- `src/lib/ipc.ts` - Type-safe IPC wrapper
-- `src/lib/components/Settings.svelte` - Configuration UI
-- `src/lib/tokenStore.ts` - Token management
+- IPC layer - Type-safe command wrappers
+- Settings UI - Configuration interface
+- Token management - Secure credential storage
 
 ## Related Documentation
 

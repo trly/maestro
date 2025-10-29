@@ -234,30 +234,27 @@ const analyses = await getAnalysesByRevision(
 
 ### Module Structure
 
-```
-src-tauri/src/
-├── commands/
-│   └── analysis.rs           # Analysis commands
-└── db/
-    └── store.rs              # Analysis CRUD operations
-```
+The analysis system consists of:
 
-### Key Components
+- **Analysis commands** - IPC interface for analysis lifecycle
+- **Database operations** - Analysis CRUD and execution linking
 
-**Analysis Commands** (`src-tauri/src/commands/analysis.rs`):
+### Key Operations
 
-- `create_analysis()` - Creates analysis record
-- `run_analysis()` - Spawns background task
-- `get_analysis()` - Retrieves analysis by ID
-- `get_analyses_by_revision()` - Lists analyses for revision
+**Analysis Commands:**
 
-**Store Methods** (`src-tauri/src/db/store.rs`):
+- Create analysis record
+- Spawn background analysis task
+- Retrieve analysis by ID
+- List analyses for revision
 
-- `create_analysis()` - Insert analysis record
-- `update_analysis_status()` - Update status/error
-- `update_analysis_result()` - Store result/completion
-- `add_analysis_executions()` - Link executions
-- `get_analysis_executions()` - Retrieve linked executions
+**Database Operations:**
+
+- Insert analysis record
+- Update status and error messages
+- Store result and completion timestamp
+- Link executions to analyses
+- Retrieve linked executions
 
 ## Query Patterns
 
@@ -444,18 +441,17 @@ Analyses are displayed between the prompt console and executions table:
 
 ## Implementation Reference
 
-**Backend:**
+**Backend Modules:**
 
-- `src-tauri/src/commands/analysis.rs` - Analysis commands
-- `src-tauri/src/db/store.rs` - Analysis CRUD
-- `src-tauri/src/db/migrations.rs` - Migration 13
-- `src/lib/amp-executor.ts` - Amp SDK execution (shared with regular executions)
+- Analysis commands - IPC interface
+- Database operations - Analysis CRUD
+- AI executor - Amp integration (shared with regular executions)
 
-**Frontend:**
+**Frontend Modules:**
 
-- `src/lib/ipc.ts` - IPC wrappers (`createAnalysis`, `runAnalysis`, `getAnalysesByRevision`, `deleteAnalysis`)
-- `src/lib/types.ts` - TypeScript types
-- `src/lib/components/ui/AnalysisResult.svelte` - Result display component with delete/rerun actions
+- IPC layer - Type-safe command wrappers
+- Type definitions - Analysis domain types
+- Analysis UI - Result display component with delete/rerun actions
 - `src/lib/components/ui/RevisionDetail.svelte` - Trigger UI and results container
 - `src/routes/promptsets/[id]/+page.svelte` - Handler implementation (`handleDeleteAnalysis`, `handleRerunAnalysis`) and data fetching
 

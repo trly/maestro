@@ -1,13 +1,13 @@
 # CI Integration
 
-Maestro integrates with GitHub's CI/CD systems to validate that pushed commits pass all configured checks.
+Maestro integrates with VCS CI/CD systems to validate that pushed commits pass all configured checks.
 
 ## Overview
 
 After committing and pushing changes from an execution, Maestro automatically:
 
 1. Sets CI status to "pending"
-2. Provides a link to GitHub's checks page
+2. Provides a link to the VCS provider's checks page
 3. Allows manual refresh of CI status via the UI
 
 CI validation provides an additional quality gate beyond prompt execution and validation threads.
@@ -17,7 +17,8 @@ CI validation provides an additional quality gate beyond prompt execution and va
 - **Pending** (🔵) - CI jobs are queued or running
 - **Passed** (✅) - All CI checks passed
 - **Failed** (❌) - One or more CI checks failed
-- **Skipped** (⚪) - No CI configured for this commit
+- **Skipped** (⚪) - CI polling exhausted or timed out
+- **Not Configured** - No CI configured for this repository
 
 ## Workflow
 
@@ -46,17 +47,18 @@ Maestro provides two ways to check CI:
 
 ## CI Status Checking
 
-Maestro checks both:
+Maestro integrates with multiple CI systems:
 
-- **GitHub Actions** (Checks API) - Modern GitHub workflows
-- **Commit Statuses** (Status API) - Legacy CI systems (Jenkins, CircleCI, etc.)
+- **GitHub**: GitHub Actions and Commit Statuses
+- **GitLab**: Pipeline status
+- **Legacy CI**: Jenkins, CircleCI, and other external systems via commit statuses
 
 ### Status Aggregation Rules
 
 - If any check **fails** → Overall status: Failed
 - If any check is **pending** → Overall status: Pending
 - If all checks **pass** → Overall status: Passed
-- If no checks found → Overall status: Skipped
+- If no checks found → Overall status: Not Configured
 
 ## UI Components
 
@@ -81,21 +83,19 @@ Displays current CI status with appropriate icon and color:
 
 ### Database Schema
 
-```sql
--- Migration 11
-ALTER TABLE executions ADD COLUMN ci_status TEXT;
-ALTER TABLE executions ADD COLUMN ci_checked_at INTEGER;
-ALTER TABLE executions ADD COLUMN ci_url TEXT;
-```
+Executions store CI status information:
+- `ci_status` - Current CI check status
+- `ci_checked_at` - Timestamp of last check
+- `ci_url` - Link to CI results page
 
-### Rust Modules
+### Core Modules
 
-- **`ci/github_provider.rs`**: Octocrab integration for GitHub API
-- **`ci/status_checker.rs`**: Polling logic with exponential backoff
-- **`commands/ci.rs`**: Tauri commands for CI operations
-- **`git/service.rs`**: `push_branch()` for pushing commits
+- **CI Provider Integration** - VCS-specific API clients (GitHub, GitLab)
+- **Status Checker** - Polling logic with exponential backoff
+- **Git Service** - Branch push operations
+- **CI Commands** - IPC interface for CI operations
 
-### Commands
+### IPC Commands
 
 - `push_commit(execution_id, force)` - Push branch to remote, start CI checking
 - `start_ci_check(execution_id)` - Manually start CI polling
@@ -108,20 +108,21 @@ ALTER TABLE executions ADD COLUMN ci_url TEXT;
 
 ## Prerequisites
 
-### GitHub Token
+### VCS Provider Tokens
 
-Configure your GitHub token in the Settings page (stored securely in system keyring):
+Configure your VCS provider tokens in the Settings page (stored securely in system keyring):
 
 1. Navigate to Settings
-2. Enter your GitHub Personal Access Token
-3. Token is securely stored in your system keyring
+2. Enter your provider tokens (GitHub, GitLab, etc.)
+3. Tokens are securely stored in your system keyring
 
-Token must have:
-
+**GitHub Token** must have:
 - `repo` scope (for private repositories)
 - `checks:read` scope (optional, for richer CI details)
 
-**Note**: Legacy support for `MAESTRO_GITHUB_TOKEN` environment variable has been removed. Use Settings instead.
+**GitLab Token** must have:
+- `read_api` scope (for pipeline status)
+- `read_repository` scope (for repository access)
 
 ### SSH Authentication
 
@@ -135,15 +136,18 @@ See [ssh-authentication.md](./ssh-authentication.md) for setup details.
 
 ## Rate Limits
 
-GitHub API has rate limits:
+VCS provider APIs have rate limits that Maestro handles gracefully:
 
-- **Authenticated**: 5,000 requests/hour
-- **Unauthenticated**: 60 requests/hour
+**GitHub:**
+- Authenticated: 5,000 requests/hour
+- Unauthenticated: 60 requests/hour
 
-Maestro handles rate limits gracefully:
+**GitLab:**
+- Varies by instance configuration (typically 600-2,000 requests/minute)
 
+Maestro's rate limit handling:
 - Uses exponential backoff (10s → 120s)
-- Respects `X-RateLimit-Reset` headers
+- Respects rate limit headers
 - Falls back to "skipped" if polling exhausted
 
 ## Polling Strategy
@@ -162,10 +166,10 @@ If still pending after 5 minutes, status remains "pending" and can be manually r
 
 ## Limitations
 
-- **GitHub only**: Currently only GitHub Actions and commit statuses are supported
-- **No auto-polling**: Background polling is disabled (manual refresh available)
+- **Manual refresh only**: Background polling is disabled (manual refresh available)
 - **No webhooks**: Uses polling instead of real-time webhooks
-- **No job details**: Shows aggregate status, not individual job details
+- **Aggregate status**: Shows overall status, not individual job details
+- **Provider-specific features**: Some advanced CI features may not be available across all providers
 
 ## Future Enhancements
 

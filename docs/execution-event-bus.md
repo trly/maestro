@@ -50,30 +50,31 @@ clearExecutionData(executionId)
 unsubscribeFromExecutions()
 ```
 
-### Helper Store (`executions.ts`)
+### Direct Store Access
 
-Provides derived stores that merge execution data with live updates:
+Components access execution updates directly from the centralized `executionStore`:
 
 ```typescript
-export function getExecutionWithUpdates(execution: Execution) {
-	return derived(executionStore, ($updates) => ({
-		...execution,
-		...($updates[execution.id] || {}),
-	}))
-}
+import { executionStore } from "$lib/stores/executionBus"
+
+// In Svelte 5 runes mode, access updates directly
+let executionsWithUpdates = $derived(
+	executions.map((execution) => {
+		const updates = $executionStore.get(execution.id)
+		return updates ? { ...execution, ...updates } : execution
+	})
+)
 ```
 
 ## Backend Events
 
-Events emitted from Rust backend (`executor_events.rs`):
+Events emitted from backend:
 
-```rust
-emit_execution_session(app, execution_id, session_id, thread_url)
-emit_execution_status(app, execution_id, status)
-emit_execution_validation(app, execution_id, validation_status, validation_thread_url?)
-emit_execution_commit(app, execution_id, commit_status, commit_sha?, committed_at?)
-emit_execution_ci(app, execution_id, ci_status, ci_url?)
-```
+- `execution:session` - Session ID and thread URL
+- `execution:status` - Execution status changes
+- `execution:validation` - Validation status and thread URL
+- `execution:commit` - Commit status, SHA, and timestamp
+- `execution:ci` - CI status and results URL
 
 All events include `executionId` for store keying.
 

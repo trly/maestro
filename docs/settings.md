@@ -21,31 +21,14 @@ Maestro provides user-configurable settings for development tools, CI monitoring
 
 ### Backend Storage
 
-Settings are stored in a key-value table:
+Settings are stored in a key-value database table.
 
-```sql
-CREATE TABLE settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-);
-```
+**IPC Commands:**
 
-**Commands:**
-
-```rust
-// src-tauri/src/commands/settings.rs
-#[tauri::command]
-pub fn get_setting(key: String, store: State<Mutex<Store>>)
-    -> Result<Option<String>, String>
-
-#[tauri::command]
-pub fn set_setting(key: String, value: String, store: State<Mutex<Store>>)
-    -> Result<(), String>
-
-#[tauri::command]
-pub fn get_ci_stuck_threshold_minutes(store: State<Mutex<Store>>)
-    -> Result<i64, String>
-```
+- `get_setting(key)` - Retrieve setting value
+- `set_setting(key, value)` - Update setting
+- `get_ci_stuck_threshold_minutes()` - Get CI timeout threshold
+- `get_max_concurrent_executions()` - Get execution concurrency limit
 
 ## Frontend Store
 
@@ -59,28 +42,21 @@ Maestro detects installed editors and terminals on the user's system using the `
 
 ### Backend Detection
 
-```rust
-// src-tauri/src/commands/app_check.rs
-pub struct AppInfo {
-    pub command: String,        // e.g., "nvim"
-    pub display_name: String,   // e.g., "Neovim"
-    pub needs_terminal: bool,   // true for vim/nvim
-}
+**Editor Detection:**
 
-#[tauri::command]
-pub fn get_available_editors() -> Vec<AppInfo> {
-    // Checks PATH for: vim, nvim, code, cursor, zed
-    // Returns only installed editors
-}
+The system checks the PATH for known editors (vim, nvim, code, cursor, zed) and returns only installed ones.
 
-#[tauri::command]
-pub fn get_available_terminals() -> Vec<TerminalInfo> {
-    // macOS: Terminal.app, Ghostty
-    // Linux/Windows: TBD
-}
-```
+Each editor provides:
+- Command name (e.g., "nvim")
+- Display name (e.g., "Neovim")
+- Terminal requirement flag (true for vim/nvim)
 
-**Detection method:** Uses `which` command to check if editor/terminal exists in PATH.
+**Terminal Detection:**
+
+- macOS: Terminal.app, Ghostty
+- Linux/Windows: To be implemented
+
+Detection uses the system PATH to verify application availability.
 
 ### Supported Editors
 
@@ -136,146 +112,59 @@ export async function openInEditor(
 
 ### Backend Launch Strategies
 
-```rust
-// src-tauri/src/commands/worktree.rs
-#[tauri::command]
-pub fn open_worktree_in_editor(
-    promptset_id: String,
-    execution_id: String,
-    editor_command: String,
-    paths: State<'_, Paths>
-) -> Result<(), String> {
-    let worktree_path = execution_worktree_path(&paths, &promptset_id, &execution_id);
+**Direct Editor Launch:**
 
-    Command::new(&editor_command)
-        .arg(worktree_path)
-        .spawn()?;
+For editors that don't need a terminal (VS Code, Cursor, Zed), the system spawns the editor process directly with the worktree path as an argument.
 
-    Ok(())
-}
+**Terminal-Wrapped Launch:**
 
-#[tauri::command]
-pub fn open_worktree_with_terminal(
-    promptset_id: String,
-    execution_id: String,
-    editor_command: String,
-    terminal_command: String,
-    paths: State<'_, Paths>
-) -> Result<(), String> {
-    let worktree_path = execution_worktree_path(&paths, &promptset_id, &execution_id);
+For terminal editors (vim, nvim), the system:
 
-    match terminal_command.as_str() {
-        "ghostty" => {
-            Command::new("ghostty")
-                .arg("-e")
-                .arg(&editor_command)
-                .arg(worktree_path)
-                .spawn()?;
-        },
-        "open -a Terminal" => {
-            // Use AppleScript to launch Terminal.app
-            let shell_script = format!("cd {} && exec {}", worktree_path, editor_command);
-            let applescript = format!("tell application \"Terminal\" ...");
-            Command::new("osascript")
-                .arg("-e")
-                .arg(applescript)
-                .spawn()?;
-        },
-        _ => return Err(format!("Unsupported terminal: {}", terminal_command))
-    }
+1. Determines the appropriate terminal emulator
+2. Spawns the terminal with the editor command
+3. Passes the worktree path to the editor
 
-    Ok(())
-}
-```
+**Supported Launch Methods:**
+
+- Ghostty: Direct launch with `-e` flag
+- Terminal.app: AppleScript-based launch
+- Other terminals: Platform-specific implementations
 
 ## Secure Token Storage
 
 Maestro uses the **platform keyring** for secure credential storage, not the settings database. This keeps sensitive data encrypted at the OS level.
 
-### Keyring Architecture
+### Platform Storage
 
-```rust
-// src-tauri/src/commands/tokens.rs
-use keyring::Entry;
-
-const SERVICE_NAME: &str = "dev.trly.maestro";
-
-fn get_entry(key: &str) -> Result<Entry, String> {
-    Entry::new(SERVICE_NAME, key)
-        .map_err(|e| format!("Failed to access keyring: {}", e))
-}
-```
-
-**Platform-Specific Storage:**
+Maestro stores tokens in the operating system's secure credential storage:
 
 - **macOS**: Keychain (Keychain Access.app)
 - **Linux**: Secret Service API (GNOME Keyring, KWallet)
 - **Windows**: Credential Manager
 
-**Token Keys:**
+### Supported Tokens
 
 - `amp_token` - Amp API authentication token
 - `github_token` - GitHub Personal Access Token
+- `gitlab_token` - GitLab Personal Access Token
+- `gitlab_instance_url` - GitLab instance URL
 - `sourcegraph_endpoint` - Sourcegraph instance URL
 - `sourcegraph_token` - Sourcegraph access token
 
 ### Token Operations
 
-```rust
-#[tauri::command]
-pub fn set_token(key: String, value: String) -> Result<(), String> {
-    let entry = get_entry(&key)?;
-    entry.set_password(&value)
-        .map_err(|e| format!("Failed to save token: {}", e))
-}
-
-#[tauri::command]
-pub fn get_token(key: String) -> Result<Option<String>, String> {
-    let entry = get_entry(&key)?;
-    match entry.get_password() {
-        Ok(password) => Ok(Some(password)),
-        Err(keyring::Error::NoEntry) => Ok(None),
-        Err(e) => Err(format!("Failed to retrieve token: {}", e))
-    }
-}
-
-#[tauri::command]
-pub fn get_token_masked(key: String) -> Result<Option<String>, String> {
-    // Returns "abc...xyz" format for display
-}
-
-#[tauri::command]
-pub fn delete_token(key: String) -> Result<(), String> {
-    let entry = get_entry(&key)?;
-    entry.delete_credential()
-}
-```
-
-### Frontend Token Store
+Access tokens through the IPC layer:
 
 ```typescript
-// src/lib/tokenStore.ts
 import * as ipc from "$lib/ipc"
 
-export type TokenKey = "amp_token" | "github_token" | "sourcegraph_endpoint" | "sourcegraph_token"
+// Retrieve all tokens
+const tokens = await ipc.getAllTokens()
+const tokensMasked = await ipc.getAllTokensMasked() // Shows "abc...xyz" format
 
-export const tokenStore = {
-	async getToken(key: TokenKey): Promise<string | null> {
-		return await ipc.getToken(key)
-	},
-
-	async getTokenMasked(key: TokenKey): Promise<string | null> {
-		return await ipc.getTokenMasked(key)
-	},
-
-	async setToken(key: TokenKey, value: string): Promise<void> {
-		return await ipc.setToken(key, value)
-	},
-
-	async deleteToken(key: TokenKey): Promise<void> {
-		return await ipc.deleteToken(key)
-	},
-}
+// Set/delete individual tokens
+await ipc.setToken("github_token", value)
+await ipc.deleteToken("github_token")
 ```
 
 ### Security Benefits
@@ -286,21 +175,7 @@ export const tokenStore = {
 4. **Secure Retrieval**: Tokens retrieved at command execution time only
 5. **Automatic Cleanup**: Tokens removed when deleted from keyring
 
-### Usage Pattern
-
-```rust
-// In Tauri commands - retrieve token from keyring
-use crate::commands::tokens::get_token_value;
-
-let github_token = get_token_value("github_token")
-    .map_err(|e| format!("Failed to access token: {}", e))?
-    .ok_or_else(|| "GitHub token not configured".to_string())?;
-
-// Use token for API call
-let provider = GitHubProvider::new(github_token)?;
-```
-
-**Critical:** Always retrieve tokens at command execution time, never cache in memory or store in structs.
+**Critical:** Tokens are retrieved on-demand for each operation and never cached in memory.
 
 ## Settings UI
 
@@ -384,18 +259,7 @@ The CI stuck threshold determines when pending CI checks are marked as "not_conf
 
 **Use case:** Prevents false positives for repos without CI, while allowing slow CI workflows to start.
 
-**Implementation:**
-
-```rust
-// src-tauri/src/db/store.rs
-pub fn get_ci_stuck_threshold_minutes(&self) -> Result<i64> {
-    let value = self.get_setting("ci_stuck_threshold_minutes")?
-        .unwrap_or_else(|| "10".to_string());
-
-    value.parse::<i64>()
-        .or(Ok(10))  // Default to 10 if invalid
-}
-```
+The backend retrieves this setting and defaults to 10 minutes if not configured or invalid.
 
 See [ci-tracking.md](./ci-tracking.md) for how this is used in CI status checking.
 
@@ -449,19 +313,19 @@ When settings aren't loaded or are empty, Maestro falls back to:
 
 ## Implementation Reference
 
-**Backend:**
+**Backend Modules:**
 
-- `src-tauri/src/commands/settings.rs` - Settings commands
-- `src-tauri/src/commands/app_check.rs` - Editor/terminal detection
-- `src-tauri/src/commands/worktree.rs` - Editor launch
-- `src-tauri/src/db/store.rs` - Database operations
+- Settings commands - IPC interface
+- App detection - Editor/terminal availability
+- Worktree commands - Editor launch
+- Database operations - Settings persistence
 
-**Frontend:**
+**Frontend Modules:**
 
-- `src/lib/stores/settingsStore.ts` - Settings store
-- `src/lib/utils/worktree.ts` - Editor launch logic
-- `src/lib/components/Settings.svelte` - Settings UI
-- `src/routes/+layout.svelte` - Settings initialization
+- Settings store - Cached settings state
+- Worktree utilities - Editor launch logic
+- Settings UI - Configuration interface
+- App layout - Settings initialization
 
 ## Related Documentation
 

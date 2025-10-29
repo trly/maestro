@@ -394,34 +394,20 @@ Example: `maestro/a1b2c3d4/e5f6g7h8/i9j0k1l2`
 
 ### Repository Locking
 
-```rust
-lazy_static! {
-    static ref REPO_LOCKS: Mutex<HashMap<String, Arc<Mutex<()>>>> =
-        Mutex::new(HashMap::new());
-}
-```
-
-Ensures only one execution per repository performs git operations at a time.
+The backend ensures only one execution per repository performs git operations at a time through repository-level locking.
 
 ### Active Execution Tracking
 
-```rust
-lazy_static! {
-    static ref ACTIVE_EXECUTIONS: Mutex<HashSet<String>> =
-        Mutex::new(HashSet::new());
-}
-```
+The system prevents starting duplicate executions for the same execution ID through active execution tracking.
 
-Prevents starting duplicate executions for same ID.
+### Process Isolation
 
-### Child Process Namespacing
-
-Amp SDK uses namespaces to isolate processes:
+The AI execution system uses namespaces to isolate processes:
 
 - Executions: `exec:{executionId}`
 - Validations: `val:{executionId}`
 
-Enables clean cancellation without interfering with other operations.
+This enables clean cancellation without interfering with other operations.
 
 ## Error Handling
 
@@ -447,16 +433,12 @@ Enables clean cancellation without interfering with other operations.
 
 ### Reconciliation on Startup
 
-```rust
-reconcile_on_startup(db: &Connection) -> Result<()>
-```
-
-Resets stuck states on app launch:
+On app startup, the system resets stuck states:
 
 - Running executions → Failed
 - Running validations → null
 
-Prevents orphaned "running" states from crashed sessions.
+This prevents orphaned "running" states from crashed sessions.
 
 ## Best Practices
 
@@ -517,19 +499,19 @@ Verify:
 
 ## Implementation Reference
 
-**Backend:**
+**Backend Modules:**
 
-- `src-tauri/src/commands/executor.rs` - Execution commands
-- `src-tauri/src/commands/executor_events.rs` - Event emission
-- `src-tauri/src/git/service.rs` - Git operations
-- `src-tauri/src/amp/` - Amp SDK integration
+- Execution commands - IPC interface for execution lifecycle
+- Event emission - Real-time execution updates
+- Git service - Worktree and branch management
+- AI integration - Execution and validation sessions
 
-**Frontend:**
+**Frontend Modules:**
 
-- `src/lib/stores/executionBus.ts` - Event bus
-- `src/lib/stores/executionStats.ts` - Stats fetching
-- `src/routes/(app)/executions/` - UI routes
-- `src/lib/components/Execution*.svelte` - UI components
+- Event bus - Real-time execution updates
+- Stats fetching - On-demand statistics
+- Execution routes - UI pages
+- Execution components - Reusable UI elements
 
 ## Related Documentation
 

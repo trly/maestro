@@ -185,20 +185,7 @@ const repo = await ipc.createRepository("github", "sourcegraph/maestro")
 
 ### Repository Clone
 
-```rust
-// src-tauri/src/git/service.rs
-pub fn clone_repo(url: &str, local_path: &Path) -> Result<()> {
-    let mut callbacks = RemoteCallbacks::new();
-    callbacks.credentials(|_url, username, _allowed_types| {
-        git2::Cred::ssh_key_from_agent(username.unwrap_or("git"))
-    });
-
-    Repository::clone(&url, local_path)?;
-    Ok(())
-}
-```
-
-Uses SSH authentication via ssh-agent. See [ssh-authentication.md](./ssh-authentication.md).
+When a repository is added, the backend clones it to the admin repository directory using SSH authentication via ssh-agent. See [ssh-authentication.md](./ssh-authentication.md).
 
 ## Query API
 
@@ -362,16 +349,16 @@ Use when exploring multiple approaches.
 
 ## Implementation Reference
 
-**Backend:**
+**Backend Modules:**
 
-- `src-tauri/src/db/store.rs` - Database operations
-- `src-tauri/src/commands/promptsets.rs` - Tauri commands
+- Database operations - Prompt set CRUD
+- Prompt set commands - IPC interface
 
-**Frontend:**
+**Frontend Modules:**
 
-- `src/lib/ipc.ts` - Type-safe IPC wrappers
-- `src/routes/(app)/promptsets/` - UI routes
-- `src/lib/components/PromptSet*.svelte` - UI components
+- IPC layer - Type-safe command wrappers
+- Prompt set routes - UI pages
+- Prompt set components - Reusable UI elements
 
 ## Related Documentation
 

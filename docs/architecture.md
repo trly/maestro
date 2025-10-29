@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Maestro is a hybrid Tauri 2.0 + SvelteKit desktop application for orchestrating AI prompts across multiple repositories using Amp AI.
+Maestro is a desktop application for orchestrating AI prompts across multiple repositories using Amp.
 
 ## Technology Stack
 
@@ -15,10 +15,9 @@ Maestro is a hybrid Tauri 2.0 + SvelteKit desktop application for orchestrating 
 **Backend:**
 
 - **Tauri 2.0** (Rust)
-- **SQLite** database via rusqlite
-- **git2-rs** for native git operations
-- **octocrab** for GitHub API integration
-- **@sourcegraph/amp-sdk** for AI execution
+- **SQLite** database
+- **VCS Integration Layer** - Git operations, GitHub/GitLab API integration
+- **AI Execution SDK** - Amp AI orchestration
 
 ## Core Domains
 
@@ -122,7 +121,7 @@ struct Execution {
     branch: Option<String>,                 // maestro/{promptset:8}/{revision:8}/{execution:8}
 
     // CI tracking
-    ci_status: Option<CiStatus>,            // pending, passed, failed, not_configured
+    ci_status: Option<CiStatus>,            // pending, passed, failed, skipped, not_configured
     ci_checked_at: Option<i64>,
     ci_url: Option<String>,
 
@@ -181,11 +180,16 @@ emit_execution_ci(app, execution_id, ci_status, url)
 
 ```typescript
 // Frontend subscribes
-import { subscribeToExecutions } from "$lib/stores/executionBus"
+import { subscribeToExecutions, executionStore } from "$lib/stores/executionBus"
 await subscribeToExecutions()
 
-// Components get reactive updates
-const executionStore = getExecutionWithUpdates(execution)
+// Components get reactive updates via $derived
+let executionsWithUpdates = $derived(
+	executions.map((execution) => {
+		const updates = $executionStore.get(execution.id)
+		return updates ? { ...execution, ...updates } : execution
+	})
+)
 ```
 
 See [execution-event-bus.md](./execution-event-bus.md) for details.
@@ -255,13 +259,7 @@ let github_token = get_token_value("github_token")?
 
 ### SSH Authentication
 
-All git operations (clone, fetch, push) use SSH authentication:
-
-```rust
-callbacks.credentials(|_url, username_from_url, _allowed_types| {
-    git2::Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
-});
-```
+All git operations (clone, fetch, push) use SSH authentication via the system's ssh-agent.
 
 See [ssh-authentication.md](./ssh-authentication.md) for setup.
 
@@ -303,20 +301,20 @@ Enables clean cancellation without interfering with other operations.
 ### Rust Tests
 
 ```bash
-cd src-tauri
-cargo test
+make test       # or: cd src-tauri && cargo test
+make test-watch # Watch mode (requires cargo-watch)
 ```
 
-### TypeScript Tests
+### TypeScript Type Checking
 
 ```bash
-bun run check  # Type checking
+make check      # TypeScript + Rust checks
 ```
 
-### Manual Testing
+### Development
 
 ```bash
-bun run dev    # Desktop app with hot reload
+make dev        # or: cargo tauri dev
 ```
 
 ## Related Documentation

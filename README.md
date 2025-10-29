@@ -8,23 +8,24 @@ AI-powered orchestrator for running prompts across multiple repositories using [
 
 ### Prerequisites
 
-- [Bun](https://bun.sh) (JavaScript runtime & package manager)
-- [Rust](https://rustup.rs) (for Tauri backend)
-- SSH key added to GitHub (for private repos - see [SSH setup](docs/ssh-authentication.md))
+- [mise](https://mise.jdx.dev) (manages Bun, Rust, and Tauri CLI automatically)
+- SSH key added to SCM [GitHub, GitLab, etc.] (for private repos - see [SSH setup](docs/ssh-authentication.md))
 - Amp API token (for AI executions)
+- SCM PAT (for CI checks, default branch detection, etc.)
 
 ### Installation
 
-1. **Install dependencies:**
+1. **Install mise** (if not already installed):
 
    ```bash
-   bun install
+   brew install mise
    ```
 
-2. **Install Rust** (if not already installed):
+2. **Install project dependencies** (mise handles Bun, Rust, and Tauri CLI):
 
    ```bash
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   mise install
+   bun install
    ```
 
 3. **Set up SSH authentication** (required for private repos):
@@ -43,7 +44,7 @@ AI-powered orchestrator for running prompts across multiple repositories using [
 
 4. **Start development server:**
    ```bash
-   bun run dev
+   make dev
    ```
 
 ### Production Installation
@@ -51,7 +52,7 @@ AI-powered orchestrator for running prompts across multiple repositories using [
 1. **Build the installer:**
 
    ```bash
-   bun run build
+   make build
    ```
 
 2. **Install the app:**
@@ -77,12 +78,14 @@ AI-powered orchestrator for running prompts across multiple repositories using [
 
 ## Commands
 
-| Command         | Description                         |
-| --------------- | ----------------------------------- |
-| `bun run dev`   | Start Tauri app in development mode |
-| `bun run build` | Build production installer          |
-| `bun run check` | Run TypeScript type checking        |
-| `cargo test`    | Run Rust tests (from `src-tauri/`)  |
+| Command      | Description                                 |
+| ------------ | ------------------------------------------- |
+| `make dev`   | Start Tauri app in development mode         |
+| `make build` | Build production installer                  |
+| `make check` | Run TypeScript and Rust checks (pre-commit) |
+| `make tidy`  | Format TypeScript and Rust code             |
+| `make test`  | Run Rust test suite                         |
+| `make help`  | Show all available commands                 |
 
 ## Tech Stack
 
@@ -103,7 +106,7 @@ Maestro orchestrates AI-powered code changes across multiple repositories:
 2. **Prompt Revisions** - Version control for prompt iterations
 3. **Executions** - Isolated worktree environments for each repository
 4. **Validations** - Automated testing of AI-generated changes
-5. **Failure Analysis** - Aggregate and analyze failures using Amp V2 API
+5. **Failure Analysis** - Aggregate and analyze failures using Amp's `read_thread` tool
 
 ### Data Flow
 
@@ -181,8 +184,8 @@ Maestro uses platform-specific app data directories:
 
 3. **Always run before committing**:
    ```bash
-   bun run check    # TypeScript
-   cargo test       # Rust (from src-tauri/)
+   make check    # TypeScript + Rust checks
+   make tidy     # Format code (run after successful check)
    ```
 
 ### Common Patterns

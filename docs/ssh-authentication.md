@@ -65,12 +65,12 @@ ssh -T git@github.com
 When cloning a repository, Maestro:
 
 1. Converts repo to SSH URL format: `git@github.com:owner/repo.git`
-2. Uses `git2::Cred::ssh_key_from_agent()` to authenticate
-3. Retrieves credentials from ssh-agent (no manual key path needed)
+2. Authenticates via ssh-agent
+3. Retrieves credentials automatically (no manual key path needed)
 
 ### Fetch Operation
 
-All fetch operations use the same SSH authentication mechanism through the git2 library's credential callback system.
+All fetch operations use the same SSH authentication mechanism through ssh-agent integration.
 
 ## Troubleshooting
 
@@ -123,18 +123,16 @@ If you have multiple SSH keys for different GitHub accounts:
 
 ## Technical Implementation
 
-### Code Flow
+### Authentication Flow
 
-1. **Clone Request** (`commands/executor.rs`):
-   - `ensure_admin_repo_and_fetch()` → `GitService::clone_repo()`
-2. **SSH Authentication** (`git/service.rs`):
-   ```rust
-   callbacks.credentials(|_url, username_from_url, _allowed_types| {
-       git2::Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
-   });
-   ```
+1. **Clone/Fetch Request**:
+   - Ensures admin repository exists and is up-to-date
+   - Initiates git operation via SSH
+2. **SSH Authentication**:
+   - Connects to ssh-agent for credentials
+   - Uses standard git SSH username ("git")
 3. **Key Retrieval**:
-   - git2 library queries ssh-agent for loaded keys
+   - Queries ssh-agent for loaded keys
    - Tries keys sequentially until one succeeds
    - No manual file path or passphrase needed
 

@@ -26,10 +26,10 @@ See [AGENTS.md Status Icon/Color Mappings](../AGENTS.md#styling--theming) for co
 
 Complete architectural overview covering:
 
-- Technology stack (Tauri + SvelteKit)
+- Technology stack (VCS integration, AI execution SDK)
 - Core domain models (Repositories, Prompt Sets, Revisions, Executions)
 - Data flow architecture (IPC, Event Bus, Reactivity)
-- Security architecture (Keyring, SSH)
+- Security architecture (Platform keyring, SSH)
 - File system layout
 - Concurrency & safety patterns
 
@@ -61,12 +61,12 @@ Complete execution lifecycle:
 
 ### [Failure Analysis](./analyses.md)
 
-**When to read:** Working with failure analysis, Amp V2 API, or OAuth2 integration
+**When to read:** Working with failure analysis or Amp V2 API integration
 
 Aggregating and analyzing failures:
 
 - Analysis domain model and workflow
-- Amp V2 API integration with OAuth2
+- Amp V2 API integration
 - Thread message fetching and formatting
 - Background analysis execution
 - Frontend trigger UI and result display
@@ -78,21 +78,21 @@ Aggregating and analyzing failures:
 
 How Maestro tracks code changes:
 
-- Diff architecture (committed vs worktree)
-- Backend diff module (`diff.rs`)
-- Frontend diff store with caching
-- Diff statistics calculation
+- Worktree diff vs. committed diff concepts
+- Change lifecycle
+- Frontend API for accessing diffs
+- Statistics calculation
 - File-level diff viewing
 
 ### [CI Tracking](./ci-tracking.md)
 
-**When to read:** Working with CI integration or GitHub API
+**When to read:** Working with CI integration or VCS provider APIs
 
-GitHub CI/CD integration:
+VCS CI/CD integration:
 
 - CI status states (pending, passed, failed, not_configured)
 - Workflow from commit → push → CI check
-- Status aggregation (GitHub Actions + Commit Statuses)
+- VCS provider support (GitHub, GitLab)
 - Polling strategy and rate limits
 - UI components (badges, status display)
 
@@ -127,7 +127,7 @@ Critical Svelte 5 patterns:
 
 ### [IPC Guide](./ipc-guide.md)
 
-**When to read:** Adding new Tauri commands or backend features
+**When to read:** Adding new backend commands or features
 
 Centralized type-safe IPC layer:
 
@@ -145,20 +145,8 @@ Real-time event system:
 - Subscribing to execution events
 - Supported events (session, status, validation, commit, progress, CI)
 - Reactive execution state patterns
-- Manual event handling
-- Backend event emission
-
-### [Reactivity Guide](./reactivity.md)
-
-**When to read:** Building reactive UI components with Svelte 5
-
-Comprehensive Svelte 5 patterns:
-
-- Core primitives (`$state`, `$derived`, `$props`)
-- Maestro-specific patterns (event bus integration)
-- Anti-patterns to avoid
-- Working with bits-ui components
-- Migration from Svelte 4 stores
+- Event store access patterns
+- Backend event types
 
 ## Setup & Configuration
 
@@ -172,30 +160,20 @@ User settings and preferences:
 - Settings store initialization
 - Editor and terminal detection
 - Opening worktrees with configured tools
+- Secure token storage via platform keyring
 - Best practices and fallback behavior
 
 ### [SSH Authentication](./ssh-authentication.md)
 
 **When to read:** During initial setup or troubleshooting git operations
 
-SSH setup for GitHub repositories:
+SSH setup for VCS repositories:
 
 - SSH key generation and configuration
-- Adding keys to GitHub and ssh-agent
-- How Maestro uses SSH internally
+- Adding keys to GitHub/GitLab and ssh-agent
+- How Maestro uses SSH authentication
 - Troubleshooting common issues
-
-### [Distribution](./distribution.md)
-
-**When to read:** Preparing releases or distributing the app
-
-App distribution guide:
-
-- Apple Developer account requirements
-- Code signing and notarization
-- GitHub Actions CI/CD setup
-- Manual build and distribution
-- Troubleshooting signing issues
+- Multiple SSH keys configuration
 
 ### [Sourcegraph Integration](./sourcegraph-integration.md)
 
@@ -209,16 +187,43 @@ Sourcegraph repository search integration:
 - Frontend/backend API usage
 - Error handling patterns
 
-## Additional References
+### [GitLab Integration Readiness](./gitlab-integration-readiness.md)
 
-### [Change Tracking Stats](./change-tracking-stats.md)
+**When to read:** Planning or implementing GitLab provider support
 
-Detailed dive into statistics calculation:
+GitLab integration preparation:
 
-- On-demand stats retrieval
-- Frontend caching strategy
-- Why stats aren't stored in database
-- Display in ExecutionRow component
+- Provider abstraction architecture
+- Required configuration structures
+- CI and Git provider contexts
+- Implementation checklist
+- Code locations requiring updates
+
+## Build & Distribution
+
+### [Distribution](./distribution.md)
+
+**When to read:** Preparing releases or distributing the app
+
+App distribution guide:
+
+- Apple Developer account requirements
+- Code signing and notarization
+- GitHub Actions CI/CD setup
+- Manual build and distribution
+- Troubleshooting signing issues
+
+## Examples & References
+
+### [Analysis Example](./analysis-example.md)
+
+**When to read:** Understanding practical analysis workflow
+
+Real-world analysis example:
+
+- Creating and running analyses
+- Working with analysis results
+- Frontend/backend interaction patterns
 
 ## Related Files
 
@@ -229,8 +234,9 @@ Detailed dive into statistics calculation:
 
 When updating docs:
 
-1. **Verify accuracy** - Check against current codebase
-2. **Include examples** - Show TypeScript/Rust code snippets
-3. **Link related docs** - Help users discover related concepts
-4. **Update this index** - Keep README.md in sync
-5. **Follow domain structure** - Organize by core domain (not implementation detail)
+1. **Use high-level abstractions** - Avoid implementation details like specific Rust crates or file paths
+2. **Verify accuracy** - Check against current codebase
+3. **Include examples** - Show usage patterns and API calls
+4. **Link related docs** - Help users discover related concepts
+5. **Update this index** - Keep README.md in sync
+6. **Follow domain structure** - Organize by core domain concepts, not implementation details
