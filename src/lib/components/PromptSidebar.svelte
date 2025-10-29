@@ -182,7 +182,7 @@
 <div class="h-full flex flex-col bg-card">
 	<!-- Header -->
 	<div
-		class="flex items-center gap-1.5 px-2 py-2.5 border-b border-border/10 flex-shrink-0 bg-muted/20"
+		class="flex items-center gap-1.5 px-2 py-2.5 border-b border-border/10 flex-shrink-0 bg-muted/20 transition-all"
 	>
 		{#if !collapsed}
 			<h2 class="text-sm font-semibold text-foreground flex-1">Prompt Sets</h2>
@@ -220,37 +220,37 @@
 				<PanelLeftClose class="w-3.5 h-3.5" />
 			</button>
 		{:else}
-			<div class="flex flex-col gap-1.5 w-full">
-				<UiTooltip content="Expand sidebar">
+			<div class="flex flex-col gap-2 w-full items-center">
+				<UiTooltip content="Expand sidebar" side="right">
 					{#snippet children({ props })}
 						<button
 							{...props}
 							onclick={onToggleCollapse}
-							class="p-1.5 rounded-md hover:bg-accent transition-colors mx-auto"
+							class="p-1.5 rounded-md hover:bg-accent transition-colors"
 							aria-label="Expand sidebar"
 						>
 							<PanelLeftOpen class="w-3.5 h-3.5" />
 						</button>
 					{/snippet}
 				</UiTooltip>
-				<UiTooltip content="Create new prompt set">
+				<UiTooltip content="Create new prompt set" side="right">
 					{#snippet children({ props })}
 						<button
 							{...props}
 							onclick={() => goto("/create")}
-							class="p-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mx-auto"
+							class="p-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
 							aria-label="Create prompt set"
 						>
 							<Plus class="w-3.5 h-3.5" />
 						</button>
 					{/snippet}
 				</UiTooltip>
-				<UiTooltip content="Settings">
+				<UiTooltip content="Settings" side="right">
 					{#snippet children({ props })}
 						<button
 							{...props}
 							onclick={() => goto("/settings")}
-							class="p-1.5 rounded-md transition-colors mx-auto {pathname === '/settings'
+							class="p-1.5 rounded-md transition-colors {pathname === '/settings'
 								? 'bg-accent text-accent-foreground'
 								: 'hover:bg-accent'}"
 							aria-label="Settings"
