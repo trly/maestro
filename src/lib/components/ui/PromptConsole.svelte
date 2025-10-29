@@ -17,18 +17,16 @@
 		onSaveValidation: (prompt: string, autoValidate: boolean) => Promise<void>
 	} = $props()
 
-	let promptHeight = $state(256)
-	let isResizing = $state(false)
 	let isEditingValidation = $state(false)
 	let editedValidationPrompt = $state(validationPrompt || "")
 	let editedAutoValidate = $state(autoValidate)
 	let isSaving = $state(false)
-	let manuallyResized = $state(false)
 	let promptContentRef = $state<HTMLPreElement | null>(null)
 	let validationContentRef = $state<HTMLElement | null>(null)
-	let startY = $state(0)
-	let startHeight = $state(0)
+	let promptScrollContainerRef = $state<HTMLDivElement | null>(null)
+	let validationScrollContainerRef = $state<HTMLDivElement | null>(null)
 	let settings = $state<any>({})
+	let isSyncingScroll = $state(false)
 
 	$effect(() => {
 		settingsStore.subscribe((s) => (settings = s))
@@ -39,58 +37,6 @@
 			settingsStore.updateUI({ promptSplitPct: sizes[0] })
 		}
 	}
-
-	function handleResizeStart(e: MouseEvent) {
-		isResizing = true
-		manuallyResized = true
-		startY = e.clientY
-		startHeight = promptHeight
-		e.preventDefault()
-	}
-
-	function handleResizeMove(e: MouseEvent) {
-		if (!isResizing) return
-		const delta = e.clientY - startY
-		const newHeight = startHeight + delta
-		const minHeight = 100
-		const maxHeight = window.innerHeight * 0.7
-		promptHeight = Math.max(minHeight, Math.min(maxHeight, newHeight))
-	}
-
-	function handleResizeEnd() {
-		isResizing = false
-	}
-
-	function calculateAutoHeight(): number {
-		if (manuallyResized) return promptHeight
-
-		// Calculate based on content height
-		const promptContentHeight = promptContentRef?.scrollHeight || 0
-		const validationContentHeight = validationContentRef?.scrollHeight || 0
-		const maxContentHeight = Math.max(promptContentHeight, validationContentHeight)
-
-		// Add padding and header space (approx 48px for header)
-		const neededHeight = maxContentHeight + 48
-
-		// Cap at 50% of viewport height
-		const maxViewportHeight = Math.floor(window.innerHeight * 0.5)
-
-		// Use at least 200px, cap at 50% viewport or content height (whichever is smaller)
-		return Math.max(200, Math.min(neededHeight, maxViewportHeight))
-	}
-
-	let computedHeight = $derived(calculateAutoHeight())
-
-	$effect(() => {
-		if (isResizing) {
-			document.addEventListener("mousemove", handleResizeMove)
-			document.addEventListener("mouseup", handleResizeEnd)
-			return () => {
-				document.removeEventListener("mousemove", handleResizeMove)
-				document.removeEventListener("mouseup", handleResizeEnd)
-			}
-		}
-	})
 
 	function startEditingValidation() {
 		editedValidationPrompt = validationPrompt || ""
@@ -118,15 +64,36 @@
 		editedValidationPrompt = validationPrompt || ""
 		editedAutoValidate = autoValidate
 	})
+
+	function handlePromptScroll() {
+		if (!promptScrollContainerRef || !validationScrollContainerRef || isSyncingScroll) return
+		isSyncingScroll = true
+		const scrollPercentage =
+			promptScrollContainerRef.scrollTop /
+			(promptScrollContainerRef.scrollHeight - promptScrollContainerRef.clientHeight || 1)
+		validationScrollContainerRef.scrollTop =
+			scrollPercentage *
+			(validationScrollContainerRef.scrollHeight - validationScrollContainerRef.clientHeight)
+		isSyncingScroll = false
+	}
+
+	function handleValidationScroll() {
+		if (!promptScrollContainerRef || !validationScrollContainerRef || isSyncingScroll) return
+		isSyncingScroll = true
+		const scrollPercentage =
+			validationScrollContainerRef.scrollTop /
+			(validationScrollContainerRef.scrollHeight - validationScrollContainerRef.clientHeight || 1)
+		promptScrollContainerRef.scrollTop =
+			scrollPercentage *
+			(promptScrollContainerRef.scrollHeight - promptScrollContainerRef.clientHeight)
+		isSyncingScroll = false
+	}
 </script>
 
-<div class="flex-shrink-0">
+<div class="h-full flex flex-col overflow-hidden">
 	<!-- Prompt Content -->
-	<div class="border-b border-border/20 overflow-hidden bg-card">
-		<div
-			class="flex divide-x divide-border/20"
-			style="height: {manuallyResized ? promptHeight : computedHeight}px;"
-		>
+	<div class="flex-1 overflow-hidden bg-card">
+		<div class="h-full flex divide-x divide-border/20">
 			<PaneGroup direction="horizontal" onLayoutChange={handlePromptSplitResize}>
 				<Pane defaultSize={settings.ui?.promptSplitPct ?? 50}>
 					<!-- Revision Prompt (Left) -->
@@ -134,7 +101,7 @@
 						<div class="px-4 py-2 bg-muted/10 border-b border-border/10">
 							<h3 class="text-xs font-semibold text-muted-foreground">Revision Prompt</h3>
 						</div>
-						<div class="flex-1 overflow-auto">
+						<div bind:this={promptScrollContainerRef} class="flex-1 overflow-auto" onscroll={handlePromptScroll}>
 							<pre
 								bind:this={promptContentRef}
 								class="px-6 py-6 text-sm whitespace-pre-wrap font-mono leading-relaxed text-foreground">{revision.promptText}</pre>
@@ -203,7 +170,7 @@
 									{/if}
 								</div>
 							</div>
-							<div class="flex-1 overflow-auto">
+							<div bind:this={validationScrollContainerRef} class="flex-1 overflow-auto" onscroll={handleValidationScroll}>
 								{#if isEditingValidation}
 									<textarea
 										bind:this={validationContentRef}
@@ -224,13 +191,4 @@
 			</PaneGroup>
 		</div>
 	</div>
-
-	<!-- Resize Handle -->
-	<button
-		onmousedown={handleResizeStart}
-		class="flex-shrink-0 h-1.5 bg-border/40 hover:bg-primary/40 transition-colors cursor-ns-resize group relative"
-		aria-label="Resize prompt area"
-	>
-		<div class="absolute inset-x-0 -top-1 -bottom-1"></div>
-	</button>
 </div>

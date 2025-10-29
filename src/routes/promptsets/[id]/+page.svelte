@@ -1168,7 +1168,7 @@
 		<div class="flex-1 min-h-0 flex flex-col bg-background">
 			{#if currentRevision}
 				<PaneGroup direction="vertical" onLayoutChange={handlePromptResize}>
-					<Pane defaultSize={settings.ui?.promptPct ?? 35} minSize={20} maxSize={70}>
+					<Pane defaultSize={settings.ui?.promptPct ?? 35} minSize={20} maxSize={70} class="overflow-hidden">
 						<PromptConsole
 							revision={currentRevision}
 							validationPrompt={currentPromptSet.validationPrompt}
@@ -1179,7 +1179,7 @@
 					<PaneResizer
 						class="h-1 bg-border/40 hover:bg-primary/40 transition-colors cursor-row-resize"
 					/>
-					<Pane>
+					<Pane class="overflow-hidden">
 						<Tabs.Root bind:value={activeTab} class="flex flex-col h-full">
 							<Tabs.List
 								class="flex-shrink-0 flex items-center gap-1 px-4 py-2 bg-muted/5 border-b border-border/10"
