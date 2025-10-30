@@ -6,7 +6,10 @@ import type {
 	Execution,
 	Analysis,
 	AnalysisType,
+	HealthCheckResult,
 } from "./types"
+
+export type { HealthCheckResult } from "./types"
 
 /**
  * Custom error class for Tauri IPC errors
@@ -603,6 +606,34 @@ export async function getMaxConcurrentExecutions(): Promise<number> {
 	return invokeCommand<number>("get_max_concurrent_executions", {})
 }
 
+/**
+ * Check if first run has been completed
+ */
+export async function getFirstRunComplete(): Promise<boolean> {
+	return invokeCommand<boolean>("get_first_run_complete", {})
+}
+
+/**
+ * Mark first run as complete
+ */
+export async function setFirstRunComplete(): Promise<void> {
+	return invokeCommand<void>("set_first_run_complete", {})
+}
+
+/**
+ * Check if first run dialog should be shown
+ */
+export async function getShowFirstRunDialog(): Promise<boolean> {
+	return invokeCommand<boolean>("get_show_first_run_dialog", {})
+}
+
+/**
+ * Set whether to show first run dialog
+ */
+export async function setShowFirstRunDialog(enabled: boolean): Promise<void> {
+	return invokeCommand<void>("set_show_first_run_dialog", { enabled })
+}
+
 // ============================================================================
 // Application Info Commands
 // ============================================================================
@@ -661,12 +692,6 @@ export async function checkAppInstalled(command: string): Promise<boolean> {
 // Health Check Commands
 // ============================================================================
 
-export interface HealthCheckResult {
-	success: boolean
-	username?: string
-	error?: string
-}
-
 /**
  * Check GitHub token validity and get current username
  */
@@ -686,6 +711,20 @@ export async function healthCheckGitlab(): Promise<HealthCheckResult> {
  */
 export async function healthCheckSourcegraph(): Promise<HealthCheckResult> {
 	return invokeCommand<HealthCheckResult>("health_check_sourcegraph")
+}
+
+/**
+ * Check Git installation and version
+ */
+export async function healthCheckGit(): Promise<HealthCheckResult> {
+	return invokeCommand<HealthCheckResult>("health_check_git")
+}
+
+/**
+ * Check Node.js installation and version
+ */
+export async function healthCheckNodejs(): Promise<HealthCheckResult> {
+	return invokeCommand<HealthCheckResult>("health_check_nodejs")
 }
 
 // ============================================================================

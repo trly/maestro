@@ -85,6 +85,12 @@ export type AnalysisType = "execution" | "validation"
 
 export type AnalysisStatus = "pending" | "running" | "completed" | "failed"
 
+export interface HealthCheckResult {
+	success: boolean
+	username: string | null
+	error: string | null
+}
+
 export interface Analysis {
 	id: string
 	revisionId: string

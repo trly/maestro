@@ -1,11 +1,13 @@
 <script lang="ts">
 	import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte"
+	import FirstRunDialog from "$lib/components/FirstRunDialog.svelte"
 	import PromptSidebar from "$lib/components/PromptSidebar.svelte"
 	import { onMount, onDestroy } from "svelte"
 	import { subscribeToExecutions, unsubscribeFromExecutions } from "$lib/stores/executionBus"
 	import { themeStore } from "$lib/stores/themeStore.svelte"
 	import { settingsStore } from "$lib/stores/settingsStore"
 	import { initLogger } from "$lib/logger"
+	import { getFirstRunComplete, getShowFirstRunDialog } from "$lib/ipc"
 	import { Dialog } from "bits-ui"
 	import { PaneGroup, Pane, PaneResizer } from "paneforge"
 	import "../app.css"
@@ -15,6 +17,7 @@
 	let sidebarCollapsed = $state(false)
 	let mobileSidebarOpen = $state(false)
 	let settings = $state<any>({})
+	let showFirstRun = $state(false)
 
 	$effect(() => {
 		settingsStore.subscribe((s) => (settings = s))
@@ -31,6 +34,11 @@
 		subscribeToExecutions()
 		await themeStore.init()
 		await settingsStore.load()
+
+		// Check if first run dialog should be shown
+		const firstRunComplete = await getFirstRunComplete()
+		const showFirstRunDialog = await getShowFirstRunDialog()
+		showFirstRun = !firstRunComplete && showFirstRunDialog
 	})
 
 	onDestroy(() => {
@@ -79,6 +87,7 @@
 </div>
 
 <ConfirmDialog />
+<FirstRunDialog bind:open={showFirstRun} onComplete={() => {}} />
 
 {#if mobileSidebarOpen}
 	<Dialog.Root bind:open={mobileSidebarOpen}>

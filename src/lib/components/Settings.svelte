@@ -10,6 +10,7 @@
 	import EditorSettings from "./settings/EditorSettings.svelte"
 	import CiSettings from "./settings/CiSettings.svelte"
 	import ThemeSettings from "./settings/ThemeSettings.svelte"
+	import StartupSettings from "./settings/StartupSettings.svelte"
 
 	let activeSection = $state<"general" | "agents" | "vcs">("general")
 	let loading = $state(true)
@@ -100,6 +101,7 @@
 					/>
 					<CiSettings onStatusChange={handleStatusChange} />
 					<ThemeSettings />
+					<StartupSettings onStatusChange={handleStatusChange} />
 				</div>
 			{:else if activeSection === "agents"}
 				<div class="mb-6">

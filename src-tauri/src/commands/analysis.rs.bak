@@ -284,6 +284,7 @@ async fn execute_analysis_with_amp(
     }
 
     let args = vec![
+        
         executor_script.to_string_lossy().to_string(),
         repo_path.to_string_lossy().to_string(),
         prompt_text.to_string(),

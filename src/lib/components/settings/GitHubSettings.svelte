@@ -34,6 +34,7 @@
 		} catch (error) {
 			healthCheck = {
 				success: false,
+				username: null,
 				error: error instanceof Error ? error.message : String(error),
 			}
 		} finally {

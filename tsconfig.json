@@ -10,6 +10,6 @@
 		"sourceMap": true,
 		"strict": true,
 		"moduleResolution": "bundler",
-		"types": ["vite/client", "bun-types"]
+		"types": ["vite/client"]
 	}
 }

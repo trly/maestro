@@ -5,9 +5,11 @@
   "private": true,
   "scripts": {
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "build:executor": "esbuild src/lib/amp-executor.ts --bundle --platform=node --format=esm --outfile=dist/amp-executor.js --external:fsevents"
   },
   "devDependencies": {
+    "esbuild": "^0.24.2",
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.47.2",
     "@sveltejs/vite-plugin-svelte": "^6.2.1",

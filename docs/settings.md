@@ -47,6 +47,7 @@ Maestro detects installed editors and terminals on the user's system using the `
 The system checks the PATH for known editors (vim, nvim, code, cursor, zed) and returns only installed ones.
 
 Each editor provides:
+
 - Command name (e.g., "nvim")
 - Display name (e.g., "Neovim")
 - Terminal requirement flag (true for vim/nvim)

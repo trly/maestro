@@ -26,23 +26,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Cache Bun dependencies
-        uses: actions/cache@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          path: |
-            ~/.bun/install/cache
-            ~/.cache/bun
-            ~/Library/Caches/bun
-            node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock', '.mise.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: "pnpm"
 
       - name: Install Node dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4
@@ -57,7 +53,7 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: TypeScript check
-        run: bun run check
+        run: pnpm run check
 
       - name: Cargo check
         run: cargo check
@@ -99,23 +95,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Cache Bun dependencies
-        uses: actions/cache@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          path: |
-            ~/.bun/install/cache
-            ~/.cache/bun
-            ~/Library/Caches/bun
-            node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock', '.mise.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: "pnpm"
 
       - name: Install Node dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4
@@ -157,23 +149,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Cache Bun dependencies
-        uses: actions/cache@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          path: |
-            ~/.bun/install/cache
-            ~/.cache/bun
-            ~/Library/Caches/bun
-            node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock', '.mise.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: "pnpm"
 
       - name: Install Node dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4

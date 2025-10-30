@@ -24,6 +24,7 @@ The Sourcegraph integration provides a GraphQL API client with:
 ### IPC Command
 
 The `search_sourcegraph_repositories` command accepts:
+
 - `query` - Sourcegraph search query
 - `limit` - Optional result limit
 

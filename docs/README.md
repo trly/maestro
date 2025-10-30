@@ -234,13 +234,14 @@ Real-world analysis example:
 
 ### macOS Code Signing with OpenSSL
 
-**Problem**: Installed app crashes on launch with "Library not loaded: /opt/homebrew/*/libssl.3.dylib" even after running `xattr -d com.apple.quarantine`.
+**Problem**: Installed app crashes on launch with "Library not loaded: /opt/homebrew/\*/libssl.3.dylib" even after running `xattr -d com.apple.quarantine`.
 
 **Root Cause**: Dynamic linking to Homebrew's OpenSSL creates Team ID mismatch between app and library.
 
 **Solution**: OpenSSL is now statically linked via:
+
 - `git2` uses `vendored-openssl` and `vendored-libgit2` features
-- `reqwest` uses `native-tls-vendored` feature  
+- `reqwest` uses `native-tls-vendored` feature
 - `build.rs` sets `OPENSSL_STATIC=1` for macOS builds
 
 Rebuild with `make build` to generate a properly signed, self-contained installer.

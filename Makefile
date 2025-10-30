@@ -5,20 +5,22 @@
 
 ## Development
 dev: ## Start Tauri app in development mode
+	mise exec -- pnpm run build:executor
 	cargo tauri dev
 
 build: ## Build production installer
+	mise exec -- pnpm run build:executor
 	cargo tauri build
 
 ## Quality checks
 check: ## Run TypeScript and Rust checks
-	bun run check
+	mise exec -- pnpm run check
 	cd src-tauri && cargo check
 	cd src-tauri && cargo clippy -- -D warnings
 	cd src-tauri && cargo fmt -- --check
 
 tidy: ## Format frontend and backend code
-	bun run format
+	mise exec -- pnpm run format
 	cd src-tauri && cargo fmt
 
 test: ## Run Rust test suite
@@ -32,10 +34,10 @@ icon: ## Generate app icons from source image
 	cargo tauri icon
 
 clean: ## Clean build artifacts
-	rm -rf node_modules bun.lock
-	bun install
+	rm -rf node_modules pnpm-lock.yaml
+	mise exec -- pnpm install
 	cd src-tauri && cargo clean
-	rm -rf dist/
+	rm -rf dist/amp-executor.js
 	rm -rf .svelte-kit/
 
 ## Help

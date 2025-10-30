@@ -230,7 +230,7 @@ async fn execute_with_amp(
     let mut session_id = String::new();
     let mut result_message: Option<String> = None;
 
-    let node_path = which::which("node").context("node command not found in PATH")?;
+    let node_path = which::which("node").context("bun command not found in PATH")?;
 
     // In dev mode, use the source file directly
     // In production, use the bundled resource
@@ -260,6 +260,7 @@ async fn execute_with_amp(
     }
 
     let mut args = vec![
+        
         executor_script.to_string_lossy().to_string(),
         repo_path.to_string_lossy().to_string(),
         prompt_text.to_string(),

@@ -84,6 +84,7 @@ Displays current CI status with appropriate icon and color:
 ### Database Schema
 
 Executions store CI status information:
+
 - `ci_status` - Current CI check status
 - `ci_checked_at` - Timestamp of last check
 - `ci_url` - Link to CI results page
@@ -117,10 +118,12 @@ Configure your VCS provider tokens in the Settings page (stored securely in syst
 3. Tokens are securely stored in your system keyring
 
 **GitHub Token** must have:
+
 - `repo` scope (for private repositories)
 - `checks:read` scope (optional, for richer CI details)
 
 **GitLab Token** must have:
+
 - `read_api` scope (for pipeline status)
 - `read_repository` scope (for repository access)
 
@@ -139,13 +142,16 @@ See [ssh-authentication.md](./ssh-authentication.md) for setup details.
 VCS provider APIs have rate limits that Maestro handles gracefully:
 
 **GitHub:**
+
 - Authenticated: 5,000 requests/hour
 - Unauthenticated: 60 requests/hour
 
 **GitLab:**
+
 - Varies by instance configuration (typically 600-2,000 requests/minute)
 
 Maestro's rate limit handling:
+
 - Uses exponential backoff (10s → 120s)
 - Respects rate limit headers
 - Falls back to "skipped" if polling exhausted

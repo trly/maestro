@@ -15,12 +15,14 @@ Maestro tracks file changes from both committed history and live worktrees. **Fo
 Maestro provides two types of change tracking:
 
 **Worktree Diff** - Changes in active execution worktrees:
+
 - Tracks uncommitted changes in the working directory
 - Shows added, modified, and deleted files
 - Includes line-level statistics (additions/deletions)
 - Available while execution is in progress or completed but not yet committed
 
 **Committed Diff** - Changes from git history:
+
 - Regenerated from commit metadata stored in the database
 - Shows the exact changes between parent and current commit
 - Available even after worktree cleanup
@@ -80,6 +82,7 @@ Worktrees can be safely deleted after commit because:
 - Diffs are regenerated from the admin repository's git history
 
 This approach:
+
 - Saves disk space
 - Ensures accuracy (no stale cached data)
 - Allows historical access to changes
@@ -89,12 +92,14 @@ This approach:
 Change statistics are calculated when requested rather than stored:
 
 **Benefits:**
+
 - Always accurate and reflects current git state
 - No risk of stale data
 - Simpler database schema
 - Works seamlessly after worktree cleanup
 
 **Trade-off:**
+
 - Requires computation on each access
 - Frontend caching recommended for performance
 
@@ -111,6 +116,7 @@ Changes are displayed in several places:
 ### Diff Viewer
 
 The diff viewer provides:
+
 - File list with change status badges
 - Line-level statistics per file
 - Unified diff view for individual files
@@ -133,6 +139,7 @@ The diff viewer provides:
 ### Caching for Performance
 
 The frontend caches diff data per execution to avoid redundant IPC calls. Cache is automatically invalidated when:
+
 - Execution status changes
 - Changes are committed
 - Execution is restarted
@@ -142,6 +149,7 @@ The frontend caches diff data per execution to avoid redundant IPC calls. Cache 
 ### Changes Not Showing
 
 **Possible causes:**
+
 - Execution hasn't made any changes yet
 - Worktree doesn't exist (was cleaned up)
 - Execution was never committed
@@ -151,6 +159,7 @@ The frontend caches diff data per execution to avoid redundant IPC calls. Cache 
 ### Statistics Show Zero
 
 **Possible causes:**
+
 - Execution completed with no changes
 - Diff calculation encountered an error
 

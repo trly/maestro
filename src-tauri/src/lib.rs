@@ -223,6 +223,10 @@ pub fn run() {
             commands::settings::set_setting,
             commands::settings::get_ci_stuck_threshold_minutes,
             commands::settings::get_max_concurrent_executions,
+            commands::settings::get_first_run_complete,
+            commands::settings::set_first_run_complete,
+            commands::settings::get_show_first_run_dialog,
+            commands::settings::set_show_first_run_dialog,
             commands::execution_poller::start_execution_polling,
             commands::execution_poller::stop_execution_polling,
             commands::execution_poller::get_pending_executions_count,
@@ -240,6 +244,8 @@ pub fn run() {
             commands::health_check::health_check_github,
             commands::health_check::health_check_gitlab,
             commands::health_check::health_check_sourcegraph,
+            commands::health_check::health_check_git,
+            commands::health_check::health_check_nodejs,
             commands::app_info::get_app_info,
         ])
         .plugin(tauri_plugin_notification::init())

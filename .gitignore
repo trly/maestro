@@ -39,6 +39,9 @@ maestro.db
 # svelte-kit
 .svelte-kit
 
+# compiled executor
+src/lib/amp-executor.js
+
 # tauri
 src-tauri/target
 src-tauri/gen/schemas

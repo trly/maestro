@@ -1,5 +1,6 @@
 use octocrab::Octocrab;
 use serde::{Deserialize, Serialize};
+use std::process::Command;
 
 use crate::commands::tokens::get_token_value;
 
@@ -34,6 +35,64 @@ pub async fn health_check_github() -> Result<HealthCheckResult, String> {
             success: false,
             username: None,
             error: Some(format!("Failed to create GitHub client: {}", e)),
+        }),
+    }
+}
+
+#[tauri::command]
+pub async fn health_check_git() -> Result<HealthCheckResult, String> {
+    match Command::new("git").arg("--version").output() {
+        Ok(output) => {
+            if output.status.success() {
+                let version = String::from_utf8_lossy(&output.stdout);
+                let version_str = version
+                    .trim()
+                    .strip_prefix("git version ")
+                    .unwrap_or(version.trim());
+                Ok(HealthCheckResult {
+                    success: true,
+                    username: Some(version_str.to_string()),
+                    error: None,
+                })
+            } else {
+                Ok(HealthCheckResult {
+                    success: false,
+                    username: None,
+                    error: Some("Git command failed".to_string()),
+                })
+            }
+        }
+        Err(e) => Ok(HealthCheckResult {
+            success: false,
+            username: None,
+            error: Some(format!("Git not found: {}", e)),
+        }),
+    }
+}
+
+#[tauri::command]
+pub async fn health_check_nodejs() -> Result<HealthCheckResult, String> {
+    match Command::new("node").arg("--version").output() {
+        Ok(output) => {
+            if output.status.success() {
+                let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                Ok(HealthCheckResult {
+                    success: true,
+                    username: Some(version),
+                    error: None,
+                })
+            } else {
+                Ok(HealthCheckResult {
+                    success: false,
+                    username: None,
+                    error: Some("Node.js command failed".to_string()),
+                })
+            }
+        }
+        Err(e) => Ok(HealthCheckResult {
+            success: false,
+            username: None,
+            error: Some(format!("Node.js not found: {}", e)),
         }),
     }
 }

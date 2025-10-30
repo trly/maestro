@@ -8,7 +8,7 @@ AI-powered orchestrator for running prompts across multiple repositories using [
 
 ### Prerequisites
 
-- [mise](https://mise.jdx.dev) (manages Bun, Rust, and Tauri CLI automatically)
+- [mise](https://mise.jdx.dev) (manages Node.js, Rust, and Tauri CLI automatically)
 - SSH key added to SCM [GitHub, GitLab, etc.] (for private repos - see [SSH setup](docs/ssh-authentication.md))
 - Amp API token (for AI executions)
 - SCM PAT (for CI checks, default branch detection, etc.)
@@ -21,11 +21,11 @@ AI-powered orchestrator for running prompts across multiple repositories using [
    brew install mise
    ```
 
-2. **Install project dependencies** (mise handles Bun, Rust, and Tauri CLI):
+2. **Install project dependencies** (mise handles Node.js, Rust, and Tauri CLI):
 
    ```bash
    mise install
-   bun install
+   pnpm install
    ```
 
 3. **Set up SSH authentication** (required for private repos):
@@ -215,7 +215,7 @@ const files = await fetchDiff(executionId)
 
 ### Keychain Access Prompts in Dev Mode
 
-**Issue:** macOS prompts for keychain access every time you run `bun run dev`, even after selecting "Always Allow".
+**Issue:** macOS prompts for keychain access every time you run `make dev`, even after selecting "Always Allow".
 
 **Cause:** In development mode, the Tauri app isn't code-signed, so macOS treats each run as potentially different.
 
@@ -224,7 +224,7 @@ const files = await fetchDiff(executionId)
 - **Accept the prompt** - It's annoying but harmless during development
 - **Manual keychain config** - Open Keychain Access.app → find `dev.trly.maestro` entries → double-click → add the dev binary to "Always allow access"
 
-**Built apps:** This issue does **not** affect installed apps from `bun run build`. The "Always Allow" setting persists in production builds.
+**Built apps:** This issue does **not** affect installed apps from `make build`. The "Always Allow" setting persists in production builds.
 
 ## Contributing
 
