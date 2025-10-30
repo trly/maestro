@@ -261,7 +261,7 @@ async fn execute_analysis_with_amp(
 
     let mut session_id = String::new();
 
-    let node_path = which::which("node")?;
+    let node_path = crate::util::paths::which_path("node")?;
 
     let executor_script = if cfg!(debug_assertions) {
         let mut workspace_root = std::env::current_dir()?;

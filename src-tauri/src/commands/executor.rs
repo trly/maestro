@@ -230,7 +230,7 @@ async fn execute_with_amp(
     let mut session_id = String::new();
     let mut result_message: Option<String> = None;
 
-    let node_path = which::which("node").context("node command not found in PATH")?;
+    let node_path = crate::util::paths::which_path("node")?;
 
     // In dev mode, use the source file directly
     // In production, use the bundled resource

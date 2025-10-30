@@ -72,6 +72,14 @@ pub async fn health_check_git() -> Result<HealthCheckResult, String> {
 
 #[tauri::command]
 pub async fn health_check_nodejs() -> Result<HealthCheckResult, String> {
+    if !crate::util::paths::is_available("node") {
+        return Ok(HealthCheckResult {
+            success: false,
+            username: None,
+            error: Some("Node.js not found in PATH".to_string()),
+        });
+    }
+
     match Command::new("node").arg("--version").output() {
         Ok(output) => {
             if output.status.success() {
@@ -92,7 +100,7 @@ pub async fn health_check_nodejs() -> Result<HealthCheckResult, String> {
         Err(e) => Ok(HealthCheckResult {
             success: false,
             username: None,
-            error: Some(format!("Node.js not found: {}", e)),
+            error: Some(format!("Node.js execution error: {}", e)),
         }),
     }
 }
