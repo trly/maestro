@@ -3,6 +3,7 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
 
+use super::amp_sidecar;
 use crate::commands::executor_events::{emit_analysis_result, emit_analysis_status};
 use crate::db::store::Store;
 use crate::types::{Analysis, AnalysisStatus, AnalysisType};
@@ -156,14 +157,27 @@ async fn run_analysis_impl(analysis_id: String, app: AppHandle) -> Result<()> {
     let temp_dir = std::env::temp_dir().join(format!("maestro-analysis-{}", analysis_id));
     std::fs::create_dir_all(&temp_dir)?;
 
-    let execution_result = execute_analysis_with_amp(&temp_dir, &analysis_prompt, &app).await;
+    // Emit running status event (but don't update DB since there's no Running enum variant)
+    emit_analysis_status(&app, &analysis_id, "running", None);
+
+    let execution_result = amp_sidecar::run_amp(
+        &temp_dir,
+        &analysis_prompt,
+        None,
+        None,
+        None,
+        None::<fn(&str)>,
+        &app,
+    )
+    .await;
 
     let _ = std::fs::remove_dir_all(&temp_dir);
 
     match execution_result {
-        Ok((session_id, result)) => {
+        Ok((session_id, result_message)) => {
             let amp_thread_url = format!("https://ampcode.com/threads/{}", session_id);
             let completed_at = now_ms();
+            let result = result_message.unwrap_or_default();
 
             let store_state = app.state::<Mutex<Store>>();
             let store_guard = store_state.lock().unwrap();
@@ -249,120 +263,4 @@ pub fn delete_analysis(analysis_id: String, store: State<Mutex<Store>>) -> Resul
     store
         .delete_analysis(&analysis_id)
         .map_err(|e| format!("Failed to delete analysis: {}", e))
-}
-
-async fn execute_analysis_with_amp(
-    repo_path: &std::path::Path,
-    prompt_text: &str,
-    app: &AppHandle,
-) -> Result<(String, String)> {
-    use std::io::BufRead;
-    use std::process::{Command, Stdio};
-
-    let mut session_id = String::new();
-
-    let node_path = crate::util::paths::which_path("node")?;
-
-    let executor_script = if cfg!(debug_assertions) {
-        let mut workspace_root = std::env::current_dir()?;
-        if workspace_root.ends_with("src-tauri") {
-            workspace_root = workspace_root
-                .parent()
-                .ok_or_else(|| anyhow::anyhow!("Failed to get workspace root"))?
-                .to_path_buf();
-        }
-        workspace_root
-            .join("src")
-            .join("lib")
-            .join("amp-executor.js")
-    } else {
-        app.path().resource_dir()?.join("src/lib/amp-executor.js")
-    };
-
-    if !executor_script.exists() {
-        anyhow::bail!("amp-executor.js not found at {:?}", executor_script);
-    }
-
-    let args = vec![
-        executor_script.to_string_lossy().to_string(),
-        repo_path.to_string_lossy().to_string(),
-        prompt_text.to_string(),
-    ];
-
-    let mut child = Command::new(&node_path)
-        .args(&args)
-        .env(
-            "AMP_API_KEY",
-            std::env::var("AMP_API_KEY").unwrap_or_default(),
-        )
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let stderr = child
-        .stderr
-        .take()
-        .ok_or_else(|| anyhow::anyhow!("Failed to capture stderr"))?;
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| anyhow::anyhow!("Failed to capture stdout"))?;
-
-    let (stdout_tx, stdout_rx) = std::sync::mpsc::channel();
-    std::thread::spawn(move || {
-        use std::io::Read;
-        let mut buf = String::new();
-        let _ = std::io::BufReader::new(stdout).read_to_string(&mut buf);
-        let _ = stdout_tx.send(buf);
-    });
-
-    let stderr_reader = std::io::BufReader::new(stderr);
-    for line in stderr_reader.lines() {
-        let line = line?;
-        if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
-            if msg.get("type") == Some(&serde_json::json!("session_id")) {
-                if let Some(sid) = msg.get("sessionId").and_then(|v| v.as_str()) {
-                    session_id = sid.to_string();
-                }
-            }
-        }
-    }
-
-    let stdout_content = stdout_rx.recv().unwrap_or_default();
-
-    let status = child.wait()?;
-
-    if let Ok(result) = serde_json::from_str::<serde_json::Value>(&stdout_content) {
-        if let Some(sid) = result.get("sessionId").and_then(|v| v.as_str()) {
-            if session_id.is_empty() {
-                session_id = sid.to_string();
-            }
-        }
-
-        let result_message = result
-            .get("resultMessage")
-            .and_then(|v| v.as_str())
-            .unwrap_or(&stdout_content)
-            .to_string();
-
-        if !status.success() && session_id.is_empty() {
-            anyhow::bail!(
-                "Amp execution failed with exit code {}: {}",
-                status.code().unwrap_or(-1),
-                result_message
-            );
-        }
-
-        return Ok((session_id, result_message));
-    }
-
-    if !status.success() {
-        anyhow::bail!(
-            "Amp execution failed with exit code {}: {}",
-            status.code().unwrap_or(-1),
-            stdout_content
-        );
-    }
-
-    Ok((session_id, stdout_content))
 }

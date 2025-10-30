@@ -70,41 +70,6 @@ pub async fn health_check_git() -> Result<HealthCheckResult, String> {
     }
 }
 
-#[tauri::command]
-pub async fn health_check_nodejs() -> Result<HealthCheckResult, String> {
-    if !crate::util::paths::is_available("node") {
-        return Ok(HealthCheckResult {
-            success: false,
-            username: None,
-            error: Some("Node.js not found in PATH".to_string()),
-        });
-    }
-
-    match Command::new("node").arg("--version").output() {
-        Ok(output) => {
-            if output.status.success() {
-                let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                Ok(HealthCheckResult {
-                    success: true,
-                    username: Some(version),
-                    error: None,
-                })
-            } else {
-                Ok(HealthCheckResult {
-                    success: false,
-                    username: None,
-                    error: Some("Node.js command failed".to_string()),
-                })
-            }
-        }
-        Err(e) => Ok(HealthCheckResult {
-            success: false,
-            username: None,
-            error: Some(format!("Node.js execution error: {}", e)),
-        }),
-    }
-}
-
 #[derive(Deserialize)]
 struct GitLabUser {
     username: String,

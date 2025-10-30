@@ -1,0 +1,12 @@
+{
+	"name": "amp-executor",
+	"version": "0.1.0",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"build": "bun build src/index.ts --target bun --format esm --outfile dist/index.js"
+	},
+	"dependencies": {
+		"@sourcegraph/amp-sdk": "^0.1.0-20251029183144-g02378e6"
+	}
+}

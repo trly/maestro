@@ -1,13 +1,13 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Maestro",
-  "version": "0.2.6",
+  "version": "0.2.8",
   "identifier": "dev.trly.maestro",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "pnpm vite dev --port 5173 --strictPort",
-    "beforeBuildCommand": "pnpm vite build && pnpm run build:executor"
+    "beforeDevCommand": "make sidecar && bun vite dev --port 5173 --strictPort",
+    "beforeBuildCommand": "bun vite build && make sidecar"
   },
   "app": {
     "windows": [
@@ -33,7 +33,6 @@
       "dmg",
       "deb"
     ],
-    "createUpdaterArtifacts": false,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -42,9 +41,10 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "../dist/amp-executor.js",
-      "../node_modules/@sourcegraph/amp-sdk/**/*",
-      "../package.json"
+      "resources/**/*"
+    ],
+    "externalBin": [
+      "binaries/amp-executor"
     ],
     "copyright": "Copyright © 2025 Sourcegraph",
     "category": "DeveloperTool",

@@ -1,10 +1,12 @@
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::sync::Mutex;
 use tauri::Manager;
+use tauri_plugin_shell::process::CommandChild;
 
+use super::amp_sidecar;
 use super::executor_events::{
     emit_execution_commit, emit_execution_progress, emit_execution_session, emit_execution_status,
     emit_execution_validation,
@@ -34,10 +36,12 @@ async fn fetch_default_branch(provider: &str, provider_id: &str) -> Result<Strin
     Ok(metadata.default_branch)
 }
 
+type ChildHandle = std::sync::Arc<Mutex<Option<CommandChild>>>;
+
 lazy_static::lazy_static! {
     static ref ACTIVE_EXECUTIONS: Mutex<HashMap<String, std::sync::Arc<Mutex<bool>>>> = Mutex::new(HashMap::new());
     static ref ACTIVE_VALIDATIONS: Mutex<HashMap<String, std::sync::Arc<Mutex<bool>>>> = Mutex::new(HashMap::new());
-    static ref ACTIVE_CHILDREN: Mutex<HashMap<String, std::sync::Arc<Mutex<std::process::Child>>>> = Mutex::new(HashMap::new());
+    static ref ACTIVE_CHILDREN: Mutex<HashMap<String, ChildHandle> > = Mutex::new(HashMap::new());
     static ref REPO_LOCKS: Mutex<HashMap<String, std::sync::Arc<Mutex<()>>>> = Mutex::new(HashMap::new());
 }
 
@@ -216,176 +220,6 @@ async fn remove_worktree(
         .output();
 
     Ok(())
-}
-
-async fn execute_with_amp(
-    repo_path: &Path,
-    prompt_text: &str,
-    continue_session_id: Option<&str>,
-    execution_key: Option<&str>,
-    abort_flag: Option<std::sync::Arc<Mutex<bool>>>,
-    on_session_start: Option<impl Fn(&str)>,
-    app: &tauri::AppHandle,
-) -> Result<(String, Option<String>)> {
-    let mut session_id = String::new();
-    let mut result_message: Option<String> = None;
-
-    let node_path = crate::util::paths::which_path("node")?;
-
-    // In dev mode, use the source file directly
-    // In production, use the bundled resource
-    let executor_script = if cfg!(debug_assertions) {
-        // Development mode - use source file
-        let mut workspace_root = std::env::current_dir()?;
-        if workspace_root.ends_with("src-tauri") {
-            workspace_root = workspace_root
-                .parent()
-                .ok_or_else(|| anyhow::anyhow!("Failed to get workspace root"))?
-                .to_path_buf();
-        }
-        workspace_root
-            .join("src")
-            .join("lib")
-            .join("amp-executor.js")
-    } else {
-        // Production mode - use bundled resource
-        app.path()
-            .resource_dir()
-            .context("Failed to get resource directory")?
-            .join("src/lib/amp-executor.js")
-    };
-
-    if !executor_script.exists() {
-        anyhow::bail!("amp-executor.js not found at {:?}", executor_script);
-    }
-
-    let mut args = vec![
-        executor_script.to_string_lossy().to_string(),
-        repo_path.to_string_lossy().to_string(),
-        prompt_text.to_string(),
-    ];
-
-    if let Some(continue_id) = continue_session_id {
-        args.push(continue_id.to_string());
-    }
-
-    let child = Command::new(&node_path)
-        .args(&args)
-        .env(
-            "AMP_API_KEY",
-            std::env::var("AMP_API_KEY").unwrap_or_default(),
-        )
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .context("Failed to spawn bun process")?;
-
-    // Store child process for potential cancellation
-    let child = std::sync::Arc::new(Mutex::new(child));
-    if let Some(key) = execution_key {
-        let mut active = ACTIVE_CHILDREN.lock().unwrap();
-        active.insert(key.to_string(), child.clone());
-    }
-
-    // Check for early abort (before we even start reading)
-    if let Some(abort) = &abort_flag {
-        if *abort.lock().unwrap() {
-            let _ = child.lock().unwrap().kill();
-            if let Some(key) = execution_key {
-                ACTIVE_CHILDREN.lock().unwrap().remove(key);
-            }
-            anyhow::bail!("Execution aborted");
-        }
-    }
-
-    // Take stdout and stderr from child
-    let stderr = child
-        .lock()
-        .unwrap()
-        .stderr
-        .take()
-        .context("Failed to capture stderr")?;
-    let stdout = child
-        .lock()
-        .unwrap()
-        .stdout
-        .take()
-        .context("Failed to capture stdout")?;
-
-    // Spawn thread to read stdout concurrently to avoid deadlock
-    let (stdout_tx, stdout_rx) = std::sync::mpsc::channel();
-    std::thread::spawn(move || {
-        use std::io::Read;
-        let mut buf = String::new();
-        let _ = std::io::BufReader::new(stdout).read_to_string(&mut buf);
-        let _ = stdout_tx.send(buf);
-    });
-
-    // Read stderr on main thread to capture session_id
-    let stderr_reader = std::io::BufReader::new(stderr);
-    use std::io::BufRead;
-    for line in stderr_reader.lines() {
-        let line = line?;
-
-        if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
-            if msg.get("type") == Some(&serde_json::json!("session_id")) {
-                if let Some(sid) = msg.get("sessionId").and_then(|v| v.as_str()) {
-                    session_id = sid.to_string();
-                    if let Some(callback) = &on_session_start {
-                        callback(sid);
-                    }
-                }
-            }
-        }
-    }
-
-    // Get stdout content
-    let stdout_content = stdout_rx.recv().unwrap_or_default();
-
-    // Check for abort before waiting
-    if let Some(abort) = &abort_flag {
-        if *abort.lock().unwrap() {
-            let _ = child.lock().unwrap().kill();
-            if let Some(key) = execution_key {
-                ACTIVE_CHILDREN.lock().unwrap().remove(key);
-            }
-            anyhow::bail!("Execution aborted");
-        }
-    }
-
-    let status = child
-        .lock()
-        .unwrap()
-        .wait()
-        .context("Failed to wait for bun process")?;
-
-    // Remove from active children
-    if let Some(key) = execution_key {
-        ACTIVE_CHILDREN.lock().unwrap().remove(key);
-    }
-
-    if let Ok(result) = serde_json::from_str::<serde_json::Value>(&stdout_content) {
-        if let Some(sid) = result.get("sessionId").and_then(|v| v.as_str()) {
-            if session_id.is_empty() {
-                session_id = sid.to_string();
-                if let Some(callback) = &on_session_start {
-                    callback(sid);
-                }
-            }
-        }
-        if let Some(res) = result.get("resultMessage").and_then(|v| v.as_str()) {
-            result_message = Some(res.to_string());
-        }
-        if let Some(err) = result.get("error").and_then(|v| v.as_str()) {
-            anyhow::bail!("Amp execution failed: {}", err);
-        }
-    }
-
-    if !status.success() {
-        anyhow::bail!("Amp process exited with status: {}", status);
-    }
-
-    Ok((session_id, result_message))
 }
 
 #[tauri::command]
@@ -673,7 +507,7 @@ PROMPT: FAIL";
 		let execution_id_clone = execution_id.clone();
 		let app_clone = app.clone();
 
-		let (session_id, result_message) = execute_with_amp(
+		let (session_id, result_message) = amp_sidecar::run_amp(
 			&worktree_info.worktree_path,
 			&full_prompt,
 			None,
@@ -942,7 +776,7 @@ VALIDATION: FAIL";
 		let execution_id_clone = execution_id.clone();
 		let app_clone = app.clone();
 
-		let (validation_session_id, result_message) = execute_with_amp(
+		let (validation_session_id, result_message) = amp_sidecar::run_amp(
 			&worktree_path,
 			&full_validation_prompt,
 			None,
@@ -1180,7 +1014,7 @@ PROMPT: FAIL";
 		let execution_id_clone = execution_id.clone();
 		let app_clone = app.clone();
 
-		let (session_id, result_message) = execute_with_amp(
+		let (session_id, result_message) = amp_sidecar::run_amp(
 			&worktree_path,
 			&resume_prompt,
 			execution.session_id.as_deref(),
@@ -1361,7 +1195,7 @@ pub async fn commit_changes(
     emit_execution_progress(&app, &execution_id, "Committing files...");
 
     let worktree_path = execution_worktree_path(&paths, &promptset_id, &execution_id);
-    execute_with_amp(
+    amp_sidecar::run_amp(
         &worktree_path,
         &commit_prompt,
         Some(&session_id),
@@ -1576,9 +1410,11 @@ pub fn stop_execution(execution_id: String, app: tauri::AppHandle) -> Result<boo
 
     // Then kill the child process directly
     let active_children = ACTIVE_CHILDREN.lock().unwrap();
-    if let Some(child) = active_children.get(&exec_key) {
-        if let Ok(mut child_guard) = child.lock() {
-            let _ = child_guard.kill();
+    if let Some(child_handle) = active_children.get(&exec_key) {
+        if let Ok(mut guard) = child_handle.lock() {
+            if let Some(child) = guard.take() {
+                let _ = child.kill();
+            }
         }
         drop(active_children);
         return Ok(true);
@@ -1622,9 +1458,11 @@ pub fn stop_validation(execution_id: String, app: tauri::AppHandle) -> Result<bo
 
     // Kill the child process
     let active_children = ACTIVE_CHILDREN.lock().unwrap();
-    if let Some(child) = active_children.get(&val_key) {
-        if let Ok(mut child_guard) = child.lock() {
-            let _ = child_guard.kill();
+    if let Some(child_handle) = active_children.get(&val_key) {
+        if let Ok(mut guard) = child_handle.lock() {
+            if let Some(child) = guard.take() {
+                let _ = child.kill();
+            }
         }
         drop(active_children);
         return Ok(true);

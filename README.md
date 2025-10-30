@@ -25,7 +25,7 @@ AI-powered orchestrator for running prompts across multiple repositories using [
 
    ```bash
    mise install
-   pnpm install
+   bun install
    ```
 
 3. **Set up SSH authentication** (required for private repos):

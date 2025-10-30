@@ -1,16 +1,5 @@
 use crate::Paths;
-use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
-
-/// Find the absolute path to a binary in PATH
-pub fn which_path(cmd: &str) -> Result<PathBuf> {
-    which::which(cmd).with_context(|| format!("{} command not found in PATH", cmd))
-}
-
-/// Check if a binary is available in PATH
-pub fn is_available(cmd: &str) -> bool {
-    which::which(cmd).is_ok()
-}
 
 /// Construct path to admin repository clone
 /// Format: {admin_repo_dir}/{owner}/{repo}

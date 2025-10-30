@@ -2,12 +2,7 @@
 	import { Dialog, Checkbox } from "bits-ui"
 	import { CheckCircle2, XCircle, Loader2 } from "lucide-svelte"
 	import { onMount } from "svelte"
-	import {
-		healthCheckGit,
-		healthCheckNodejs,
-		setFirstRunComplete,
-		setShowFirstRunDialog,
-	} from "$lib/ipc"
+	import { healthCheckGit, setFirstRunComplete, setShowFirstRunDialog } from "$lib/ipc"
 	import type { HealthCheckResult } from "$lib/types"
 
 	type PageContent = {
@@ -25,14 +20,12 @@
 
 	let page = $state(0)
 	let gitCheck = $state<HealthCheckResult | null>(null)
-	let nodejsCheck = $state<HealthCheckResult | null>(null)
 	let checksComplete = $state(false)
 	let showOnStartup = $state(true)
 
 	async function runHealthChecks() {
-		const [git, nodejs] = await Promise.all([healthCheckGit(), healthCheckNodejs()])
+		const git = await healthCheckGit()
 		gitCheck = git
-		nodejsCheck = nodejs
 		checksComplete = true
 	}
 
@@ -40,7 +33,7 @@
 		runHealthChecks()
 	})
 
-	const allChecksPassed = $derived(checksComplete && gitCheck?.success && nodejsCheck?.success)
+	const allChecksPassed = $derived(checksComplete && gitCheck?.success)
 
 	async function handleFinish() {
 		await setFirstRunComplete()
@@ -172,29 +165,6 @@
 											<div class="text-xs text-muted-foreground">{gitCheck.username}</div>
 										{:else if gitCheck?.error}
 											<div class="text-xs text-destructive">{gitCheck.error}</div>
-										{/if}
-									</div>
-								</div>
-							</div>
-
-							<!-- Node.js Check -->
-							<div
-								class="flex items-center justify-between p-3 bg-background rounded border border-border"
-							>
-								<div class="flex items-center gap-3">
-									{#if !nodejsCheck}
-										<Loader2 class="h-4 w-4 animate-spin text-primary" />
-									{:else if nodejsCheck.success}
-										<CheckCircle2 class="h-4 w-4 text-success" />
-									{:else}
-										<XCircle class="h-4 w-4 text-destructive" />
-									{/if}
-									<div>
-										<div class="font-medium">Node.js</div>
-										{#if nodejsCheck?.success}
-											<div class="text-xs text-muted-foreground">{nodejsCheck.username}</div>
-										{:else if nodejsCheck?.error}
-											<div class="text-xs text-destructive">{nodejsCheck.error}</div>
 										{/if}
 									</div>
 								</div>

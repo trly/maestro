@@ -29,8 +29,21 @@
 - **Database**: SQLite via rusqlite at `src-tauri/src/db/`
 - **Git**: git2-rs for native operations at `src-tauri/src/git/`
 - **AI**: @sourcegraph/amp-sdk for execution agent, Amp V2 API for thread analysis
+- **Sidecar**: amp-executor (TypeScript) compiled with `bun build --compile` + bundled runtime
 - **UI**: bits-ui primitives + lucide-svelte icons + Tailwind 4
 - **Types**: TypeScript enums mirror Rust enums via serde
+
+#### Amp Executor Sidecar Architecture
+
+The `amp-executor` sidecar is a **standalone project** in the `amp-executor/` directory:
+
+- **Location**: Separate `amp-executor/` directory at project root with its own `package.json`
+- **Build**: Bundle TypeScript with `bun build` (not compiled - needs runtime dependencies)
+- **Dependencies**: Manages its own `@sourcegraph/amp-sdk` dependency independently
+- **Runtime**: Bundled script + node_modules copied to `src-tauri/resources/amp-executor/`
+- **Integration**: Makefile creates executable shebang wrapper in `src-tauri/binaries/`
+- **NODE_PATH**: Set by `analysis.rs` to point to bundled `resources/amp-executor/node_modules`
+- **Why not compiled**: `@sourcegraph/amp-sdk` has runtime dependencies that can't be statically bundled
 
 ### Core Domain Models
 

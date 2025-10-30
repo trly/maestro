@@ -45,3 +45,5 @@ src/lib/amp-executor.js
 # tauri
 src-tauri/target
 src-tauri/gen/schemas
+src-tauri/binaries
+src-tauri/resources/amp-executor
