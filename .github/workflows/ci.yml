@@ -3,14 +3,56 @@ name: CI
 on:
   push:
     branches: ["**"]
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "amp-executor/**"
+      - "package.json"
+      - "bun.lock"
+      - "Cargo.lock"
+      - ".github/workflows/**.yml"
   pull_request:
     branches: ["**"]
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "amp-executor/**"
+      - "package.json"
+      - "bun.lock"
+      - "Cargo.lock"
+      - ".github/workflows/**.yml"
 
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  lint:
+  lint-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: TypeScript check
+        run: bun run check
+
+  lint-rust:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,49 +70,65 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Cache Bun dependencies
-        uses: actions/cache@v4
+      - name: Install Node dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build amp-executor sidecar
+        run: make sidecar
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
+          workspaces: './src-tauri -> target'
+
+      - name: Cargo format check
+        run: cargo fmt --check
+        working-directory: src-tauri
+
+      - name: Cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+        working-directory: src-tauri
+
+  test:
+    runs-on: ubuntu-latest
+    needs: [lint-frontend, lint-rust]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mise
+        uses: jdx/mise-action@v2
+        with:
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install Node dependencies
         run: bun install --frozen-lockfile
 
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
+      - name: Build amp-executor sidecar
+        run: make sidecar
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cargo/bin
-            src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock', '.mise.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          workspaces: './src-tauri -> target'
 
-      - name: TypeScript check
-        run: bun run check
-
-      - name: Cargo check
-        run: cargo check
-        working-directory: src-tauri
-
-      - name: Cargo clippy
-        run: cargo clippy -- -D warnings
-        working-directory: src-tauri
-
-      - name: Cargo fmt
-        run: cargo fmt -- --check
+      - name: Cargo test
+        run: cargo test
         working-directory: src-tauri
 
   build:
     runs-on: ${{ matrix.os }}
-    needs: lint
+    needs: [lint-frontend, lint-rust]
     if: always()
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
         include:
@@ -110,31 +168,13 @@ jobs:
       - name: Install Node dependencies
         run: bun install --frozen-lockfile
 
-      - name: Cache amp-executor build
-        uses: actions/cache@v4
-        with:
-          path: src-tauri/resources/amp-executor
-          key: ${{ runner.os }}-amp-executor-${{ hashFiles('amp-executor/**/*.ts', 'amp-executor/package.json', 'amp-executor/bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-amp-executor-
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
       - name: Build amp-executor sidecar
         run: make sidecar
 
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cargo/bin
-            src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock', '.mise.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          workspaces: './src-tauri -> target'
 
       - name: Build app
         run: cargo tauri build --bundles ${{ matrix.bundle }}
@@ -146,56 +186,5 @@ jobs:
           path: ${{ matrix.artifact-path }}
 
       - name: Fail if lint failed
-        if: needs.lint.result != 'success'
-        run: exit 1
-
-  test:
-    runs-on: ubuntu-latest
-    needs: lint
-    if: always()
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install mise
-        uses: jdx/mise-action@v2
-        with:
-          cache: true
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Cache Bun dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
-
-      - name: Install Node dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cargo/bin
-            src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock', '.mise.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Cargo test
-        run: cargo test
-        working-directory: src-tauri
-
-      - name: Fail if lint failed
-        if: needs.lint.result != 'success'
+        if: needs.lint-frontend.result != 'success' || needs.lint-rust.result != 'success'
         run: exit 1
