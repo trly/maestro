@@ -2,6 +2,30 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.3.0] - 2025-10-31
+
+### Added
+
+- Standalone executor binary for improved sidecar architecture
+- First-run dialog for initial setup
+- Help option to launch getting started dialog
+
+### Changed
+
+- CI workflow optimized with validated Tauri patterns and improved caching
+- Replaced custom binary search with 'which' crate
+
+### Fixed
+
+- CI linting now blocks builds on failure
+- CI workflow missing bun commands
+- Amp-executor builds before Rust cache runs
+- Copy/paste functionality restored
+
+### Security
+
+- Hardened shell plugin
+
 ## [0.2.8] - 2025-10-29
 
 ### Fixed
