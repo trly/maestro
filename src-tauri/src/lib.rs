@@ -31,7 +31,30 @@ fn build_menu(app: &AppHandle<Wry>) -> tauri::Result<()> {
             .item(&PredefinedMenuItem::quit(app, None)?)
             .build()?;
 
-        let menu = MenuBuilder::new(app).item(&app_menu).build()?;
+        // Edit menu with standard shortcuts (critical for copy/paste)
+        let edit_menu = SubmenuBuilder::new(app, "Edit")
+            .item(&PredefinedMenuItem::undo(app, None)?)
+            .item(&PredefinedMenuItem::redo(app, None)?)
+            .separator()
+            .item(&PredefinedMenuItem::cut(app, None)?)
+            .item(&PredefinedMenuItem::copy(app, None)?)
+            .item(&PredefinedMenuItem::paste(app, None)?)
+            .item(&PredefinedMenuItem::select_all(app, None)?)
+            .build()?;
+
+        // Window menu with standard window management
+        let window_menu = SubmenuBuilder::new(app, "Window")
+            .item(&PredefinedMenuItem::minimize(app, None)?)
+            .item(&PredefinedMenuItem::maximize(app, None)?)
+            .separator()
+            .item(&PredefinedMenuItem::close_window(app, None)?)
+            .build()?;
+
+        let menu = MenuBuilder::new(app)
+            .item(&app_menu)
+            .item(&edit_menu)
+            .item(&window_menu)
+            .build()?;
 
         app.set_menu(menu)?;
     }

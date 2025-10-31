@@ -36,9 +36,8 @@
 		await settingsStore.load()
 
 		// Check if first run dialog should be shown
-		const firstRunComplete = await getFirstRunComplete()
 		const showFirstRunDialog = await getShowFirstRunDialog()
-		showFirstRun = !firstRunComplete && showFirstRunDialog
+		showFirstRun = showFirstRunDialog
 	})
 
 	onDestroy(() => {
