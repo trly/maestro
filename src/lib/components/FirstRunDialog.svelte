@@ -14,9 +14,10 @@
 	interface Props {
 		open?: boolean
 		onComplete: () => void
+		helpMode?: boolean
 	}
 
-	let { open = $bindable(true), onComplete }: Props = $props()
+	let { open = $bindable(true), onComplete, helpMode = false }: Props = $props()
 
 	let page = $state(0)
 	let gitCheck = $state<HealthCheckResult | null>(null)
@@ -36,8 +37,10 @@
 	const allChecksPassed = $derived(checksComplete && gitCheck?.success)
 
 	async function handleFinish() {
-		await setFirstRunComplete()
-		await setShowFirstRunDialog(showOnStartup)
+		if (!helpMode) {
+			await setFirstRunComplete()
+			await setShowFirstRunDialog(showOnStartup)
+		}
 		open = false
 		onComplete()
 	}
@@ -200,19 +203,21 @@
 			</div>
 
 			<div class="mt-6 pt-4 border-t border-border space-y-4">
-				<label class="flex items-center gap-2 text-sm cursor-pointer">
-					<Checkbox.Root
-						bind:checked={showOnStartup}
-						class="h-4 w-4 rounded border border-border bg-background flex items-center justify-center data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-					>
-						{#snippet children({ checked })}
-							{#if checked}
-								<CheckCircle2 class="h-3 w-3 text-primary-foreground" />
-							{/if}
-						{/snippet}
-					</Checkbox.Root>
-					<span class="text-muted-foreground">Show this dialog on startup</span>
-				</label>
+				{#if !helpMode}
+					<label class="flex items-center gap-2 text-sm cursor-pointer">
+						<Checkbox.Root
+							bind:checked={showOnStartup}
+							class="h-4 w-4 rounded border border-border bg-background flex items-center justify-center data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+						>
+							{#snippet children({ checked })}
+								{#if checked}
+									<CheckCircle2 class="h-3 w-3 text-primary-foreground" />
+								{/if}
+							{/snippet}
+						</Checkbox.Root>
+						<span class="text-muted-foreground">Show this dialog on startup</span>
+					</label>
+				{/if}
 
 				<div class="flex items-center justify-between">
 					<div class="flex gap-2">

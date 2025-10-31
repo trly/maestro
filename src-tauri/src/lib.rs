@@ -3,7 +3,7 @@ use std::sync::Mutex;
 #[cfg(target_os = "macos")]
 use tauri::menu::PredefinedMenuItem;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
-use tauri::{AppHandle, Manager, Wry};
+use tauri::{AppHandle, Emitter, Manager, Wry};
 
 pub mod ci;
 mod commands;
@@ -16,6 +16,10 @@ mod util;
 fn build_menu(app: &AppHandle<Wry>) -> tauri::Result<()> {
     // Create About menu item
     let about = MenuItemBuilder::with_id("about", "About Maestro").build(app)?;
+
+    // Create Getting Started menu item
+    let getting_started =
+        MenuItemBuilder::with_id("getting_started", "Getting Started").build(app)?;
 
     #[cfg(target_os = "macos")]
     {
@@ -50,10 +54,16 @@ fn build_menu(app: &AppHandle<Wry>) -> tauri::Result<()> {
             .item(&PredefinedMenuItem::close_window(app, None)?)
             .build()?;
 
+        // Help menu
+        let help_menu = SubmenuBuilder::new(app, "Help")
+            .item(&getting_started)
+            .build()?;
+
         let menu = MenuBuilder::new(app)
             .item(&app_menu)
             .item(&edit_menu)
             .item(&window_menu)
+            .item(&help_menu)
             .build()?;
 
         app.set_menu(menu)?;
@@ -62,7 +72,10 @@ fn build_menu(app: &AppHandle<Wry>) -> tauri::Result<()> {
     #[cfg(not(target_os = "macos"))]
     {
         // On Windows/Linux, add About to Help menu
-        let help_menu = SubmenuBuilder::new(app, "Help").item(&about).build()?;
+        let help_menu = SubmenuBuilder::new(app, "Help")
+            .item(&about)
+            .item(&getting_started)
+            .build()?;
 
         let menu = MenuBuilder::new(app).item(&help_menu).build()?;
 
@@ -75,6 +88,11 @@ fn build_menu(app: &AppHandle<Wry>) -> tauri::Result<()> {
             // Navigate to about page in existing window
             if let Some(window) = app_handle.get_webview_window("main") {
                 let _ = window.eval("window.location.href = '/about'");
+            }
+        } else if event.id() == "getting_started" {
+            // Emit event to open first run dialog
+            if let Some(window) = app_handle.get_webview_window("main") {
+                let _ = window.emit("open_getting_started", ());
             }
         }
     });

@@ -10,6 +10,7 @@
 	import { getFirstRunComplete, getShowFirstRunDialog } from "$lib/ipc"
 	import { Dialog } from "bits-ui"
 	import { PaneGroup, Pane, PaneResizer } from "paneforge"
+	import { listen } from "@tauri-apps/api/event"
 	import "../app.css"
 
 	let { data, children } = $props()
@@ -18,6 +19,8 @@
 	let mobileSidebarOpen = $state(false)
 	let settings = $state<any>({})
 	let showFirstRun = $state(false)
+	let showGettingStarted = $state(false)
+	let unlistenGettingStarted: (() => void) | null = null
 
 	$effect(() => {
 		settingsStore.subscribe((s) => (settings = s))
@@ -38,11 +41,19 @@
 		// Check if first run dialog should be shown
 		const showFirstRunDialog = await getShowFirstRunDialog()
 		showFirstRun = showFirstRunDialog
+
+		// Listen for getting started menu item
+		unlistenGettingStarted = await listen("open_getting_started", () => {
+			showGettingStarted = true
+		})
 	})
 
 	onDestroy(() => {
 		unsubscribeFromExecutions()
 		themeStore.cleanup()
+		if (unlistenGettingStarted) {
+			unlistenGettingStarted()
+		}
 	})
 </script>
 
@@ -87,6 +98,7 @@
 
 <ConfirmDialog />
 <FirstRunDialog bind:open={showFirstRun} onComplete={() => {}} />
+<FirstRunDialog bind:open={showGettingStarted} onComplete={() => {}} helpMode={true} />
 
 {#if mobileSidebarOpen}
 	<Dialog.Root bind:open={mobileSidebarOpen}>
