@@ -19,7 +19,6 @@ jobs:
         uses: jdx/mise-action@v2
         with:
           cache: true
-          cache_key: "mise-{{platform}}-{{file_hash}}"
 
       - name: Install dependencies
         run: |
@@ -90,7 +89,6 @@ jobs:
         uses: jdx/mise-action@v2
         with:
           cache: true
-          cache_key: "mise-{{platform}}-{{file_hash}}"
 
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-latest'
@@ -112,17 +110,6 @@ jobs:
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Cache Bun dependencies
-        uses: actions/cache@v4
-        with:
-          path: amp-executor/node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('amp-executor/bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
-
       - name: Cache amp-executor build
         uses: actions/cache@v4
         with:
@@ -130,6 +117,9 @@ jobs:
           key: ${{ runner.os }}-amp-executor-${{ hashFiles('amp-executor/**/*.ts', 'amp-executor/package.json', 'amp-executor/bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-amp-executor-
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Build amp-executor sidecar
         run: make sidecar
@@ -170,7 +160,6 @@ jobs:
         uses: jdx/mise-action@v2
         with:
           cache: true
-          cache_key: "mise-{{platform}}-{{file_hash}}"
 
       - name: Install dependencies
         run: |
