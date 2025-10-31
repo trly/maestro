@@ -109,6 +109,12 @@ jobs:
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Build amp-executor sidecar
+        run: make sidecar
+
       - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:
