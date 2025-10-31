@@ -129,7 +129,6 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     needs: [lint-frontend, lint-rust]
-    if: always()
     strategy:
       fail-fast: false
       matrix:
@@ -187,7 +186,3 @@ jobs:
         with:
           name: ${{ matrix.artifact-name }}
           path: ${{ matrix.artifact-path }}
-
-      - name: Fail if lint failed
-        if: needs.lint-frontend.result != 'success' || needs.lint-rust.result != 'success'
-        run: exit 1
