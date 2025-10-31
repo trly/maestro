@@ -17,9 +17,9 @@ jobs:
 
       - name: Install mise
         uses: jdx/mise-action@v2
-
-      - name: Install Rust components
-        run: rustup component add clippy rustfmt
+        with:
+          cache: true
+          cache_key: "mise-{{platform}}-{{file_hash}}"
 
       - name: Install dependencies
         run: |
@@ -88,6 +88,9 @@ jobs:
 
       - name: Install mise
         uses: jdx/mise-action@v2
+        with:
+          cache: true
+          cache_key: "mise-{{platform}}-{{file_hash}}"
 
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-latest'
@@ -111,6 +114,22 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: amp-executor/node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('amp-executor/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Cache amp-executor build
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/resources/amp-executor
+          key: ${{ runner.os }}-amp-executor-${{ hashFiles('amp-executor/**/*.ts', 'amp-executor/package.json', 'amp-executor/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-amp-executor-
 
       - name: Build amp-executor sidecar
         run: make sidecar
@@ -149,6 +168,9 @@ jobs:
 
       - name: Install mise
         uses: jdx/mise-action@v2
+        with:
+          cache: true
+          cache_key: "mise-{{platform}}-{{file_hash}}"
 
       - name: Install dependencies
         run: |
