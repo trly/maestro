@@ -49,32 +49,44 @@ AI-powered orchestrator for running prompts across multiple repositories using [
 
 ### Production Installation
 
-1. **Build the installer:**
+#### Install via Homebrew (macOS - Recommended)
 
-   ```bash
-   make build
-   ```
+```bash
+brew tap trly/maestro https://github.com/trly/maestro
+brew install maestro
+```
 
-2. **Install the app:**
+**First launch:** Right-click Maestro.app → Open (Gatekeeper workaround for unsigned apps)
 
-   **macOS:**
+#### Download from GitHub Releases
 
-   ```bash
-   # Option 1: Install from DMG (recommended)
-   open src-tauri/target/release/bundle/dmg/*.dmg
-   # Drag Maestro.app to Applications folder
+Download the latest release from [GitHub Releases](https://github.com/trly/maestro/releases):
 
-   # Option 2: Run directly from bundle
-   open src-tauri/target/release/bundle/macos/Maestro.app
-   ```
+**macOS:**
 
-   **Linux (Debian/Ubuntu):**
+1. Download `Maestro_*.dmg`
+2. Open the DMG and drag to Applications
+3. **First launch:** Right-click Maestro.app → Open → Open (bypasses Gatekeeper)
+4. Or run: `xattr -cr /Applications/Maestro.app`
 
-   ```bash
-   sudo dpkg -i src-tauri/target/release/bundle/deb/*.deb
-   # Launch from application menu or run:
-   maestro
-   ```
+**Linux (Debian/Ubuntu):**
+
+```bash
+sudo dpkg -i Maestro_*.deb
+maestro
+```
+
+#### Build from Source
+
+```bash
+make build
+
+# macOS
+open src-tauri/target/release/bundle/dmg/*.dmg
+
+# Linux
+sudo dpkg -i src-tauri/target/release/bundle/deb/*.deb
+```
 
 ## Commands
 
