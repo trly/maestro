@@ -58,9 +58,6 @@ jobs:
         with:
           cache: true
 
-      - name: Add Rust components
-        run: rustup component add rustfmt clippy
-
       - name: Install dependencies
         run: |
           sudo apt-get update

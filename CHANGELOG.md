@@ -2,6 +2,12 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.4.2] - 2025-11-03
+
+### Changed
+
+- CI runtime versions pinned with mise
+
 ## [0.4.0] - 2025-11-03
 
 ### Changed

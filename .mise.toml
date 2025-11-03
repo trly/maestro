@@ -2,5 +2,5 @@
 node = "22.20.0"
 pnpm = "9.14.4"
 cargo = "0.91.0"
-rust = "1.90.0"
+rust = { version = "1.90.0", components = "rustfmt,clippy" }
 "cargo:tauri-cli" = "2.9.2"
