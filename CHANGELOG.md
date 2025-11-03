@@ -2,6 +2,12 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.4.5] - 2025-11-03
+
+### Added
+
+- Homebrew tap for macOS installation
+
 ## [0.4.4] - 2025-11-03
 
 ### Fixed

@@ -1,6 +1,6 @@
 [package]
 name = "maestro"
-version = "0.4.4"
+version = "0.4.5"
 description = "Maestro - AI Prompt Orchestrator"
 authors = ["Travis Lyons"]
 license = "MIT"
