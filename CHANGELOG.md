@@ -2,6 +2,12 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.4.0] - 2025-11-03
+
+### Changed
+
+- Simplified Amp integration to use system `amp` CLI with `--stream-json` flag instead of custom executor binary
+
 ## [0.3.0] - 2025-10-31
 
 ### Added
