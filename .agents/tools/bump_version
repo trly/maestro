@@ -1,160 +1,187 @@
-#!/usr/bin/env bun
-import fs from "node:fs"
-import { execSync } from "node:child_process"
+#!/usr/bin/env bash
+set -euo pipefail
 
-const action = process.env.TOOLBOX_ACTION
-
-if (action === "describe") showDescription()
-else if (action === "execute") execute()
-
-function showDescription() {
-	process.stdout.write(
-		JSON.stringify({
-			name: "bump_version",
-			description:
-				"You must use this tool instead of Bash to bump version numbers across the codebase. It updates package.json and tauri.conf.json, then prompts you to update CHANGELOG and create a commit with tag.",
-			args: {
-				major: ["boolean", "Bump major version (x.0.0)"],
-				minor: ["boolean", "Bump minor version (0.x.0)"],
-				fix: ["boolean", "Bump patch/fix version (0.0.x)"],
-				rc: [
-					"string",
-					'Create release candidate for specified semver (e.g., "0.2.0" becomes "0.2.0-rc.1")',
-				],
-				version: [
-					"string",
-					'Set explicit version number (e.g., "1.2.3"), overrides all other flags',
-				],
-			},
-		})
-	)
+print_tool_definition() {
+	cat <<-'EOF'
+		name: bump_version
+		description: Bump version numbers across the codebase.
+		description: Updates package.json, tauri.conf.json, and Cargo.toml, then prompts to update CHANGELOG and create a commit with tag.
+		
+		major: boolean? Bump major version (x.0.0)
+		minor: boolean? Bump minor version (0.x.0)
+		fix: boolean? Bump patch/fix version (0.0.x)
+		rc: string? Create release candidate for specified semver (e.g., "0.2.0" becomes "0.2.0-rc.1")
+		version: string? Set explicit version number (e.g., "1.2.3"), overrides all other flags
+	EOF
 }
 
-function execute() {
-	const params = JSON.parse(fs.readFileSync(0, "utf-8"))
-
-	// If explicit version is provided, use it
-	if (params.version) {
-		const newVersion = params.version
-		updateVersionFiles(newVersion)
-		promptAgent(newVersion)
+read_args_and_run() {
+	local major minor fix rc version
+	local input=$(</dev/stdin)
+	
+	while IFS=": " read -r name value; do
+		if [[ -n "$name" ]]; then
+			case "$name" in
+				major|minor|fix)
+					# Boolean parameters come as "true" or empty
+					local "$name"="$value"
+					;;
+				rc|version)
+					# String parameters
+					local "$name"="$value"
+					;;
+			esac
+		fi
+	done <<<"$input"
+	
+	# Handle explicit version
+	if [[ -n "${version:-}" ]]; then
+		update_version_files "$version"
+		prompt_agent "$version"
 		return
-	}
-
-	// Handle RC version
-	if (params.rc) {
-		const baseVersion = params.rc
-		if (!baseVersion.match(/^\d+\.\d+\.\d+$/)) {
-			process.stderr.write(
-				`RC version must be a valid semver (e.g., "0.2.0"), got: ${baseVersion}\n`
-			)
-			process.exit(1)
-		}
-
-		const nextRcVersion = getNextRcVersion(baseVersion)
-		updateVersionFiles(nextRcVersion)
-		promptAgent(nextRcVersion)
+	fi
+	
+	# Handle RC version
+	if [[ -n "${rc:-}" ]]; then
+		if [[ ! "$rc" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+			echo "RC version must be a valid semver (e.g., \"0.2.0\"), got: $rc" >&2
+			exit 1
+		fi
+		
+		local next_rc
+		next_rc=$(get_next_rc_version "$rc")
+		update_version_files "$next_rc"
+		prompt_agent "$next_rc"
 		return
-	}
-
-	// Get current version from package.json
-	const pkgPath = "package.json"
-	const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"))
-	const currentVersion = pkg.version
-
-	// Count flags
-	const flags = [params.major, params.minor, params.fix].filter(Boolean).length
-	if (flags === 0) {
-		process.stderr.write(
-			"You must specify one of: --major, --minor, --fix, --rc, or provide a version string\n"
-		)
-		process.exit(1)
-	}
-	if (flags > 1) {
-		process.stderr.write("Only one of --major, --minor, or --fix can be specified\n")
-		process.exit(1)
-	}
-
-	const newVersion = bumpVersion(currentVersion, params)
-	updateVersionFiles(newVersion)
-	promptAgent(newVersion)
+	fi
+	
+	# Get current version from package.json
+	local current_version
+	current_version=$(grep -o '"version": *"[^"]*"' package.json | head -1 | cut -d'"' -f4)
+	
+	# Count flags
+	local flag_count=0
+	[[ "${major:-}" == "true" ]] && ((flag_count++))
+	[[ "${minor:-}" == "true" ]] && ((flag_count++))
+	[[ "${fix:-}" == "true" ]] && ((flag_count++))
+	
+	if [[ $flag_count -eq 0 ]]; then
+		echo "You must specify one of: major, minor, fix, rc, or version" >&2
+		exit 1
+	fi
+	
+	if [[ $flag_count -gt 1 ]]; then
+		echo "Only one of major, minor, or fix can be specified" >&2
+		exit 1
+	fi
+	
+	# Calculate new version
+	local new_version
+	new_version=$(bump_version "$current_version" "${major:-}" "${minor:-}" "${fix:-}")
+	
+	update_version_files "$new_version"
+	prompt_agent "$new_version"
 }
 
-function bumpVersion(current, params) {
-	// Strip any pre-release suffix
-	const base = current.split("-")[0]
-	const [major, minor, patch] = base.split(".").map(Number)
-
-	if (params.major) return `${major + 1}.0.0`
-	if (params.minor) return `${major}.${minor + 1}.0`
-	if (params.fix) return `${major}.${minor}.${patch + 1}`
-
-	throw new Error("Invalid bump type")
+bump_version() {
+	local current="$1"
+	local do_major="$2"
+	local do_minor="$3"
+	local do_fix="$4"
+	
+	# Strip any pre-release suffix
+	local base="${current%%-*}"
+	
+	# Parse version components
+	local major minor patch
+	major=$(echo "$base" | cut -d. -f1)
+	minor=$(echo "$base" | cut -d. -f2)
+	patch=$(echo "$base" | cut -d. -f3)
+	
+	if [[ "$do_major" == "true" ]]; then
+		echo "$((major + 1)).0.0"
+	elif [[ "$do_minor" == "true" ]]; then
+		echo "${major}.$((minor + 1)).0"
+	elif [[ "$do_fix" == "true" ]]; then
+		echo "${major}.${minor}.$((patch + 1))"
+	fi
 }
 
-function getNextRcVersion(baseVersion) {
-	try {
-		// Get all tags matching this base version
-		const tags = execSync(`git tag --list 'v${baseVersion}-rc.*'`, { encoding: "utf-8" })
-			.trim()
-			.split("\n")
-			.filter(Boolean)
-
-		if (tags.length === 0) {
-			return `${baseVersion}-rc.1`
-		}
-
-		// Extract RC numbers and find the highest
-		const rcNumbers = tags.map((tag) => {
-			const match = tag.match(/v\d+\.\d+\.\d+-rc\.(\d+)/)
-			return match ? parseInt(match[1], 10) : 0
-		})
-
-		const maxRc = Math.max(...rcNumbers)
-		return `${baseVersion}-rc.${maxRc + 1}`
-	} catch (err) {
-		// If git command fails, assume this is the first RC
-		return `${baseVersion}-rc.1`
-	}
+get_next_rc_version() {
+	local base_version="$1"
+	
+	# Get all tags matching this base version
+	local tags
+	tags=$(git tag --list "v${base_version}-rc.*" 2>/dev/null || true)
+	
+	if [[ -z "$tags" ]]; then
+		echo "${base_version}-rc.1"
+		return
+	fi
+	
+	# Extract RC numbers and find the highest
+	local max_rc=0
+	while IFS= read -r tag; do
+		if [[ "$tag" =~ v[0-9]+\.[0-9]+\.[0-9]+-rc\.([0-9]+) ]]; then
+			local rc_num="${BASH_REMATCH[1]}"
+			if [[ $rc_num -gt $max_rc ]]; then
+				max_rc=$rc_num
+			fi
+		fi
+	done <<< "$tags"
+	
+	echo "${base_version}-rc.$((max_rc + 1))"
 }
 
-function updateVersionFiles(version) {
-	// Update package.json
-	const pkgPath = "package.json"
-	const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"))
-	pkg.version = version
-	fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n")
-
-	// Update tauri.conf.json
-	const tauriPath = "src-tauri/tauri.conf.json"
-	const tauri = JSON.parse(fs.readFileSync(tauriPath, "utf-8"))
-	tauri.version = version
-	fs.writeFileSync(tauriPath, JSON.stringify(tauri, null, 2) + "\n")
-
-	// Update Cargo.toml
-	const cargoPath = "src-tauri/Cargo.toml"
-	const cargoContent = fs.readFileSync(cargoPath, "utf-8")
-	const updatedCargo = cargoContent.replace(/^version = ".*"$/m, `version = "${version}"`)
-	fs.writeFileSync(cargoPath, updatedCargo)
-
-	process.stdout.write(`Updated version to ${version} in:\n`)
-	process.stdout.write(`  - package.json\n`)
-	process.stdout.write(`  - src-tauri/tauri.conf.json\n`)
-	process.stdout.write(`  - src-tauri/Cargo.toml\n\n`)
+update_version_files() {
+	local version="$1"
+	
+	# Update package.json
+	sed -i.bak "s/\"version\": *\"[^\"]*\"/\"version\": \"$version\"/" package.json && rm package.json.bak
+	
+	# Update tauri.conf.json
+	sed -i.bak "s/\"version\": *\"[^\"]*\"/\"version\": \"$version\"/" src-tauri/tauri.conf.json && rm src-tauri/tauri.conf.json.bak
+	
+	# Update Cargo.toml
+	sed -i.bak "s/^version = \".*\"/version = \"$version\"/" src-tauri/Cargo.toml && rm src-tauri/Cargo.toml.bak
+	
+	echo "Updated version to $version in:"
+	echo "  - package.json"
+	echo "  - src-tauri/tauri.conf.json"
+	echo "  - src-tauri/Cargo.toml"
+	echo
 }
 
-function promptAgent(version) {
-	process.stdout.write(`Version files updated to ${version}.\n\n`)
-	process.stdout.write(`Please complete the following tasks:\n\n`)
-	process.stdout.write(`1. Update CHANGELOG.md with an entry for version ${version}\n`)
-	process.stdout.write(
-		`   - List all fixes, features, and deprecations/removals since the last version tag\n`
-	)
-	process.stdout.write(`   - Use git log to find changes since the last tag\n\n`)
-	process.stdout.write(`2. Commit the changes with title: "bump: version ${version}"\n`)
-	process.stdout.write(
-		`   - Include package.json, src-tauri/tauri.conf.json, src-tauri/Cargo.toml, and CHANGELOG.md\n\n`
-	)
-	process.stdout.write(`3. Tag the commit with: v${version}\n\n`)
-	process.stdout.write(`4. DO NOT PUSH commits or tags - they should remain local for review\n`)
+prompt_agent() {
+	local version="$1"
+	
+	cat <<-EOF
+		Version files updated to $version.
+		
+		Please complete the following tasks:
+		
+		1. Update CHANGELOG.md with an entry for version $version
+		   - List all fixes, features, and deprecations/removals since the last version tag
+		   - Use git log to find changes since the last tag
+		
+		2. Commit the changes with title: "bump: version $version"
+		   - Include package.json, src-tauri/tauri.conf.json, src-tauri/Cargo.toml, and CHANGELOG.md
+		
+		3. Tag the commit with: v$version
+		
+		4. DO NOT PUSH commits or tags - they should remain local for review
+	EOF
 }
+
+main() {
+	case "${TOOLBOX_ACTION:-${1:-describe}}" in
+	describe) print_tool_definition ;;
+	execute) read_args_and_run ;;
+	*)
+		printf "Unknown action: %s\n" "${TOOLBOX_ACTION:-$1}" >&2
+		exit 1
+		;;
+	esac
+}
+
+main "$@"
