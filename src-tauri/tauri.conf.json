@@ -1,13 +1,13 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Maestro",
-  "version": "0.4.2",
+  "version": "0.4.1",
   "identifier": "dev.trly.maestro",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "bun vite dev --port 5173 --strictPort",
-    "beforeBuildCommand": "bun vite build"
+    "beforeDevCommand": "pnpm vite dev --port 5173 --strictPort",
+    "beforeBuildCommand": "pnpm vite build"
   },
   "app": {
     "windows": [
