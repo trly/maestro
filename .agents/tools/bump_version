@@ -170,6 +170,8 @@ prompt_agent() {
 		3. Tag the commit with: v$version
 		
 		4. DO NOT PUSH commits or tags - they should remain local for review
+		
+		Note: The Homebrew tap (trly/homebrew-maestro) will be automatically updated by the release workflow.
 	EOF
 }
 

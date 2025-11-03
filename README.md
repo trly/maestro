@@ -52,17 +52,26 @@ AI-powered orchestrator for running prompts across multiple repositories using [
 #### Install via Homebrew (macOS - Recommended)
 
 ```bash
-brew tap trly/maestro https://github.com/trly/maestro
+brew tap trly/maestro
 brew install maestro
 ```
 
 **First launch:** Right-click Maestro.app → Open (Gatekeeper workaround for unsigned apps)
 
+**Note:** Homebrew tap is automatically updated when new releases are tagged via GitHub Actions.
+
 #### Download from GitHub Releases
 
 Download the latest release from [GitHub Releases](https://github.com/trly/maestro/releases):
 
-**macOS:**
+**macOS (ZIP - Recommended):**
+
+1. Download `Maestro_*.app.zip`
+2. Extract the ZIP file
+3. Move `Maestro.app` to Applications folder
+4. **First launch:** Right-click Maestro.app → Open → Open (bypasses Gatekeeper)
+
+**macOS (DMG):**
 
 1. Download `Maestro_*.dmg`
 2. Open the DMG and drag to Applications

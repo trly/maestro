@@ -163,8 +163,27 @@ jobs:
         run: cargo tauri build --bundles ${{ matrix.bundle }}
         working-directory: src-tauri
 
+      - name: Create macOS ZIP archive
+        if: matrix.os == 'macos-latest'
+        run: |
+          cd src-tauri/target/release/bundle/macos
+          zip -r Maestro.app.zip Maestro.app
+          mv Maestro.app.zip ../
+          cd ..
+          shasum -a 256 Maestro.app.zip | awk '{print $1}' > Maestro.app.zip.sha256
+          echo "SHA256: $(cat Maestro.app.zip.sha256)"
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}
           path: ${{ matrix.artifact-path }}
+
+      - name: Upload macOS ZIP artifact
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-zip
+          path: |
+            src-tauri/target/release/bundle/Maestro.app.zip
+            src-tauri/target/release/bundle/Maestro.app.zip.sha256
