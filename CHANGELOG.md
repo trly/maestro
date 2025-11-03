@@ -2,6 +2,16 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.4.3] - 2025-11-03
+
+### Fixed
+
+- Replace bun with pnpm in Tauri build commands
+
+### Changed
+
+- CI workflow optimized to eliminate duplicate compilation steps
+
 ## [0.4.2] - 2025-11-03
 
 ### Changed
