@@ -2,6 +2,24 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.4.6] - 2025-11-03
+
+### Added
+
+- ZIP distribution format for macOS alongside DMG (better Gatekeeper experience)
+- SHA256 checksums generated during CI build and included as artifacts
+
+### Changed
+
+- Migrated Homebrew cask to separate tap repository (trly/homebrew-maestro)
+- Simplified Homebrew installation: `brew tap trly/maestro && brew install maestro`
+- Release workflow now auto-updates tap repository with version and SHA256
+- Removed cask update logic from bump_version tool
+
+### Fixed
+
+- Homebrew cask location moved to correct tap structure
+
 ## [0.4.5] - 2025-11-03
 
 ### Added
