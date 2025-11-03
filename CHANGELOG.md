@@ -2,6 +2,12 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.4.7] - 2025-11-03
+
+### Fixed
+
+- CI: Build both app and dmg bundles on macOS to preserve .app for zipping
+
 ## [0.4.6] - 2025-11-03
 
 ### Added

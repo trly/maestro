@@ -165,7 +165,7 @@ prompt_agent() {
 		   - Use git log to find changes since the last tag
 		
 		2. Commit the changes with title: "bump: version $version"
-		   - Include package.json, src-tauri/tauri.conf.json, src-tauri/Cargo.toml, and CHANGELOG.md
+		   - Include package.json, src-tauri/tauri.conf.json, src-tauri/Cargo.toml, src-tauri/Cargo.lock, and CHANGELOG.md
 		
 		3. Tag the commit with: v$version
 		
