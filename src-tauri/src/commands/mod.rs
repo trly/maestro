@@ -1,5 +1,4 @@
 // Command modules will be added in subsequent phases
-pub mod amp_sidecar;
 pub mod analysis;
 pub mod app_check;
 pub mod app_info;

@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
 
-use super::amp_sidecar;
+use super::executor::execute_with_amp;
 use crate::commands::executor_events::{emit_analysis_result, emit_analysis_status};
 use crate::db::store::Store;
 use crate::types::{Analysis, AnalysisStatus, AnalysisType};
@@ -160,10 +160,9 @@ async fn run_analysis_impl(analysis_id: String, app: AppHandle) -> Result<()> {
     // Emit running status event (but don't update DB since there's no Running enum variant)
     emit_analysis_status(&app, &analysis_id, "running", None);
 
-    let execution_result = amp_sidecar::run_amp(
+    let execution_result = execute_with_amp(
         &temp_dir,
         &analysis_prompt,
-        None,
         None,
         None,
         None::<fn(&str)>,

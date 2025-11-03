@@ -721,6 +721,13 @@ export async function healthCheckGit(): Promise<HealthCheckResult> {
 }
 
 /**
+ * Check Amp CLI installation and version
+ */
+export async function healthCheckAmp(): Promise<HealthCheckResult> {
+	return invokeCommand<HealthCheckResult>("health_check_amp")
+}
+
+/**
  * Check Node.js installation and version
  */
 export async function healthCheckNodejs(): Promise<HealthCheckResult> {

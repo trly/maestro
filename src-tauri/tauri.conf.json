@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "make sidecar && bun vite dev --port 5173 --strictPort",
-    "beforeBuildCommand": "bun vite build && make sidecar"
+    "beforeDevCommand": "bun vite dev --port 5173 --strictPort",
+    "beforeBuildCommand": "bun vite build"
   },
   "app": {
     "windows": [
@@ -24,7 +24,8 @@
       "capabilities": [
         "default"
       ]
-    }
+    },
+    "withGlobalTauri": true
   },
   "bundle": {
     "active": true,
@@ -40,18 +41,15 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "resources/**/*"
-    ],
-    "externalBin": [
-      "binaries/amp-executor"
-    ],
+    "resources": [],
+    "externalBin": [],
     "copyright": "Copyright © 2025 Sourcegraph",
     "category": "DeveloperTool",
     "shortDescription": "AI Prompt Orchestrator",
     "longDescription": "Maestro orchestrates AI prompt execution across multiple repositories using the Amp SDK.",
     "macOS": {
-      "signingIdentity": "-"
+      "signingIdentity": "-",
+      "entitlements": "entitlements.plist"
     }
   }
 }

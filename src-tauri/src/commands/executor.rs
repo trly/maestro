@@ -1,12 +1,53 @@
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use tauri::Manager;
-use tauri_plugin_shell::process::CommandChild;
+use tokio::io::{AsyncBufReadExt, BufReader};
 
-use super::amp_sidecar;
+/// Build complete environment map for amp command execution.
+/// Uses current process environment (system shell).
+fn build_amp_env(repo_path: &Path, amp_token: &str) -> HashMap<String, String> {
+    let mut env: HashMap<String, String> = std::env::vars().collect();
+
+    // Set required working directory and authentication
+    env.insert("PWD".to_string(), repo_path.to_string_lossy().into_owned());
+    env.insert("AMP_API_KEY".to_string(), amp_token.to_string());
+
+    // Ensure PATH is set (critical for amp to find system tools)
+    if !env.contains_key("PATH") {
+        env.insert(
+            "PATH".to_string(),
+            "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin".to_string(),
+        );
+    }
+
+    // Enable verbose amp CLI logging for diagnostics
+    env.insert("AMP_DEBUG".to_string(), "1".to_string());
+    env.insert("AMP_LOG_LEVEL".to_string(), "debug".to_string());
+    env.insert("AMP_CLI_STDOUT_DEBUG".to_string(), "true".to_string());
+
+    // Log network configuration for diagnostics
+    log::debug!(
+    "[build_amp_env] Network config: HTTP_PROXY={:?}, HTTPS_PROXY={:?}, NO_PROXY={:?}, NODE_EXTRA_CA_CERTS={:?}",
+    env.get("HTTP_PROXY"),
+    env.get("HTTPS_PROXY"),
+    env.get("NO_PROXY"),
+    env.get("NODE_EXTRA_CA_CERTS")
+    );
+
+    // Log HOME and AMP config paths for credential debugging
+    log::debug!(
+        "[build_amp_env] HOME={:?}, AMP_HOME={:?}, AMP_DEBUG={:?}",
+        env.get("HOME"),
+        env.get("AMP_HOME"),
+        env.get("AMP_DEBUG")
+    );
+
+    env
+}
+
 use super::executor_events::{
     emit_execution_commit, emit_execution_progress, emit_execution_session, emit_execution_status,
     emit_execution_validation,
@@ -36,7 +77,7 @@ async fn fetch_default_branch(provider: &str, provider_id: &str) -> Result<Strin
     Ok(metadata.default_branch)
 }
 
-type ChildHandle = std::sync::Arc<Mutex<Option<CommandChild>>>;
+type ChildHandle = std::sync::Arc<Mutex<Option<tokio::process::Child>>>;
 
 lazy_static::lazy_static! {
     static ref ACTIVE_EXECUTIONS: Mutex<HashMap<String, std::sync::Arc<Mutex<bool>>>> = Mutex::new(HashMap::new());
@@ -220,6 +261,259 @@ async fn remove_worktree(
         .output();
 
     Ok(())
+}
+
+pub(crate) async fn execute_with_amp(
+    repo_path: &Path,
+    prompt_text: &str,
+    continue_session_id: Option<&str>,
+    abort_flag: Option<std::sync::Arc<Mutex<bool>>>,
+    on_session_start: Option<impl Fn(&str)>,
+    _app: &tauri::AppHandle,
+) -> Result<(String, Option<String>)> {
+    use crate::commands::tokens::get_token_value;
+
+    let amp_token = get_token_value("amp_token")
+        .map_err(|e| anyhow::anyhow!("Failed to access AMP token: {}", e))?
+        .ok_or_else(|| anyhow::anyhow!("AMP token not configured"))?;
+
+    log::debug!(
+        "[execute_with_amp] Retrieved token from keyring (first 20 chars): {}",
+        &amp_token.chars().take(20).collect::<String>()
+    );
+
+    let mut args = vec![
+        "-x".to_string(),
+        prompt_text.to_string(),
+        "--stream-json".to_string(),
+        "--dangerously-allow-all".to_string(),
+    ];
+
+    if let Some(continue_id) = continue_session_id {
+        args.insert(0, continue_id.to_string());
+        args.insert(0, "continue".to_string());
+        args.insert(0, "threads".to_string());
+    }
+
+    // Resolve absolute path to system-installed 'amp' binary
+    let amp_binary_path = which::which("amp")
+        .map_err(|e| anyhow::anyhow!("Failed to locate 'amp' binary in PATH: {}", e))?;
+
+    log::debug!(
+        "[execute_with_amp] Resolved amp binary path: {:?}",
+        amp_binary_path
+    );
+    log::debug!(
+        "[execute_with_amp] Spawning 'amp' command with args: {:?}, cwd: {:?}",
+        args,
+        repo_path
+    );
+
+    // Build complete environment with network/proxy settings from login shell
+    let env_map = build_amp_env(repo_path, &amp_token);
+
+    // Spawn amp using tokio::process::Command for full stdin/stdout/stderr control
+    let mut cmd = tokio::process::Command::new(amp_binary_path);
+    cmd.args(&args)
+        .current_dir(repo_path)
+        .stdin(Stdio::null()) // Close stdin to prevent amp from blocking on stdin reads
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .envs(env_map);
+
+    let child = cmd.spawn().context("Failed to spawn amp process")?;
+
+    let pid = child
+        .id()
+        .ok_or_else(|| anyhow::anyhow!("Failed to get child PID"))?;
+    log::debug!(
+        "[execute_with_amp] Command spawned successfully, PID: {}",
+        pid
+    );
+
+    // Store child handle for abort functionality
+    let child_handle: ChildHandle = std::sync::Arc::new(Mutex::new(Some(child)));
+    let child_handle_clone = child_handle.clone();
+
+    // Take stdout and stderr for async reading
+    let stdout = {
+        let mut child_opt = child_handle.lock().unwrap();
+        child_opt
+            .as_mut()
+            .and_then(|c| c.stdout.take())
+            .ok_or_else(|| anyhow::anyhow!("Failed to capture stdout"))?
+    };
+    let stderr = {
+        let mut child_opt = child_handle.lock().unwrap();
+        child_opt
+            .as_mut()
+            .and_then(|c| c.stderr.take())
+            .ok_or_else(|| anyhow::anyhow!("Failed to capture stderr"))?
+    };
+
+    let mut stdout_lines = BufReader::new(stdout).lines();
+    let mut stderr_lines = BufReader::new(stderr).lines();
+
+    let mut session_id = String::new();
+    let mut result_message: Option<String> = None;
+
+    // Spawn abort watcher task
+    let abort_flag_clone = abort_flag.clone();
+    if abort_flag.is_some() {
+        let child_handle_abort = child_handle_clone.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                if let Some(ref flag) = abort_flag_clone {
+                    let should_abort = *flag.lock().unwrap();
+                    if should_abort {
+                        if let Ok(mut child_opt) = child_handle_abort.lock() {
+                            if let Some(child) = child_opt.as_mut() {
+                                let _ = child.start_kill();
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
+    // Read stdout and stderr concurrently until both are closed
+    loop {
+        tokio::select! {
+            // Check abort flag
+            _ = async {
+                if let Some(ref flag) = abort_flag {
+                    loop {
+                        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+                        if *flag.lock().unwrap() {
+                            break;
+                        }
+                    }
+                } else {
+                    std::future::pending::<()>().await
+                }
+            } => {
+                anyhow::bail!("Execution aborted by user");
+            }
+
+            // Read stdout line
+            line = stdout_lines.next_line() => {
+                match line {
+                    Ok(Some(json_line)) => {
+                        if json_line.trim().is_empty() {
+                            continue;
+                        }
+
+                        // Parse as generic JSON to handle all event types
+                        if let Ok(event) = serde_json::from_str::<serde_json::Value>(&json_line) {
+                            // Capture session_id from any stdout event that contains it
+                            if session_id.is_empty() {
+                                if let Some(sid) = event.get("session_id").and_then(|v| v.as_str()) {
+                                    session_id = sid.to_string();
+                                    log::debug!("[execute_with_amp] Captured session_id from stdout: {}", session_id);
+                                    if let Some(ref callback) = on_session_start {
+                                        callback(&session_id);
+                                    }
+                                }
+                            }
+
+                            // Extract assistant text from message events
+                            if let Some(msg_type) = event.get("type").and_then(|v| v.as_str()) {
+                                if msg_type == "assistant" {
+                                    if let Some(content_array) = event
+                                        .get("message")
+                                        .and_then(|m| m.get("content"))
+                                        .and_then(|c| c.as_array())
+                                    {
+                                        for block in content_array {
+                                            if block.get("type").and_then(|t| t.as_str()) == Some("text") {
+                                                if let Some(text) = block.get("text").and_then(|t| t.as_str()) {
+                                                    result_message = Some(text.to_string());
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Ok(None) => {
+                        // stdout closed, continue to drain stderr
+                        break;
+                    }
+                    Err(e) => {
+                        log::warn!("[amp] stdout read error: {}", e);
+                        break;
+                    }
+                }
+            }
+
+            // Read stderr line
+            line = stderr_lines.next_line() => {
+                match line {
+                    Ok(Some(stderr_line)) => {
+                        if stderr_line.trim().is_empty() {
+                            continue;
+                        }
+                        // Try to parse as JSON first (for session ID, etc.)
+                        if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(&stderr_line) {
+                            // Check for session ID (format: {"sessionId": "T-..."})
+                            if let Some(sid) = json_val.get("sessionId").and_then(|v| v.as_str()) {
+                                if session_id.is_empty() {
+                                    session_id = sid.to_string();
+                                    if let Some(ref callback) = on_session_start {
+                                        callback(&session_id);
+                                    }
+                                }
+                            }
+                        } else {
+                            // Log non-JSON stderr
+                            log::warn!("[amp] {}", stderr_line.trim());
+                        }
+                    }
+                    Ok(None) => {
+                        // stderr closed, continue reading stdout
+                    }
+                    Err(e) => {
+                        log::warn!("[amp] stderr read error: {}", e);
+                    }
+                }
+            }
+        }
+    }
+
+    // Drain remaining stderr lines
+    while let Ok(Some(stderr_line)) = stderr_lines.next_line().await {
+        if !stderr_line.trim().is_empty() {
+            log::warn!("[amp] {}", stderr_line.trim());
+        }
+    }
+
+    // Wait for process to finish
+    let mut child = {
+        let mut child_opt = child_handle.lock().unwrap();
+        child_opt
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("Child process handle was already consumed"))?
+    };
+    let status = child.wait().await?;
+
+    let code = status.code().unwrap_or_default();
+    if code != 0 {
+        let error_msg = result_message
+            .as_deref()
+            .unwrap_or("Amp execution failed")
+            .to_string();
+        anyhow::bail!("Amp execution failed (exit {}): {}", code, error_msg);
+    }
+
+    if session_id.is_empty() {
+        anyhow::bail!("No session ID received from Amp");
+    }
+
+    Ok((session_id, result_message))
 }
 
 #[tauri::command]
@@ -507,11 +801,10 @@ PROMPT: FAIL";
 		let execution_id_clone = execution_id.clone();
 		let app_clone = app.clone();
 
-		let (session_id, result_message) = amp_sidecar::run_amp(
+		let (session_id, result_message) = execute_with_amp(
 			&worktree_info.worktree_path,
 			&full_prompt,
 			None,
-			Some(&format!("exec:{}", execution_id)),
 			Some(abort_flag.clone()),
 			Some(move |sid: &str| {
 				let thread_url = format!("https://ampcode.com/threads/{}", sid);
@@ -776,11 +1069,10 @@ VALIDATION: FAIL";
 		let execution_id_clone = execution_id.clone();
 		let app_clone = app.clone();
 
-		let (validation_session_id, result_message) = amp_sidecar::run_amp(
+		let (validation_session_id, result_message) = execute_with_amp(
 			&worktree_path,
 			&full_validation_prompt,
 			None,
-			Some(&format!("val:{}", execution_id)),
 			Some(abort_flag.clone()),
 			Some(move |sid: &str| {
 				let validation_thread_url = format!("https://ampcode.com/threads/{}", sid);
@@ -1014,11 +1306,10 @@ PROMPT: FAIL";
 		let execution_id_clone = execution_id.clone();
 		let app_clone = app.clone();
 
-		let (session_id, result_message) = amp_sidecar::run_amp(
+		let (session_id, result_message) = execute_with_amp(
 			&worktree_path,
 			&resume_prompt,
 			execution.session_id.as_deref(),
-			Some(&format!("exec:{}", execution_id)),
 			Some(abort_flag.clone()),
 			Some(move |sid: &str| {
 				let thread_url = format!("https://ampcode.com/threads/{}", sid);
@@ -1195,11 +1486,10 @@ pub async fn commit_changes(
     emit_execution_progress(&app, &execution_id, "Committing files...");
 
     let worktree_path = execution_worktree_path(&paths, &promptset_id, &execution_id);
-    amp_sidecar::run_amp(
+    execute_with_amp(
         &worktree_path,
         &commit_prompt,
         Some(&session_id),
-        None, // No execution_key for commit operations
         None, // No abort_flag for commit operations
         None::<fn(&str)>,
         &app,
@@ -1412,8 +1702,8 @@ pub fn stop_execution(execution_id: String, app: tauri::AppHandle) -> Result<boo
     let active_children = ACTIVE_CHILDREN.lock().unwrap();
     if let Some(child_handle) = active_children.get(&exec_key) {
         if let Ok(mut guard) = child_handle.lock() {
-            if let Some(child) = guard.take() {
-                let _ = child.kill();
+            if let Some(mut child) = guard.take() {
+                let _ = child.start_kill();
             }
         }
         drop(active_children);
@@ -1460,8 +1750,8 @@ pub fn stop_validation(execution_id: String, app: tauri::AppHandle) -> Result<bo
     let active_children = ACTIVE_CHILDREN.lock().unwrap();
     if let Some(child_handle) = active_children.get(&val_key) {
         if let Ok(mut guard) = child_handle.lock() {
-            if let Some(child) = guard.take() {
-                let _ = child.kill();
+            if let Some(mut child) = guard.take() {
+                let _ = child.start_kill();
             }
         }
         drop(active_children);

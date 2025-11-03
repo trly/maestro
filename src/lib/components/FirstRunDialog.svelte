@@ -2,7 +2,12 @@
 	import { Dialog, Checkbox } from "bits-ui"
 	import { CheckCircle2, XCircle, Loader2 } from "lucide-svelte"
 	import { onMount } from "svelte"
-	import { healthCheckGit, setFirstRunComplete, setShowFirstRunDialog } from "$lib/ipc"
+	import {
+		healthCheckGit,
+		healthCheckAmp,
+		setFirstRunComplete,
+		setShowFirstRunDialog,
+	} from "$lib/ipc"
 	import type { HealthCheckResult } from "$lib/types"
 
 	type PageContent = {
@@ -21,12 +26,14 @@
 
 	let page = $state(0)
 	let gitCheck = $state<HealthCheckResult | null>(null)
+	let ampCheck = $state<HealthCheckResult | null>(null)
 	let checksComplete = $state(false)
 	let showOnStartup = $state(true)
 
 	async function runHealthChecks() {
-		const git = await healthCheckGit()
+		const [git, amp] = await Promise.all([healthCheckGit(), healthCheckAmp()])
 		gitCheck = git
+		ampCheck = amp
 		checksComplete = true
 	}
 
@@ -34,7 +41,7 @@
 		runHealthChecks()
 	})
 
-	const allChecksPassed = $derived(checksComplete && gitCheck?.success)
+	const allChecksPassed = $derived(checksComplete && gitCheck?.success && ampCheck?.success)
 
 	async function handleFinish() {
 		if (!helpMode) {
@@ -168,6 +175,29 @@
 											<div class="text-xs text-muted-foreground">{gitCheck.username}</div>
 										{:else if gitCheck?.error}
 											<div class="text-xs text-destructive">{gitCheck.error}</div>
+										{/if}
+									</div>
+								</div>
+							</div>
+
+							<!-- Amp Check -->
+							<div
+								class="flex items-center justify-between p-3 bg-background rounded border border-border"
+							>
+								<div class="flex items-center gap-3">
+									{#if !ampCheck}
+										<Loader2 class="h-4 w-4 animate-spin text-primary" />
+									{:else if ampCheck.success}
+										<CheckCircle2 class="h-4 w-4 text-success" />
+									{:else}
+										<XCircle class="h-4 w-4 text-destructive" />
+									{/if}
+									<div>
+										<div class="font-medium">Amp CLI</div>
+										{#if ampCheck?.success}
+											<div class="text-xs text-muted-foreground">{ampCheck.username}</div>
+										{:else if ampCheck?.error}
+											<div class="text-xs text-destructive">{ampCheck.error}</div>
 										{/if}
 									</div>
 								</div>

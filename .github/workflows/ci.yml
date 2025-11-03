@@ -6,9 +6,8 @@ on:
     paths:
       - "src/**"
       - "src-tauri/**"
-      - "amp-executor/**"
       - "package.json"
-      - "bun.lock"
+      - "pnpm-lock.yaml"
       - "Cargo.lock"
       - ".github/workflows/**.yml"
   pull_request:
@@ -16,9 +15,8 @@ on:
     paths:
       - "src/**"
       - "src-tauri/**"
-      - "amp-executor/**"
       - "package.json"
-      - "bun.lock"
+      - "pnpm-lock.yaml"
       - "Cargo.lock"
       - ".github/workflows/**.yml"
 
@@ -35,22 +33,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
-      - name: Cache Bun dependencies
-        uses: actions/cache@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
+          node-version: "lts/*"
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: TypeScript check
-        run: bun run check
+        run: pnpm run check
 
   lint-rust:
     runs-on: ubuntu-latest
@@ -70,19 +66,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install Node dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build amp-executor sidecar
-        run: make sidecar
-
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: Cargo format check
         run: cargo fmt --check
@@ -108,19 +95,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install Node dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build amp-executor sidecar
-        run: make sidecar
-
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: Cargo test
         run: cargo test
@@ -156,27 +134,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
-      - name: Cache Bun dependencies
-        uses: actions/cache@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
+          node-version: "lts/*"
+          cache: "pnpm"
 
       - name: Install Node dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build amp-executor sidecar
-        run: make sidecar
+        run: pnpm install --frozen-lockfile
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: Build app
         run: cargo tauri build --bundles ${{ matrix.bundle }}

@@ -282,13 +282,13 @@ ORDER BY created_at DESC;
 ## Security Considerations
 
 1. **Amp Token**
-   - Stored in system keyring (same as execution agent)
+   - Stored in system keyring
    - Never exposed in logs or UI
-   - Passed to amp-executor.ts via AMP_API_KEY environment variable
+   - Passed to `amp` CLI via AMP_API_KEY environment variable
 
 2. **Thread Access**
    - Only threads from workspace executions are analyzed
-   - Amp SDK's read_thread tool handles authentication automatically
+   - Amp CLI's read_thread tool handles authentication automatically
    - User must have access to threads in their workspace
 
 ## Performance
@@ -356,7 +356,7 @@ Potential improvements:
 1. Verify Amp token in Settings → Agents
 2. Check thread URL format: `https://ampcode.com/threads/T-{uuid}`
 3. Ensure you have access to the thread in your Amp workspace
-4. Check amp-executor.ts output for detailed errors
+4. Check `amp` CLI logs for detailed errors
 
 ### "Analysis failed"
 

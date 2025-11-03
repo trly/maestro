@@ -70,6 +70,34 @@ pub async fn health_check_git() -> Result<HealthCheckResult, String> {
     }
 }
 
+#[tauri::command]
+pub async fn health_check_amp() -> Result<HealthCheckResult, String> {
+    match Command::new("amp").arg("--version").output() {
+        Ok(output) => {
+            if output.status.success() {
+                let version = String::from_utf8_lossy(&output.stdout);
+                let version_str = version.trim();
+                Ok(HealthCheckResult {
+                    success: true,
+                    username: Some(version_str.to_string()),
+                    error: None,
+                })
+            } else {
+                Ok(HealthCheckResult {
+                    success: false,
+                    username: None,
+                    error: Some("Amp command failed".to_string()),
+                })
+            }
+        }
+        Err(e) => Ok(HealthCheckResult {
+            success: false,
+            username: None,
+            error: Some(format!("Amp not found: {}", e)),
+        }),
+    }
+}
+
 #[derive(Deserialize)]
 struct GitLabUser {
     username: String,
