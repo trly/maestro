@@ -159,7 +159,13 @@ jobs:
         with:
           tool: tauri-cli@2.9.2
 
+      - name: Build app bundles
+        if: matrix.os == 'macos-latest'
+        run: cargo tauri build --bundles app,dmg
+        working-directory: src-tauri
+
       - name: Build app
+        if: matrix.os != 'macos-latest'
         run: cargo tauri build --bundles ${{ matrix.bundle }}
         working-directory: src-tauri
 
@@ -167,8 +173,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           cd src-tauri/target/release/bundle/macos
-          zip -r Maestro.app.zip Maestro.app
-          mv Maestro.app.zip ../
+          ditto -c -k --sequesterRsrc --keepParent Maestro.app ../Maestro.app.zip
           cd ..
           shasum -a 256 Maestro.app.zip | awk '{print $1}' > Maestro.app.zip.sha256
           echo "SHA256: $(cat Maestro.app.zip.sha256)"
