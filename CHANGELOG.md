@@ -2,6 +2,20 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.4.4] - 2025-11-03
+
+### Fixed
+
+- CI: Fixed Rust linting failures by replacing mise-action with dtolnay/rust-toolchain
+- CI: Added explicit rustfmt and clippy components to Rust toolchain setup
+- CI: Fixed build step working directory for cargo tauri build
+
+### Changed
+
+- CI: Replaced mise-action with direct version pinning for all tools
+- CI: Use taiki-e/install-action for faster Tauri CLI installation
+- CI: Optimized Rust cache placement and added OS-specific cache keys
+
 ## [0.4.3] - 2025-11-03
 
 ### Fixed
