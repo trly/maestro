@@ -2,6 +2,20 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.4.10] - 2025-11-04
+
+### Added
+
+- HTTPS authentication with PAT fallback for Git operations
+
+### Fixed
+
+- Retry logic now starts fresh session when no thread exists
+
+### Changed
+
+- Improved UX with documentation, settings, and error handling
+
 ## [0.4.9] - 2025-11-04
 
 ### Fixed
