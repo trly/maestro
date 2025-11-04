@@ -108,4 +108,4 @@ jobs:
           
           echo "✅ Triggered Homebrew tap update workflow"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
