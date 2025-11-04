@@ -2,6 +2,12 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.4.8] - 2025-11-04
+
+### Changed
+
+- Release workflow now triggers Homebrew tap update via repository_dispatch instead of direct push
+
 ## [0.4.7] - 2025-11-03
 
 ### Fixed
