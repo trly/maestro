@@ -43,13 +43,10 @@
     ],
     "resources": [],
     "externalBin": [],
-    "copyright": "Copyright © 2025 Sourcegraph",
+    "copyright": "Copyright 2025 Travis Lyons",
     "category": "DeveloperTool",
     "shortDescription": "AI Code Orchestrator",
     "longDescription": "Maestro orchestrates AI-powered code changes across multiple repositories using Amp.",
-    "macOS": {
-      "signingIdentity": "-",
-      "entitlements": "entitlements.plist"
-    }
+    "macOS": {}
   }
 }
