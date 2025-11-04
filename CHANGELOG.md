@@ -2,6 +2,12 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.4.9] - 2025-11-04
+
+### Fixed
+
+- Release workflow: Use HOMEBREW_TAP_TOKEN for cross-repository dispatch to homebrew tap
+
 ## [0.4.8] - 2025-11-04
 
 ### Changed
