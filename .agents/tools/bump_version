@@ -145,10 +145,16 @@ update_version_files() {
 	# Update Cargo.toml
 	sed -i.bak "s/^version = \".*\"/version = \"$version\"/" src-tauri/Cargo.toml && rm src-tauri/Cargo.toml.bak
 	
+	# Regenerate Cargo.lock
+	(cd src-tauri && cargo update -p maestro) || {
+		echo "Warning: Failed to update Cargo.lock, but version files were updated" >&2
+	}
+	
 	echo "Updated version to $version in:"
 	echo "  - package.json"
 	echo "  - src-tauri/tauri.conf.json"
 	echo "  - src-tauri/Cargo.toml"
+	echo "  - src-tauri/Cargo.lock"
 	echo
 }
 
@@ -158,18 +164,18 @@ prompt_agent() {
 	cat <<-EOF
 		Version files updated to $version.
 		
-		Please complete the following tasks:
+		Now complete these tasks:
 		
 		1. Update CHANGELOG.md with an entry for version $version
-		   - List all fixes, features, and deprecations/removals since the last version tag
-		   - Use git log to find changes since the last tag
+		   - Use git log to find changes since the last version tag
+		   - List all fixes, features, and deprecations/removals
 		
-		2. Commit the changes with title: "bump: version $version"
-		   - Include package.json, src-tauri/tauri.conf.json, src-tauri/Cargo.toml, src-tauri/Cargo.lock, and CHANGELOG.md
+		2. Commit all changes with message: "bump: version $version"
+		   - Include: package.json, src-tauri/tauri.conf.json, src-tauri/Cargo.toml, src-tauri/Cargo.lock, and CHANGELOG.md
 		
-		3. Tag the commit with: v$version
+		3. Create annotated tag: v$version
 		
-		4. DO NOT PUSH commits or tags - they should remain local for review
+		IMPORTANT: Do NOT push commits or tags - leave them local for review.
 		
 		Note: The Homebrew tap (trly/homebrew-maestro) will be automatically updated by the release workflow.
 	EOF
