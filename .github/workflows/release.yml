@@ -87,48 +87,25 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
 
-      - name: Update Homebrew Tap
+      - name: Trigger Homebrew Tap Update
         run: |
-          # Extract version from tag (v0.4.5 -> 0.4.5)
           VERSION="${GITHUB_REF_NAME#v}"
-          echo "Updating Homebrew tap for version $VERSION"
+          echo "Triggering Homebrew tap update for version $VERSION"
           
-          # Find the checksum file (pre-calculated during CI build)
           SHA256_FILE=$(find builds/macos -name "Maestro.app.zip.sha256" -type f | head -n1)
           if [ -z "$SHA256_FILE" ]; then
             echo "::error::SHA256 checksum file not found"
             exit 1
           fi
           
-          # Read SHA256 from file
           SHA256=$(cat "$SHA256_FILE")
           echo "Using pre-calculated SHA256: $SHA256"
           
-          # Clone the tap repository
-          git clone https://x-access-token:${GH_TOKEN}@github.com/trly/homebrew-maestro.git tap-repo
-          cd tap-repo
+          gh api repos/trly/homebrew-maestro/dispatches \
+            -f event_type=maestro-release \
+            -f client_payload[version]="$VERSION" \
+            -f client_payload[sha256]="$SHA256"
           
-          # Update version and SHA256 in the cask file
-          CASK_FILE="Casks/maestro.rb"
-          sed -i.bak "s/version \".*\"/version \"$VERSION\"/" "$CASK_FILE"
-          sed -i.bak "s/sha256 \".*\"/sha256 \"$SHA256\"/" "$CASK_FILE"
-          rm "${CASK_FILE}.bak"
-          
-          # Check if changes were made
-          if git diff --quiet "$CASK_FILE"; then
-            echo "No changes to Homebrew cask"
-            exit 0
-          fi
-          
-          # Configure git
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Commit and push to tap repository
-          git add "$CASK_FILE"
-          git commit -m "maestro $VERSION"
-          git push origin main
-          
-          echo "✅ Homebrew tap updated to version $VERSION"
+          echo "✅ Triggered Homebrew tap update workflow"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
