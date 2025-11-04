@@ -1263,70 +1263,86 @@ async fn resume_execution_impl(
     }
 
     let result = async {
-		log::info!("[resume_execution] Parsing provider ID for {}", execution_id);
-		let (owner, repo) = parse_provider_id(&repository.provider_id)?;
+    log::info!("[resume_execution] Parsing provider ID for {}", execution_id);
+    let (owner, repo) = parse_provider_id(&repository.provider_id)?;
 
-		log::info!("[resume_execution] Ensuring admin repo and fetching for {}/{}", owner, repo);
-		let admin_repo_path = ensure_admin_repo_and_fetch(&paths.admin_repo_dir, &repository.provider, &owner, &repo).await?;
-		let worktree_path = execution_worktree_path(&paths, &execution.promptset_id, &execution_id);
+    log::info!("[resume_execution] Ensuring admin repo and fetching for {}/{}", owner, repo);
+    let admin_repo_path = ensure_admin_repo_and_fetch(&paths.admin_repo_dir, &repository.provider, &owner, &repo).await?;
+    let worktree_path = execution_worktree_path(&paths, &execution.promptset_id, &execution_id);
 
-		let branch_name = maestro_branch_name(&execution.promptset_id, &execution.revision_id, &execution_id);
+    let branch_name = maestro_branch_name(&execution.promptset_id, &execution.revision_id, &execution_id);
 
-		// Recreate worktree if it was cleaned up
-		if !worktree_path.exists() {
-			log::info!("[resume_execution] Worktree doesn't exist, recreating for {}", execution_id);
-			// Use stored default branch, or try fetching, or fall back to "main"
-			let default_branch = if let Some(branch) = &repository.default_branch {
-				branch.clone()
-			} else {
-				fetch_default_branch(&repository.provider, &repository.provider_id)
-					.await
-					.unwrap_or_else(|_| "main".to_string())
-			};
+    // Recreate worktree if it was cleaned up
+    if !worktree_path.exists() {
+    log::info!("[resume_execution] Worktree doesn't exist, recreating for {}", execution_id);
+    // Use stored default branch, or try fetching, or fall back to "main"
+    let default_branch = if let Some(branch) = &repository.default_branch {
+    branch.clone()
+    } else {
+    fetch_default_branch(&repository.provider, &repository.provider_id)
+    .await
+    .unwrap_or_else(|_| "main".to_string())
+    };
 
-			log::info!("[resume_execution] Creating worktree on branch {} for {}", default_branch, execution_id);
-			let worktree_info = add_worktree(
-				&admin_repo_path,
-				&paths.worktree_dir,
-				&execution.promptset_id,
-				&execution.revision_id,
-				&execution_id,
-				&default_branch,
-			)
-			.await?;
+    log::info!("[resume_execution] Creating worktree on branch {} for {}", default_branch, execution_id);
+    let worktree_info = add_worktree(
+    &admin_repo_path,
+    &paths.worktree_dir,
+    &execution.promptset_id,
+    &execution.revision_id,
+    &execution_id,
+    &default_branch,
+    )
+    .await?;
 
-			// Update parent_sha and branch if they weren't set
-			let store_state = app.state::<Mutex<Store>>();
-			let store = store_state.lock().unwrap();
-			store.update_execution(
-				&execution_id,
-				ExecutionUpdates {
-					parent_sha: Some(worktree_info.base_commit.clone()),
-					branch: Some(worktree_info.branch_name.clone()),
-					..Default::default()
-				},
-			)?;
-			log::info!("[resume_execution] Worktree created successfully for {}", execution_id);
-		} else {
-			log::info!("[resume_execution] Worktree already exists for {}", execution_id);
-		}
+    // Update parent_sha and branch if they weren't set
+    let store_state = app.state::<Mutex<Store>>();
+    let store = store_state.lock().unwrap();
+    store.update_execution(
+    &execution_id,
+    ExecutionUpdates {
+    parent_sha: Some(worktree_info.base_commit.clone()),
+    branch: Some(worktree_info.branch_name.clone()),
+    ..Default::default()
+    },
+    )?;
+    log::info!("[resume_execution] Worktree created successfully for {}", execution_id);
+    } else {
+    log::info!("[resume_execution] Worktree already exists for {}", execution_id);
+    }
 
-		let response_format = "
+    let response_format = "
 
 IMPORTANT: You MUST end your final response with exactly one of these lines on the final line to reflect if the above prompt is considered successful or not:
 PROMPT: PASS
 PROMPT: FAIL";
-		let resume_prompt = format!("Please continue with the previous task.{}", response_format);
 
-		log::info!("[resume_execution] Starting Amp execution for {}", execution_id);
+		// Determine if we should resume an existing session or start fresh
+    let has_thread = execution.session_id.is_some() && execution.thread_url.is_some();
+		let (prompt_text, continue_session) = if has_thread {
+     log::info!("[resume_execution] Resuming existing thread for {}", execution_id);
+     (format!("Please continue with the previous task.{}", response_format), execution.session_id.as_deref())
+		} else {
+     log::info!("[resume_execution] Starting fresh execution (no previous thread) for {}", execution_id);
+    // Get the original prompt text
+    let revision = {
+     let store_state = app.state::<Mutex<Store>>();
+     let store = store_state.lock().unwrap();
+     store.get_prompt_revision(&execution.revision_id)?
+     .ok_or_else(|| anyhow::anyhow!("Revision {} not found", execution.revision_id))?
+    };
+    (format!("{}{}", revision.prompt_text, response_format), None)
+    };
 
-		let execution_id_clone = execution_id.clone();
-		let app_clone = app.clone();
+    log::info!("[resume_execution] Starting Amp execution for {}", execution_id);
+
+    let execution_id_clone = execution_id.clone();
+    let app_clone = app.clone();
 
 		let (session_id, result_message) = execute_with_amp(
 			&worktree_path,
-			&resume_prompt,
-			execution.session_id.as_deref(),
+			&prompt_text,
+			continue_session,
 			Some(abort_flag.clone()),
 			Some(move |sid: &str| {
 				let thread_url = format!("https://ampcode.com/threads/{}", sid);
