@@ -173,7 +173,7 @@ prompt_agent() {
 		2. Commit all changes with message: "bump: version $version"
 		   - Include: package.json, src-tauri/tauri.conf.json, src-tauri/Cargo.toml, src-tauri/Cargo.lock, and CHANGELOG.md
 		
-		3. Create annotated tag: v$version
+		3. Create lightweight tag: v$version
 		
 		IMPORTANT: Do NOT push commits or tags - leave them local for review.
 		
