@@ -2,6 +2,13 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.4.12] - 2025-11-04
+
+### Changed
+
+- Agent: Use lightweight tags for version bumps
+- Agent: Improved bump_version tool formatting
+
 ## [0.4.11] - 2025-11-04
 
 ### Changed
