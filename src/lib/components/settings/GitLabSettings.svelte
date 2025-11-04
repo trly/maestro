@@ -184,7 +184,10 @@
 
 			<div>
 				<label for="gitlab-token" class="block text-sm font-medium mb-2">Access Token</label>
-				<p class="text-xs text-muted-foreground mb-2">Required for CI status monitoring</p>
+				<p class="text-xs text-muted-foreground mb-2">
+					Required scopes: <code class="bg-muted px-1 rounded">read_api</code>,
+					<code class="bg-muted px-1 rounded">write_repository</code>
+				</p>
 				<div class="flex flex-col sm:flex-row gap-2">
 					{#if editingToken}
 						<div class="flex-1">

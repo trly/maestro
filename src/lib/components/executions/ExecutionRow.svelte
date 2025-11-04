@@ -175,7 +175,11 @@
 			{/if}
 		</div>
 
-		{#if execution.threadUrl}
+		{#if execution.errorMessage}
+			<p class="text-xs text-destructive truncate" title={execution.errorMessage}>
+				{execution.errorMessage}
+			</p>
+		{:else if execution.threadUrl}
 			<button
 				onclick={() => openInBrowser(execution.threadUrl!)}
 				class="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"

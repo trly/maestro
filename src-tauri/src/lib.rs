@@ -287,6 +287,7 @@ pub fn run() {
             commands::health_check::health_check_sourcegraph,
             commands::health_check::health_check_git,
             commands::health_check::health_check_amp,
+            commands::health_check::health_check_amp_token,
             commands::app_info::get_app_info,
         ])
         .plugin(tauri_plugin_notification::init())

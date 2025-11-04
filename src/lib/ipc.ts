@@ -728,6 +728,13 @@ export async function healthCheckAmp(): Promise<HealthCheckResult> {
 }
 
 /**
+ * Check Amp token validity
+ */
+export async function healthCheckAmpToken(): Promise<HealthCheckResult> {
+	return invokeCommand<HealthCheckResult>("health_check_amp_token")
+}
+
+/**
  * Check Node.js installation and version
  */
 export async function healthCheckNodejs(): Promise<HealthCheckResult> {

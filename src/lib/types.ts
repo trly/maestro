@@ -76,6 +76,7 @@ export interface Execution {
 	ciStatus: CiStatus | null
 	ciCheckedAt: number | null
 	ciUrl: string | null
+	errorMessage: string | null
 	createdAt: number
 	completedAt: number | null
 	progressMessage?: string

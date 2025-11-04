@@ -187,17 +187,16 @@ Sourcegraph repository search integration:
 - Frontend/backend API usage
 - Error handling patterns
 
-### [GitLab Integration Readiness](./gitlab-integration-readiness.md)
+### GitLab Integration
 
-**When to read:** Planning or implementing GitLab provider support
+**Status:** GitLab integration is fully implemented
 
-GitLab integration preparation:
+GitLab support includes:
 
-- Provider abstraction architecture
-- Required configuration structures
-- CI and Git provider contexts
-- Implementation checklist
-- Code locations requiring updates
+- SSH-based repository cloning and operations
+- CI/CD pipeline status tracking
+- Custom instance URL configuration
+- Token-based API authentication
 
 ## Build & Distribution
 

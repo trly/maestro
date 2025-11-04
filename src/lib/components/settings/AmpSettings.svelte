@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { tokenStore } from "$lib/tokenStore"
+	import * as ipc from "$lib/ipc"
 	import { onMount } from "svelte"
+	import { CheckCircle2, XCircle, Loader2 } from "lucide-svelte"
 
 	interface Props {
 		onStatusChange: (status: { type: "success" | "error"; message: string }) => void
@@ -12,6 +14,8 @@
 	let ampTokenMasked = $state("")
 	let editingToken = $state(false)
 	let loading = $state(true)
+	let healthCheck = $state<ipc.HealthCheckResult | null>(null)
+	let checking = $state(false)
 
 	onMount(async () => {
 		try {
@@ -21,6 +25,22 @@
 			loading = false
 		}
 	})
+
+	async function testConnection() {
+		checking = true
+		healthCheck = null
+		try {
+			healthCheck = await ipc.healthCheckAmpToken()
+		} catch (error) {
+			healthCheck = {
+				success: false,
+				username: null,
+				error: error instanceof Error ? error.message : String(error),
+			}
+		} finally {
+			checking = false
+		}
+	}
 
 	async function saveToken() {
 		try {
@@ -129,6 +149,33 @@
 						class="text-primary hover:underline">ampcode.com/settings/profile</a
 					>
 				</p>
+				{#if ampTokenMasked && !editingToken}
+					<div class="mt-3 flex items-center gap-2">
+						<button
+							type="button"
+							onclick={testConnection}
+							disabled={checking}
+							class="px-3 py-1.5 text-sm border rounded-md hover:bg-muted transition-colors disabled:opacity-50"
+						>
+							{checking ? "Testing..." : "Test Connection"}
+						</button>
+						{#if checking}
+							<Loader2 class="w-4 h-4 animate-spin text-primary" />
+						{:else if healthCheck}
+							{#if healthCheck.success}
+								<div class="flex items-center gap-1.5 text-success">
+									<CheckCircle2 class="w-4 h-4" />
+									<span class="text-sm">{healthCheck.username}</span>
+								</div>
+							{:else}
+								<div class="flex items-center gap-1.5 text-destructive">
+									<XCircle class="w-4 h-4" />
+									<span class="text-sm">{healthCheck.error}</span>
+								</div>
+							{/if}
+						{/if}
+					</div>
+				{/if}
 			</div>
 		</div>
 	{/if}

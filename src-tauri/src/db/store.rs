@@ -96,6 +96,7 @@ pub struct Execution {
     pub ci_status: Option<CiStatus>,
     pub ci_checked_at: Option<i64>,
     pub ci_url: Option<String>,
+    pub error_message: Option<String>,
     pub created_at: i64,
     pub completed_at: Option<i64>,
 }
@@ -113,7 +114,7 @@ SELECT
 	COALESCE(lines_removed, 0) AS lines_removed,
 	COALESCE(commit_status, 'none') AS commit_status,
 	commit_sha, committed_at, parent_sha, branch,
-	ci_status, ci_checked_at, ci_url,
+	ci_status, ci_checked_at, ci_url, error_message,
 	created_at, completed_at
 FROM executions";
 
@@ -165,6 +166,7 @@ fn map_execution(row: &Row) -> rusqlite::Result<Execution> {
         ci_status: row.get("ci_status")?,
         ci_checked_at: row.get("ci_checked_at")?,
         ci_url: row.get("ci_url")?,
+        error_message: row.get("error_message")?,
         created_at: row.get("created_at")?,
         completed_at: row.get("completed_at")?,
     })
@@ -637,6 +639,7 @@ impl Store {
             ci_status: None,
             ci_checked_at: None,
             ci_url: None,
+            error_message: None,
             created_at: now,
             completed_at: None,
         })
@@ -666,8 +669,9 @@ impl Store {
 				ci_status = COALESCE(?19, ci_status),
 				ci_checked_at = COALESCE(?20, ci_checked_at),
 				ci_url = COALESCE(?21, ci_url),
-				completed_at = COALESCE(?22, completed_at)
-			WHERE id = ?23",
+				error_message = COALESCE(?22, error_message),
+				completed_at = COALESCE(?23, completed_at)
+			WHERE id = ?24",
             params![
                 u.status,
                 u.session_id,
@@ -690,6 +694,7 @@ impl Store {
                 u.ci_status,
                 u.ci_checked_at,
                 u.ci_url,
+                u.error_message,
                 u.completed_at,
                 id,
             ],
@@ -1026,6 +1031,8 @@ pub struct ExecutionUpdates {
     pub ci_checked_at: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ci_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_message: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub completed_at: Option<i64>,
 }

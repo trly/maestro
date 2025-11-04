@@ -12,7 +12,7 @@
 	import ThemeSettings from "./settings/ThemeSettings.svelte"
 	import StartupSettings from "./settings/StartupSettings.svelte"
 
-	let activeSection = $state<"general" | "agents" | "vcs">("general")
+	let activeSection = $state<"general" | "agents" | "integrations">("general")
 	let loading = $state(true)
 	let saveStatus = $state<{ type: "success" | "error"; message: string } | null>(null)
 	let availableEditors = $state<ipc.AppInfo[]>([])
@@ -59,13 +59,13 @@
 					Agents
 				</button>
 				<button
-					onclick={() => (activeSection = "vcs")}
+					onclick={() => (activeSection = "integrations")}
 					class="w-full text-left px-3 py-2 rounded-md text-sm transition-colors {activeSection ===
-					'vcs'
+					'integrations'
 						? 'bg-primary text-primary-foreground'
 						: 'hover:bg-muted'}"
 				>
-					Version Control
+					Integrations
 				</button>
 			</div>
 		</div>
@@ -113,11 +113,11 @@
 				<div class="space-y-6">
 					<AmpSettings onStatusChange={handleStatusChange} />
 				</div>
-			{:else if activeSection === "vcs"}
+			{:else if activeSection === "integrations"}
 				<div class="mb-6">
-					<h1 class="text-2xl font-bold mb-2">Version Control</h1>
+					<h1 class="text-2xl font-bold mb-2">Integrations</h1>
 					<p class="text-sm text-muted-foreground">
-						Configure Git providers for repository access and CI monitoring
+						Configure Git providers, code search, and CI monitoring
 					</p>
 				</div>
 				<div class="space-y-6">

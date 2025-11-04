@@ -91,21 +91,21 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           echo "Triggering Homebrew tap update for version $VERSION"
-          
+
           SHA256_FILE=$(find builds/macos -name "Maestro.app.zip.sha256" -type f | head -n1)
           if [ -z "$SHA256_FILE" ]; then
             echo "::error::SHA256 checksum file not found"
             exit 1
           fi
-          
+
           SHA256=$(cat "$SHA256_FILE")
           echo "Using pre-calculated SHA256: $SHA256"
-          
+
           gh api repos/trly/homebrew-maestro/dispatches \
             -f event_type=maestro-release \
             -f client_payload[version]="$VERSION" \
             -f client_payload[sha256]="$SHA256"
-          
+
           echo "✅ Triggered Homebrew tap update workflow"
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

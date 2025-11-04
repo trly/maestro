@@ -98,6 +98,41 @@ pub async fn health_check_amp() -> Result<HealthCheckResult, String> {
     }
 }
 
+#[tauri::command]
+pub async fn health_check_amp_token() -> Result<HealthCheckResult, String> {
+    let _token = get_token_value("amp_token")
+        .map_err(|e| format!("Failed to access token: {}", e))?
+        .ok_or_else(|| "Amp token not configured".to_string())?;
+
+    // Verify Amp CLI is available
+    match Command::new("amp").arg("--version").output() {
+        Ok(output) => {
+            if output.status.success() {
+                // CLI exists, token is configured - we can't validate the token without making an API call
+                // Return success with CLI version
+                let version = String::from_utf8_lossy(&output.stdout);
+                let version_str = version.trim();
+                Ok(HealthCheckResult {
+                    success: true,
+                    username: Some(format!("Token configured (CLI: {})", version_str)),
+                    error: None,
+                })
+            } else {
+                Ok(HealthCheckResult {
+                    success: false,
+                    username: None,
+                    error: Some("Amp CLI found but failed to execute".to_string()),
+                })
+            }
+        }
+        Err(e) => Ok(HealthCheckResult {
+            success: false,
+            username: None,
+            error: Some(format!("Amp CLI not found: {}", e)),
+        }),
+    }
+}
+
 #[derive(Deserialize)]
 struct GitLabUser {
     username: String,

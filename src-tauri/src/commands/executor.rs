@@ -122,11 +122,16 @@ async fn ensure_admin_repo_and_fetch(
                     .or_else(|| get_token_value("gitlab_endpoint").ok().flatten())
                     .unwrap_or_else(|| "https://gitlab.com".to_string());
 
-                // Extract hostname from URL (e.g., "https://gitlab.example.com" -> "gitlab.example.com")
-                let host = instance_url
-                    .trim_start_matches("https://")
-                    .trim_start_matches("http://")
-                    .trim_end_matches('/');
+                // Extract hostname from URL using case-insensitive parsing
+                let host = if let Ok(parsed) = reqwest::Url::parse(&instance_url) {
+                    parsed.host_str().unwrap_or("gitlab.com").to_string()
+                } else {
+                    // Fallback: strip protocol case-insensitively
+                    instance_url
+                        .trim_start_matches(|c: char| !c.is_alphanumeric() && c != '.')
+                        .trim_end_matches('/')
+                        .to_string()
+                };
 
                 format!("git@{}:{}/{}.git", host, owner, repo)
             }
@@ -902,6 +907,11 @@ PROMPT: FAIL";
                 ExecutionStatus::Failed
             };
             let status_str = if is_aborted { "cancelled" } else { "failed" };
+            let error_message = if !is_aborted {
+                Some(e.to_string())
+            } else {
+                None
+            };
 
             {
                 let store_state = app.state::<Mutex<Store>>();
@@ -910,6 +920,7 @@ PROMPT: FAIL";
                     &execution_id,
                     ExecutionUpdates {
                         status: Some(status),
+                        error_message,
                         completed_at: Some(chrono::Utc::now().timestamp_millis()),
                         ..Default::default()
                     },
@@ -1144,6 +1155,11 @@ VALIDATION: FAIL";
                 ValidationStatus::Failed
             };
             let status_str = if is_aborted { "cancelled" } else { "failed" };
+            let error_message = if !is_aborted {
+                Some(e.to_string())
+            } else {
+                None
+            };
 
             {
                 let store_state = app.state::<Mutex<Store>>();
@@ -1152,6 +1168,7 @@ VALIDATION: FAIL";
                     &execution_id,
                     ExecutionUpdates {
                         validation_status: Some(status),
+                        error_message,
                         ..Default::default()
                     },
                 )?;

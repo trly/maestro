@@ -59,6 +59,10 @@ pub const MIGRATIONS: &[Migration] = &[
         version: 13,
         up: migration_13,
     },
+    Migration {
+        version: 14,
+        up: migration_14,
+    },
 ];
 
 fn migration_1(conn: &Connection) -> Result<()> {
@@ -269,6 +273,11 @@ fn migration_13(conn: &Connection) -> Result<()> {
 		END;
 		",
     )?;
+    Ok(())
+}
+
+fn migration_14(conn: &Connection) -> Result<()> {
+    conn.execute_batch("ALTER TABLE executions ADD COLUMN error_message TEXT;")?;
     Ok(())
 }
 

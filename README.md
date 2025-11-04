@@ -1,6 +1,6 @@
 # Maestro
 
-AI-powered orchestrator for running prompts across multiple repositories using [Amp](https://ampcode.com).
+AI-powered orchestrator for executing code changes across multiple repositories using [Amp](https://ampcode.com).
 
 **Built with SvelteKit + Tauri 2.0**
 
@@ -25,7 +25,7 @@ AI-powered orchestrator for running prompts across multiple repositories using [
 
    ```bash
    mise install
-   bun install
+   pnpm install
    ```
 
 3. **Set up SSH authentication** (required for private repos):

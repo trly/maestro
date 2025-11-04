@@ -23,12 +23,17 @@ pub struct GitLabGitProvider {
 impl GitLabGitProvider {
     pub async fn new(token: String, base_url: Option<String>) -> Result<Self> {
         let url = base_url.unwrap_or_else(|| "https://gitlab.com".to_string());
-        // GitlabBuilder expects URL without protocol prefix
-        let url = url
-            .strip_prefix("https://")
-            .or_else(|| url.strip_prefix("http://"))
-            .unwrap_or(&url)
-            .to_string();
+
+        // GitlabBuilder expects URL without protocol prefix (case-insensitive)
+        let url = if let Ok(parsed) = reqwest::Url::parse(&url) {
+            // Extract host from properly parsed URL
+            parsed.host_str().unwrap_or("gitlab.com").to_string()
+        } else {
+            // Fallback: strip protocol case-insensitively
+            url.trim_start_matches(|c: char| !c.is_alphanumeric() && c != '.')
+                .to_string()
+        };
+
         let client = GitlabBuilder::new(url, token).build_async().await?;
         Ok(Self { client })
     }

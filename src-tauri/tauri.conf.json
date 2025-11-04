@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Maestro - AI Prompt Orchestrator",
+        "title": "Maestro - AI Code Orchestrator",
         "width": 1200,
         "height": 800,
         "resizable": true,
@@ -45,8 +45,8 @@
     "externalBin": [],
     "copyright": "Copyright © 2025 Sourcegraph",
     "category": "DeveloperTool",
-    "shortDescription": "AI Prompt Orchestrator",
-    "longDescription": "Maestro orchestrates AI prompt execution across multiple repositories using the Amp SDK.",
+    "shortDescription": "AI Code Orchestrator",
+    "longDescription": "Maestro orchestrates AI-powered code changes across multiple repositories using Amp.",
     "macOS": {
       "signingIdentity": "-",
       "entitlements": "entitlements.plist"

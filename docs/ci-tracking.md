@@ -125,7 +125,7 @@ Configure your VCS provider tokens in the Settings page (stored securely in syst
 **GitLab Token** must have:
 
 - `read_api` scope (for pipeline status)
-- `read_repository` scope (for repository access)
+- `write_repository` scope (for push operations)
 
 ### SSH Authentication
 
