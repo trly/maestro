@@ -112,7 +112,7 @@
 <div>
 	<h3 class="text-lg font-semibold mb-4">GitLab</h3>
 	<p class="text-sm text-muted-foreground mb-6">
-		Configure GitLab integration for self-hosted or GitLab.com
+		Configure GitLab integration for git operations and CI status checks (self-hosted or GitLab.com)
 	</p>
 
 	{#if loading}
@@ -185,7 +185,9 @@
 			<div>
 				<label for="gitlab-token" class="block text-sm font-medium mb-2">Access Token</label>
 				<p class="text-xs text-muted-foreground mb-2">
-					Required scopes: <code class="bg-muted px-1 rounded">read_api</code>,
+					Required for git operations and CI checks. Scopes: <code class="bg-muted px-1 rounded"
+						>api</code
+					>,
 					<code class="bg-muted px-1 rounded">write_repository</code>
 				</p>
 				<div class="flex flex-col sm:flex-row gap-2">

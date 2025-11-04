@@ -77,7 +77,7 @@
 <div>
 	<h3 class="text-lg font-semibold mb-4">GitHub</h3>
 	<p class="text-sm text-muted-foreground mb-6">
-		Configure GitHub integration for CI status checks
+		Configure GitHub integration for git operations and CI status checks
 	</p>
 
 	{#if loading}
@@ -85,7 +85,9 @@
 	{:else}
 		<div>
 			<label for="github-token" class="block text-sm font-medium mb-2">Personal Access Token</label>
-			<p class="text-xs text-muted-foreground mb-2">Required for CI status monitoring</p>
+			<p class="text-xs text-muted-foreground mb-2">
+				Required for git operations (clone, fetch, push) and CI status monitoring
+			</p>
 			<div class="flex flex-col sm:flex-row gap-2">
 				{#if editing}
 					<div class="flex-1">
@@ -143,10 +145,12 @@
 			</div>
 			<p class="text-xs text-muted-foreground mt-2">
 				Generate at: <a
-					href="https://github.com/settings/tokens"
+					href="https://github.com/settings/tokens/new?scopes=repo,workflow"
 					target="_blank"
 					class="text-primary hover:underline">github.com/settings/tokens</a
 				>
+				(requires <code class="bg-muted px-1 rounded">repo</code> and
+				<code class="bg-muted px-1 rounded">workflow</code> scopes)
 			</p>
 			{#if githubTokenMasked && !editing}
 				<div class="mt-3 flex items-center gap-2">

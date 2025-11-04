@@ -9,9 +9,9 @@ AI-powered orchestrator for executing code changes across multiple repositories 
 ### Prerequisites
 
 - [mise](https://mise.jdx.dev) (manages Node.js, Rust, and Tauri CLI automatically)
-- SSH key added to SCM [GitHub, GitLab, etc.] (for private repos - see [SSH setup](docs/ssh-authentication.md))
+- **GitHub/GitLab Personal Access Token** (for git operations and CI checks - see [Authentication setup](docs/ssh-authentication.md))
 - Amp API token (for AI executions)
-- SCM PAT (for CI checks, default branch detection, etc.)
+- _Optional:_ SSH key in ssh-agent for faster git operations
 
 ### Installation
 
@@ -28,19 +28,21 @@ AI-powered orchestrator for executing code changes across multiple repositories 
    pnpm install
    ```
 
-3. **Set up SSH authentication** (required for private repos):
+3. **Configure authentication tokens:**
 
-   ```bash
-   # Generate SSH key if you don't have one
-   ssh-keygen -t ed25519 -C "your_email@example.com"
+   Maestro uses HTTPS with Personal Access Tokens for git operations. SSH is optional but preferred when available.
 
-   # Add to ssh-agent
-   ssh-add ~/.ssh/id_ed25519
+   **Generate tokens:**
+   - GitHub: https://github.com/settings/tokens (scopes: `repo`, `workflow`)
+   - GitLab: https://gitlab.com/-/profile/personal_access_tokens (scopes: `api`, `write_repository`)
+   - Amp: https://ampcode.com/settings/tokens
 
-   # Add public key to GitHub: https://github.com/settings/keys
-   ```
+   **Configure in Maestro:**
+   - Launch Maestro
+   - Go to Settings → Integrations
+   - Enter your tokens (stored securely in system keyring)
 
-   See [docs/ssh-authentication.md](docs/ssh-authentication.md) for detailed instructions.
+   See [docs/ssh-authentication.md](docs/ssh-authentication.md) for SSH setup (optional).
 
 4. **Start development server:**
    ```bash

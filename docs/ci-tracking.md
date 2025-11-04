@@ -119,23 +119,20 @@ Configure your VCS provider tokens in the Settings page (stored securely in syst
 
 **GitHub Token** must have:
 
-- `repo` scope (for private repositories)
+- `repo` scope (for API access and HTTPS git operations)
+- `workflow` scope (for push operations)
 - `checks:read` scope (optional, for richer CI details)
 
 **GitLab Token** must have:
 
-- `read_api` scope (for pipeline status)
-- `write_repository` scope (for push operations)
+- `api` scope (for API access and pipeline status)
+- `write_repository` scope (for HTTPS git operations)
 
-### SSH Authentication
+### Git Authentication
 
-Push requires SSH authentication configured:
+Maestro uses HTTPS with Personal Access Tokens for push operations. SSH is optional but preferred when available.
 
-1. SSH key added to ssh-agent
-2. Public key added to GitHub account
-3. SSH_AUTH_SOCK environment variable set
-
-See [ssh-authentication.md](./ssh-authentication.md) for setup details.
+See [ssh-authentication.md](./ssh-authentication.md) for authentication setup details.
 
 ## Rate Limits
 

@@ -3,6 +3,25 @@ use std::path::Path;
 
 pub(crate) struct GitService;
 
+/// Authentication credentials for HTTPS git operations
+pub struct GitAuth<'a> {
+    pub username: &'a str,
+    pub password: &'a str,
+}
+
+/// Configure remote callbacks with either SSH or HTTPS authentication
+fn configure_credentials<'a>(callbacks: &mut RemoteCallbacks<'a>, auth: Option<GitAuth<'a>>) {
+    if let Some(auth) = auth {
+        callbacks.credentials(move |_url, _username_from_url, _allowed_types| {
+            git2::Cred::userpass_plaintext(auth.username, auth.password)
+        });
+    } else {
+        callbacks.credentials(|_url, username_from_url, _allowed_types| {
+            git2::Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
+        });
+    }
+}
+
 impl GitService {
     pub(crate) fn open(path: &Path) -> Result<Repository, Git2Error> {
         Repository::open(path)
@@ -19,10 +38,30 @@ impl GitService {
     /// * `url` - SSH URL format: git@github.com:owner/repo.git
     /// * `path` - Destination path for cloned repository
     pub(crate) fn clone_repo(url: &str, path: &Path) -> Result<Repository, Git2Error> {
+        Self::clone_repo_impl(url, path, None)
+    }
+
+    /// Clone a repository using HTTPS authentication with username/password.
+    ///
+    /// # Arguments
+    /// * `url` - HTTPS URL format: https://github.com/owner/repo.git
+    /// * `path` - Destination path for cloned repository
+    /// * `auth` - Authentication credentials (username: "oauth2", password: PAT)
+    pub(crate) fn clone_repo_with_auth(
+        url: &str,
+        path: &Path,
+        auth: GitAuth<'_>,
+    ) -> Result<Repository, Git2Error> {
+        Self::clone_repo_impl(url, path, Some(auth))
+    }
+
+    fn clone_repo_impl(
+        url: &str,
+        path: &Path,
+        auth: Option<GitAuth<'_>>,
+    ) -> Result<Repository, Git2Error> {
         let mut callbacks = RemoteCallbacks::new();
-        callbacks.credentials(|_url, username_from_url, _allowed_types| {
-            git2::Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
-        });
+        configure_credentials(&mut callbacks, auth);
 
         let mut fetch_options = FetchOptions::new();
         fetch_options.remote_callbacks(callbacks);
@@ -37,11 +76,27 @@ impl GitService {
         remote_name: &str,
         refspecs: &[&str],
     ) -> Result<(), Git2Error> {
+        Self::fetch_impl(repo, remote_name, refspecs, None)
+    }
+
+    pub(crate) fn fetch_with_auth(
+        repo: &Repository,
+        remote_name: &str,
+        refspecs: &[&str],
+        auth: GitAuth<'_>,
+    ) -> Result<(), Git2Error> {
+        Self::fetch_impl(repo, remote_name, refspecs, Some(auth))
+    }
+
+    fn fetch_impl(
+        repo: &Repository,
+        remote_name: &str,
+        refspecs: &[&str],
+        auth: Option<GitAuth<'_>>,
+    ) -> Result<(), Git2Error> {
         let mut remote = repo.find_remote(remote_name)?;
         let mut callbacks = RemoteCallbacks::new();
-        callbacks.credentials(|_url, username_from_url, _allowed_types| {
-            git2::Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
-        });
+        configure_credentials(&mut callbacks, auth);
 
         let mut fetch_options = FetchOptions::new();
         fetch_options.remote_callbacks(callbacks);
@@ -143,12 +198,29 @@ impl GitService {
         branch_name: &str,
         force: bool,
     ) -> Result<(), Git2Error> {
+        Self::push_branch_impl(repo, remote_name, branch_name, force, None)
+    }
+
+    pub(crate) fn push_branch_with_auth(
+        repo: &Repository,
+        remote_name: &str,
+        branch_name: &str,
+        force: bool,
+        auth: GitAuth<'_>,
+    ) -> Result<(), Git2Error> {
+        Self::push_branch_impl(repo, remote_name, branch_name, force, Some(auth))
+    }
+
+    fn push_branch_impl(
+        repo: &Repository,
+        remote_name: &str,
+        branch_name: &str,
+        force: bool,
+        auth: Option<GitAuth<'_>>,
+    ) -> Result<(), Git2Error> {
         let mut remote = repo.find_remote(remote_name)?;
         let mut callbacks = RemoteCallbacks::new();
-
-        callbacks.credentials(|_url, username_from_url, _allowed_types| {
-            git2::Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
-        });
+        configure_credentials(&mut callbacks, auth);
 
         let mut push_options = PushOptions::new();
         push_options.remote_callbacks(callbacks);

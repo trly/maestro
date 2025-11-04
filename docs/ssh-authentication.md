@@ -1,8 +1,43 @@
-# SSH Authentication for Private Repositories
+# Git Authentication for Private Repositories
 
-Maestro uses SSH authentication for all GitHub repository operations (clone, fetch, push). This allows seamless access to both public and private repositories.
+Maestro uses a dual-authentication approach for Git operations, preferring SSH when available but seamlessly falling back to HTTPS with Personal Access Tokens (PATs).
 
-## Prerequisites
+## Authentication Preference
+
+1. **SSH (Preferred)**: When SSH keys are in ssh-agent, Maestro uses SSH for faster, key-based authentication
+2. **HTTPS (Fallback)**: When SSH is unavailable or fails, Maestro automatically uses HTTPS with your configured PAT
+
+This allows seamless access to both public and private repositories regardless of your authentication setup.
+
+## Option 1: HTTPS with Personal Access Token (Recommended)
+
+### Why HTTPS + PAT?
+
+- **Universal**: Works in all environments without SSH agent setup
+- **Simple**: Just configure token in Settings
+- **Secure**: Tokens stored in system keyring
+- **Automatic**: No manual key management
+
+### Setup Steps
+
+1. **Generate a PAT**:
+   - GitHub: https://github.com/settings/tokens (requires `repo` and `workflow` scopes)
+   - GitLab: https://gitlab.com/-/profile/personal_access_tokens (requires `api` and `write_repository` scopes)
+
+2. **Configure in Maestro**:
+   - Open Settings → Integrations
+   - Enter your GitHub/GitLab token
+   - Token is securely stored in your system keyring
+
+3. **Done!** Maestro will automatically use HTTPS authentication for all git operations.
+
+## Option 2: SSH Keys (Optional)
+
+### Why SSH?
+
+- **Faster**: Slightly faster for large repositories
+- **Familiar**: Standard developer workflow
+- **Preferred**: When both are configured, Maestro prefers SSH
 
 ### 1. SSH Key Setup
 
@@ -58,48 +93,53 @@ ssh -T git@github.com
 # Should see: "Hi username! You've successfully authenticated..."
 ```
 
-## How Maestro Uses SSH
+## How Maestro Handles Authentication
 
 ### Clone Operation
 
-When cloning a repository, Maestro:
-
-1. Converts repo to SSH URL format: `git@github.com:owner/repo.git`
-2. Authenticates via ssh-agent
-3. Retrieves credentials automatically (no manual key path needed)
+1. **SSH First** (if ssh-agent has keys):
+   - Attempts clone using SSH URL: `git@github.com:owner/repo.git`
+   - Uses credentials from ssh-agent
+2. **HTTPS Fallback** (if SSH unavailable or fails):
+   - Falls back to HTTPS URL: `https://github.com/owner/repo.git`
+   - Authenticates with your configured PAT
 
 ### Fetch Operation
 
-All fetch operations use the same SSH authentication mechanism through ssh-agent integration.
+Same dual-authentication approach: SSH preferred, HTTPS fallback.
+
+### Push Operation
+
+Same dual-authentication approach: SSH preferred, HTTPS fallback. You'll see progress messages indicating which method was used.
 
 ## Troubleshooting
 
-### Error: "Failed to clone repository"
+### Error: "GitHub/GitLab token not configured"
 
-**Cause**: SSH key not added to ssh-agent or not on GitHub
-
-**Solution**:
-
-```bash
-# 1. Check if key is in agent
-ssh-add -l
-
-# 2. If not listed, add it
-ssh-add ~/.ssh/id_ed25519
-
-# 3. Verify GitHub connection
-ssh -T git@github.com
-```
-
-### Error: "Permission denied (publickey)"
-
-**Cause**: Public key not added to GitHub account or wrong key in agent
+**Cause**: No PAT configured in Settings
 
 **Solution**:
 
-1. Verify public key is on GitHub (Settings → SSH and GPG keys)
-2. Ensure correct key is in ssh-agent (`ssh-add -l`)
-3. Test connection: `ssh -T git@github.com`
+1. Generate a PAT with required scopes (see Option 1 above)
+2. Open Maestro → Settings → Integrations
+3. Enter your token
+4. Token will be used automatically for HTTPS authentication
+
+### Error: "HTTPS clone/push failed"
+
+**Cause**: Token invalid or lacks required scopes
+
+**Solution**:
+
+1. Verify token has required scopes:
+   - GitHub: `repo`, `workflow`
+   - GitLab: `api`, `write_repository`
+2. Generate new token if needed
+3. Update in Settings → Integrations
+
+### SSH Falls Back to HTTPS
+
+**Expected Behavior**: If SSH fails (no keys in agent, wrong key, network issues), Maestro automatically retries with HTTPS.
 
 ### Multiple SSH Keys
 
@@ -125,28 +165,25 @@ If you have multiple SSH keys for different GitHub accounts:
 
 ### Authentication Flow
 
-1. **Clone/Fetch Request**:
-   - Ensures admin repository exists and is up-to-date
-   - Initiates git operation via SSH
-2. **SSH Authentication**:
-   - Connects to ssh-agent for credentials
-   - Uses standard git SSH username ("git")
-3. **Key Retrieval**:
-   - Queries ssh-agent for loaded keys
-   - Tries keys sequentially until one succeeds
-   - No manual file path or passphrase needed
+1. **Check SSH Availability**:
+   - Runs `ssh-add -l` to detect loaded SSH keys in agent
+2. **SSH First** (if available):
+   - Uses `git2::Cred::ssh_key_from_agent()` for authentication
+   - Connects to ssh-agent automatically
+   - No manual key path or passphrase needed
+3. **HTTPS Fallback** (if SSH unavailable or fails):
+   - Uses `git2::Cred::userpass_plaintext()` with username `oauth2` and PAT
+   - Retrieves PAT from system keyring
+   - Constructs HTTPS URL (`https://github.com/owner/repo.git`)
 
-### Why SSH Over HTTPS?
+4. **Transparent Retry**:
+   - If SSH fails, automatically retries with HTTPS
+   - User sees progress messages indicating auth method used
 
-- **Private repos**: No need to manage Personal Access Tokens
-- **Security**: Keys stored in ssh-agent, not in code/config
-- **Consistency**: Same auth for clone, fetch, and push
-- **Standard practice**: Matches typical git workflow
+### Why Dual Authentication?
 
-## Future Enhancements
-
-Potential improvements:
-
-- HTTPS fallback with PAT for environments without SSH
-- Config option to choose auth method per repository
-- Better error messages with specific setup instructions
+- **Flexibility**: Works in any environment (corporate, cloud, local)
+- **Convenience**: No SSH setup required for basic use
+- **Security**: Tokens stored in system keyring, SSH keys in agent
+- **Performance**: SSH preferred for speed when available
+- **Reliability**: HTTPS fallback ensures operations never fail due to SSH issues

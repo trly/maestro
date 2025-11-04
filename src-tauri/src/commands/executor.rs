@@ -77,6 +77,37 @@ async fn fetch_default_branch(provider: &str, provider_id: &str) -> Result<Strin
     Ok(metadata.default_branch)
 }
 
+/// Check if SSH agent is available and has keys loaded
+fn ssh_agent_has_keys() -> bool {
+    use std::process::Command;
+
+    Command::new("ssh-add")
+        .arg("-l")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
+/// Resolve provider-specific PAT token from keyring
+fn resolve_provider_token(provider: &str) -> Result<String> {
+    use crate::commands::tokens::get_token_value;
+
+    let token_key = match provider {
+        "github" => "github_token",
+        "gitlab" => "gitlab_token",
+        _ => anyhow::bail!("Unsupported provider: {}", provider),
+    };
+
+    get_token_value(token_key)
+        .map_err(|e| anyhow::anyhow!("Failed to access {} token: {}", provider, e))?
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "{} token not configured. Please set it in Settings.",
+                provider
+            )
+        })
+}
+
 type ChildHandle = std::sync::Arc<Mutex<Option<tokio::process::Child>>>;
 
 lazy_static::lazy_static! {
@@ -108,45 +139,138 @@ async fn ensure_admin_repo_and_fetch(
 
     let admin_repo_path = admin_repo_dir.join(owner).join(repo);
 
+    // Clone if not exists
     if !admin_repo_path.join(".git").exists() {
         let parent_dir = admin_repo_dir.join(owner);
         std::fs::create_dir_all(&parent_dir)?;
 
-        let url = match provider {
-            "github" => format!("git@github.com:{}/{}.git", owner, repo),
-            "gitlab" => {
-                // Check for custom GitLab instance URL (try both keys for compatibility)
-                let instance_url = get_token_value("gitlab_instance_url")
-                    .ok()
-                    .flatten()
-                    .or_else(|| get_token_value("gitlab_endpoint").ok().flatten())
-                    .unwrap_or_else(|| "https://gitlab.com".to_string());
+        let ssh_available = ssh_agent_has_keys();
 
-                // Extract hostname from URL using case-insensitive parsing
-                let host = if let Ok(parsed) = reqwest::Url::parse(&instance_url) {
-                    parsed.host_str().unwrap_or("gitlab.com").to_string()
-                } else {
-                    // Fallback: strip protocol case-insensitively
-                    instance_url
-                        .trim_start_matches(|c: char| !c.is_alphanumeric() && c != '.')
-                        .trim_end_matches('/')
-                        .to_string()
-                };
+        if ssh_available {
+            // Try SSH first
+            let ssh_url = match provider {
+                "github" => format!("git@github.com:{}/{}.git", owner, repo),
+                "gitlab" => {
+                    let instance_url = get_token_value("gitlab_instance_url")
+                        .ok()
+                        .flatten()
+                        .or_else(|| get_token_value("gitlab_endpoint").ok().flatten())
+                        .unwrap_or_else(|| "https://gitlab.com".to_string());
 
-                format!("git@{}:{}/{}.git", host, owner, repo)
+                    let host = if let Ok(parsed) = reqwest::Url::parse(&instance_url) {
+                        parsed.host_str().unwrap_or("gitlab.com").to_string()
+                    } else {
+                        instance_url
+                            .trim_start_matches(|c: char| !c.is_alphanumeric() && c != '.')
+                            .trim_end_matches('/')
+                            .to_string()
+                    };
+
+                    format!("git@{}:{}/{}.git", host, owner, repo)
+                }
+                _ => anyhow::bail!("Unsupported provider: {}", provider),
+            };
+
+            match GitService::clone_repo(&ssh_url, &admin_repo_path) {
+                Ok(_) => log::info!("[ensure_admin_repo_and_fetch] Cloned {} via SSH", ssh_url),
+                Err(ssh_err) => {
+                    log::warn!("[ensure_admin_repo_and_fetch] SSH clone failed ({}), falling back to HTTPS", ssh_err);
+                    clone_with_https(provider, owner, repo, &admin_repo_path)?;
+                }
             }
-            _ => anyhow::bail!("Unsupported provider for SSH clone: {}", provider),
-        };
-
-        GitService::clone_repo(&url, &admin_repo_path)
-			.context("Failed to clone repository. Ensure SSH key is added to ssh-agent (try: ssh-add ~/.ssh/id_rsa)")?;
+        } else {
+            // No SSH keys available, use HTTPS directly
+            log::info!(
+                "[ensure_admin_repo_and_fetch] No SSH keys detected, using HTTPS authentication"
+            );
+            clone_with_https(provider, owner, repo, &admin_repo_path)?;
+        }
     }
 
-    let repo = GitService::open(&admin_repo_path)?;
-    GitService::fetch(&repo, "origin", &["+refs/heads/*:refs/remotes/origin/*"])
-        .context("Failed to fetch from origin. Ensure SSH authentication is configured.")?;
+    // Fetch updates
+    let repository = GitService::open(&admin_repo_path)?;
+    let ssh_available = ssh_agent_has_keys();
+
+    if ssh_available {
+        match GitService::fetch(
+            &repository,
+            "origin",
+            &["+refs/heads/*:refs/remotes/origin/*"],
+        ) {
+            Ok(_) => {}
+            Err(ssh_err) => {
+                log::warn!(
+                    "[ensure_admin_repo_and_fetch] SSH fetch failed ({}), falling back to HTTPS",
+                    ssh_err
+                );
+                fetch_with_https(provider, &repository)?;
+            }
+        }
+    } else {
+        fetch_with_https(provider, &repository)?;
+    }
 
     Ok(admin_repo_path)
+}
+
+/// Clone repository using HTTPS with PAT authentication
+fn clone_with_https(provider: &str, owner: &str, repo: &str, path: &Path) -> Result<()> {
+    use crate::git::service::GitAuth;
+    use crate::util::git::build_https_remote;
+
+    let remote_config = build_https_remote(provider, owner, repo)?;
+    let token = resolve_provider_token(provider)?;
+    let auth = GitAuth {
+        username: remote_config.username,
+        password: &token,
+    };
+
+    GitService::clone_repo_with_auth(&remote_config.url, path, auth)
+        .map_err(|e| anyhow::anyhow!("HTTPS clone failed: {}", e))?;
+
+    Ok(())
+}
+
+/// Fetch from repository using HTTPS with PAT authentication
+fn fetch_with_https(provider: &str, repo: &git2::Repository) -> Result<()> {
+    use crate::git::service::GitAuth;
+
+    let token = resolve_provider_token(provider)?;
+    let auth = GitAuth {
+        username: "oauth2",
+        password: &token,
+    };
+
+    GitService::fetch_with_auth(
+        repo,
+        "origin",
+        &["+refs/heads/*:refs/remotes/origin/*"],
+        auth,
+    )
+    .map_err(|e| anyhow::anyhow!("HTTPS fetch failed: {}", e))?;
+
+    Ok(())
+}
+
+/// Push to repository using HTTPS with PAT authentication
+fn push_with_https(
+    provider: &str,
+    repo: &git2::Repository,
+    branch: &str,
+    force: bool,
+) -> Result<()> {
+    use crate::git::service::GitAuth;
+
+    let token = resolve_provider_token(provider)?;
+    let auth = GitAuth {
+        username: "oauth2",
+        password: &token,
+    };
+
+    GitService::push_branch_with_auth(repo, "origin", branch, force, auth)
+        .map_err(|e| anyhow::anyhow!("HTTPS push failed: {}", e))?;
+
+    Ok(())
 }
 
 struct WorktreeInfo {
@@ -1628,14 +1752,57 @@ pub async fn push_commit(
     // Emit progress message
     emit_execution_progress(&app, &execution_id, "Pushing commit to remote...");
 
+    // Get provider info for potential HTTPS fallback
+    let provider_name = {
+        let store_state = app.state::<Mutex<Store>>();
+        let store = store_state.lock().unwrap();
+        let repository = store
+            .get_repository(&repository_id)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| format!("Repository {} not found", repository_id))?;
+        repository.provider.clone()
+    };
+
     // Push the branch
     let worktree_path = execution_worktree_path(&paths, &promptset_id, &execution_id);
     let repo = GitService::open(&worktree_path).map_err(|e| e.to_string())?;
 
-    GitService::push_branch(&repo, "origin", &branch, force)
-        .map_err(|e| format!("Failed to push branch: {}", e))?;
+    let ssh_available = ssh_agent_has_keys();
 
-    emit_execution_progress(&app, &execution_id, "Push completed successfully");
+    if ssh_available {
+        match GitService::push_branch(&repo, "origin", &branch, force) {
+            Ok(_) => {
+                emit_execution_progress(&app, &execution_id, "Push completed successfully via SSH");
+            }
+            Err(ssh_err) => {
+                log::warn!(
+                    "[push_commit] SSH push failed ({}), falling back to HTTPS",
+                    ssh_err
+                );
+                emit_execution_progress(
+                    &app,
+                    &execution_id,
+                    "SSH push failed, retrying with HTTPS...",
+                );
+                push_with_https(&provider_name, &repo, &branch, force)
+                    .map_err(|e| format!("HTTPS push also failed: {}", e))?;
+                emit_execution_progress(
+                    &app,
+                    &execution_id,
+                    "Push completed successfully via HTTPS",
+                );
+            }
+        }
+    } else {
+        emit_execution_progress(
+            &app,
+            &execution_id,
+            "Using HTTPS authentication for push...",
+        );
+        push_with_https(&provider_name, &repo, &branch, force)
+            .map_err(|e| format!("HTTPS push failed: {}", e))?;
+        emit_execution_progress(&app, &execution_id, "Push completed successfully via HTTPS");
+    }
 
     // Wait for provider to process the push
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;

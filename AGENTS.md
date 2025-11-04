@@ -226,7 +226,8 @@ Use `Arc<T>` (Atomic Reference Counted) for sharing data across async tasks/thre
 - **Always** use git worktrees for isolation (via `git worktree add/remove`)
 - **Never** use `rm -rf` on worktree directories
 - Use `REPO_LOCKS` mutex for concurrent safety
-- SSH authentication via `git2::Cred::ssh_key_from_agent()` - requires SSH key in ssh-agent
+- **Authentication**: Dual approach - SSH preferred (via `git2::Cred::ssh_key_from_agent()`), HTTPS fallback (via `git2::Cred::userpass_plaintext()` with PAT from keyring)
+- Clone/fetch/push operations automatically retry with HTTPS if SSH fails
 
 ## Settings & Configuration
 
