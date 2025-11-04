@@ -2,6 +2,13 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.4.11] - 2025-11-04
+
+### Changed
+
+- Removed fake code signing configuration
+- Updated copyright information
+
 ## [0.4.10] - 2025-11-04
 
 ### Added
