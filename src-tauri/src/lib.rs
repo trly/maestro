@@ -150,6 +150,26 @@ pub fn run() {
                 eprintln!("Failed to initialize logging plugin: {}", e);
             }
 
+            // Expand PATH to include common user binary directories
+            // GUI apps on macOS don't inherit shell PATH
+            if let Ok(current_path) = std::env::var("PATH") {
+                let home = std::env::var("HOME").unwrap_or_default();
+                let mut additional_paths = vec![
+                    format!("{}/.local/bin", home),
+                    "/usr/local/bin".to_string(),
+                    "/opt/homebrew/bin".to_string(),
+                ];
+                
+                // Filter out paths already in PATH to avoid duplicates
+                additional_paths.retain(|p| !current_path.contains(p));
+                
+                if !additional_paths.is_empty() {
+                    let expanded_path = format!("{}:{}", additional_paths.join(":"), current_path);
+                    std::env::set_var("PATH", &expanded_path);
+                    log::info!("Expanded PATH with user binary directories");
+                }
+            }
+
             // Ensure SSH_AUTH_SOCK is set for 1Password/ssh-agent compatibility
             #[cfg(target_os = "macos")]
             {
