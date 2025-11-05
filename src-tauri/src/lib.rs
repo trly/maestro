@@ -159,10 +159,10 @@ pub fn run() {
                     "/usr/local/bin".to_string(),
                     "/opt/homebrew/bin".to_string(),
                 ];
-                
+
                 // Filter out paths already in PATH to avoid duplicates
                 additional_paths.retain(|p| !current_path.contains(p));
-                
+
                 if !additional_paths.is_empty() {
                     let expanded_path = format!("{}:{}", additional_paths.join(":"), current_path);
                     std::env::set_var("PATH", &expanded_path);
