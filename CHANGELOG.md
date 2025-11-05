@@ -2,6 +2,16 @@
 
 All notable changes to Maestro will be documented in this file.
 
+## [0.4.13] - 2025-11-05
+
+### Fixed
+
+- Ensure default amp install location is available when installed as an app
+
+### Changed
+
+- Updated homebrew install documentation
+
 ## [0.4.12] - 2025-11-04
 
 ### Changed
