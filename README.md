@@ -55,10 +55,10 @@ AI-powered orchestrator for executing code changes across multiple repositories 
 
 ```bash
 brew tap trly/maestro
-brew install maestro
+brew install --cask --no-quarantine maestro
 ```
 
-**First launch:** Right-click Maestro.app → Open (Gatekeeper workaround for unsigned apps)
+**Note:** The `--no-quarantine` flag is required because this app is not notarized by Apple.
 
 **Note:** Homebrew tap is automatically updated when new releases are tagged via GitHub Actions.
 
